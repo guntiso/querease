@@ -4,10 +4,18 @@ import org.tresql.ORT
 import org.tresql.NameMap
 import xsdgen.ElementName
 
+import scala.collection.JavaConversions._
+
 object ort extends org.tresql.NameMap {
 
-  def pojoToMap(pojo: Any) = pojo.getClass.getMethods filter (m => m.getName.startsWith("get")
-      && m.getParameterTypes.size == 0) map (m => m.getName.drop(3) -> m.invoke(pojo)) toMap
+  def pojoToMap(pojo: Any):Map[String, _] = pojo.getClass.getMethods filter (m => m.getName.startsWith("get")
+      && m.getParameterTypes.size == 0) map (m => m.getName.drop(3) -> (m.invoke(pojo) match {
+        case x if (isPrimitive(x)) => x
+        case l:Seq[_] => l map (pojoToMap(_))
+        case l:Array[_] => l map (pojoToMap(_))
+        case l:java.util.Collection[_] => l map (pojoToMap(_))
+        case x => pojoToMap(x)
+      })) toMap
 
   def mapToPojo(map: Map[String, _], pojo: Any) = map foreach (
       t => pojo.getClass.getMethods.filter(m => m.getName == "set" + t._1) match {
@@ -20,6 +28,11 @@ object ort extends org.tresql.NameMap {
       case _ => x.invoke(pojo, t._2.asInstanceOf[Object])
     }
     case _ =>
+  })
+  
+  def isPrimitive[T](x: T)(implicit evidence: T <:< AnyVal = null) = evidence != null || (x match {
+    case _:java.lang.Number | _:java.lang.Boolean | _:java.util.Date => true
+    case _ => false
   })
 
   private def xsdNameToDbName(xsdName: String) = {
