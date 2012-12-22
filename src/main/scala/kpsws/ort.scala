@@ -45,12 +45,13 @@ object ort extends org.tresql.NameMap {
             gc.setTime(x)
             m.invoke(pojo, XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc))
           }
-          case inMap: Map[String, _] => mapToPojo(inMap, Class.forName(propClass).newInstance())
+          case inMap: Map[String, _] if (t == Class.forName(propClass)) => m.invoke(pojo, mapToPojo(inMap,
+              Class.forName(propClass).newInstance()).asInstanceOf[Object])
           //may be exact collection which is used in xsd generated pojos must be used?
           case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => t.newInstance
           case s:Seq[Map[String, _]] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
             val col:java.util.Collection[_] = s.map(mapToPojo(_, Class.forName(propClass).newInstance()))
-            col
+            m.invoke(pojo, col)
           }
           case x => m.invoke(pojo, x.asInstanceOf[Object])
         }
