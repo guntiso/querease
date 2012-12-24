@@ -156,6 +156,7 @@ object ort extends org.tresql.NameMap {
   private def from(view: XsdTypeDef) =
     view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table).mkString("/")
 
+  // FIXME avoid injection - ensure field name can not drop database
   private def where(baseView: String, filter: Array[ListFilterType]) =
     if (filter == null || filter.size == 0) ""
     else filter.map(f =>
@@ -163,6 +164,7 @@ object ort extends org.tresql.NameMap {
 
   private def values(filter: Array[ListFilterType]) = filter.map(_.Value)
 
+  // FIXME avoid injection - ensure field name can not drop database
   private def sort(baseView: String, sort: Array[ListSortType]) =
     if (sort == null || sort.size == 0) ""
     else sort.map(s =>
