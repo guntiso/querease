@@ -162,7 +162,8 @@ object ort extends org.tresql.NameMap {
     else filter.map(f =>
       fn(baseView, f.Field) + " " + f.Comparison + " ?").mkString("[", " & ", "]")
 
-  private def values(filter: Array[ListFilterType]) = filter.map(_.Value)
+  private def values(filter: Array[ListFilterType]) =
+    if (filter == null) Array[String]() else filter.map(_.Value)
 
   // FIXME avoid injection - ensure field name can not drop database
   private def sort(baseView: String, sort: Array[ListSortType]) =
