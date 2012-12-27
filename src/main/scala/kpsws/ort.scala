@@ -140,7 +140,7 @@ object ort extends org.tresql.NameMap {
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
     Query.select(queryString(view, params), (values(params.Filter) ++
-        (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit)
+        (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
             else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
 
   private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
