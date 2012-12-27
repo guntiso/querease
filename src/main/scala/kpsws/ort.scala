@@ -139,11 +139,13 @@ object ort extends org.tresql.NameMap {
   /* -------- Query support methods -------- */
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
-    Query.select(queryString(view, params),
-      values(params.Filter): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
+    Query.select(queryString(view, params), (values(params.Filter) ++
+        (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit)
+            else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
 
-  private def queryString(view: XsdTypeDef, params: ListRequestType) = from(view) +
-    where(view.name, params.Filter) + cols(view) + sort(view.name, params.Sort)
+  private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
+      where(view.name, params.Filter) + cols(view) + sort(view.name, params.Sort),
+      params.Offset, params.Limit)
 
   private def fn(baseView: String, name: String) = name.split("\\.") match {
     case Array(c) => tableName(baseView) + "." + colName(baseView, c)
@@ -171,6 +173,10 @@ object ort extends org.tresql.NameMap {
     else sort.map(s =>
       (if (s.Order == "desc") "~" else "") +
         "#(" + fn(baseView, s.Field) + ")").mkString("")
+  
+  private def limitOffset(query:String, limit:Int, offset:Int) = if (limit >= 0 && offset > 0) {
+    "/(" + query + ") [rownum >= ? & rownum < ?] {*}"
+  } else query
 
   //TODO support limit, offset
 
