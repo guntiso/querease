@@ -175,7 +175,7 @@ object ort extends org.tresql.NameMap {
         "#(" + fn(baseView, s.Field) + ")").mkString("")
   
   private def limitOffset(query:String, limit:Int, offset:Int) = if (limit >= 0 && offset > 0) {
-    "/(" + query + ") [rownum >= ? & rownum < ?] {*}"
+    "/(" + query + ") [rownum >= ? & rownum < ?]"
   } else query
 
   //TODO support limit, offset
