@@ -173,7 +173,8 @@ object ort extends org.tresql.NameMap {
     else sort.map(s =>
       (if (s.Order == "desc") "~" else "") +
         "#(" + fn(baseView, s.Field) + ")").mkString("")
-  
+
+  // FIXME why both or none? support both or any or none
   private def limitOffset(query:String, limit:Int, offset:Int) = if (limit >= 0 && offset > 0) {
     "/(" + query + ") [rownum >= ? & rownum < ?]"
   } else query
