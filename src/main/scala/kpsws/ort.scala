@@ -140,12 +140,12 @@ object ort extends org.tresql.NameMap {
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
     Query.select(queryString(view, params), (values(params.Filter) ++
-        (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
-            else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
+      (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
+      else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
 
   private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
-      where(view.name, params.Filter) + cols(view) + sort(view.name, params.Sort),
-      params.Offset, params.Limit)
+    where(view.name, params.Filter) + cols(view) + sort(view.name, params.Sort),
+    params.Limit, params.Offset)
 
   private def fn(baseView: String, name: String) = name.split("\\.") match {
     case Array(c) => tableName(baseView) + "." + colName(baseView, c)
@@ -175,7 +175,7 @@ object ort extends org.tresql.NameMap {
         "#(" + fn(baseView, s.Field) + ")").mkString("")
 
   // FIXME why both or none? support both or any or none
-  private def limitOffset(query:String, limit:Int, offset:Int) = if (limit >= 0 && offset > 0) {
+  private def limitOffset(query: String, limit: Int, offset: Int) = if (limit >= 0 && offset > 0) {
     "/(" + query + ") [rownum >= ? & rownum < ?]"
   } else query
 
