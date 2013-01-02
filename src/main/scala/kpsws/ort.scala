@@ -9,6 +9,7 @@ import javax.xml.datatype._
 import kpsws.impl._
 import xsdgen.XsdTypeDef
 import xsdgen.XsdGen
+import xsdgen.Schema.xsdNameToDbName
 
 object ort extends org.tresql.NameMap {
 
@@ -95,20 +96,6 @@ object ort extends org.tresql.NameMap {
   })
   private def propToClassName(prop: String) = if (prop.endsWith("List")) prop.dropRight(4) else prop
 
-  private def xsdNameToDbName(xsdName: String) = {
-    // FIXME DUPLICATE CODE WITH XSDGEN PROJECT
-    // FIXME DUPLICATE CLASS ElementName WITH XSDGEN PROJECT
-    ElementName.get(xsdName).split("\\-").map(_.toLowerCase match {
-      case "user" => "usr"
-      case "group" => "grp"
-      case "role" => "rle"
-      case x => x
-    }).mkString("_") match {
-      case x if x endsWith "_2" => x.replace("_2", "2") // XXX dirty fix phone_2
-      case x => x
-    }
-  }
-
   private def xsdValueToDbValue(xsdValue: Any) = xsdValue match {
     case true => "Y"
     case false => "N"
@@ -182,8 +169,6 @@ object ort extends org.tresql.NameMap {
   private def limitOffset(query: String, limit: Int, offset: Int) = if (limit >= 0 && offset > 0) {
     "/(" + query + ") [rownum >= ? & rownum < ?]"
   } else query
-
-  //TODO support limit, offset
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
 }
