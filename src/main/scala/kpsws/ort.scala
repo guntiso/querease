@@ -104,8 +104,9 @@ object ort extends org.tresql.NameMap {
 
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
-  // TODO derive table name from pojo class and corresponding view def.
-  def save(tableName: String, pojo: AnyRef): Long = {
+  def save(pojo: AnyRef): Long = {
+    val viewDef = getViewDef(pojo.getClass)
+    val tableName = viewDef.table
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
@@ -115,15 +116,18 @@ object ort extends org.tresql.NameMap {
     id
   }
 
-  def save(tableName: String, pojo: AnyRef, id: Long) =
+  def save(pojo: AnyRef, id: Long) = {
+    val viewDef = getViewDef(pojo.getClass)
+    val tableName = viewDef.table
     ORT.save(tableName,
       pojoToMap(pojo).map(e => (xsdNameToDbName(e._1), e._2)) + ("id" -> id))
+  }
 
   /* -------- Query support methods -------- */
-  def getViewDef(viewClass: Class[_]) =
+  def getViewDef(viewClass: Class[_ <: AnyRef]) =
     XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
       XsdGen.xtd(ElementName.get(viewClass).replace("-", "_"))
-  def query[T](pojoClass: Class[T], params: ListRequestType): List[T] =
+  def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
     query(getViewDef(pojoClass), pojoClass, params)
 
   // FIXME why both or none? support both or any or none
