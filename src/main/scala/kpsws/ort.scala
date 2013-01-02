@@ -7,12 +7,8 @@ import xsdgen.ElementName
 import scala.collection.JavaConversions._
 import javax.xml.datatype._
 import kpsws.impl._
-
-/** TODO This is duplicated code from file XsdGen.scala */
-case class XsdTypeDef(
-  name: String,
-  table: String,
-  fields: Seq[XsdTypeDef])
+import xsdgen.XsdTypeDef
+import xsdgen.XsdGen
 
 object ort extends org.tresql.NameMap {
 
@@ -137,14 +133,20 @@ object ort extends org.tresql.NameMap {
       pojoToMap(pojo).map(e => (xsdNameToDbName(e._1), e._2)) + ("id" -> id))
 
   /* -------- Query support methods -------- */
+  def getViewDef(viewClass: Class[_]) =
+    XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
+      XsdGen.xtd(ElementName.get(viewClass).replace("-", "_"))
+  def query[T](pojoClass: Class[T], params: ListRequestType): List[T] =
+    query(getViewDef(pojoClass), pojoClass, params)
 
+  // FIXME why both or none? support both or any or none
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
     Query.select(queryString(view, params), (values(params.Filter) ++
       (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
       else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
 
   private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
-    where(view.name, params.Filter) + cols(view) + sort(view.name, params.Sort),
+    where(view.table, params.Filter) + cols(view) + sort(view.table, params.Sort),
     params.Limit, params.Offset)
 
   private def fn(baseView: String, name: String) = name.split("\\.") match {
@@ -152,11 +154,13 @@ object ort extends org.tresql.NameMap {
     case Array(v, c) => tableName(v) + "." + colName(v, c)
   }
 
-  private def cols(view: XsdTypeDef) =
-    view.fields.map(f => f.table + "." + f.name).mkString(" {", ", ", "}")
+  private def cols(view: XsdTypeDef) = // FIXME multi-table views (use f.table)
+    view.fields.map(f => view.table + "." + f.name).mkString(" {", ", ", "}")
 
-  private def from(view: XsdTypeDef) =
+  private def from(view: XsdTypeDef) = view.table // FIXME multi-table views
+  /*
     view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table).mkString("/")
+  */
 
   // FIXME avoid injection - ensure field name can not drop database
   private def where(baseView: String, filter: Array[ListFilterType]) =
