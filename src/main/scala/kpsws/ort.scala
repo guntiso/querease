@@ -129,6 +129,12 @@ object ort extends org.tresql.NameMap {
       XsdGen.xtd(ElementName.get(viewClass).replace("-", "_"))
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
     query(getViewDef(pojoClass), pojoClass, params)
+  def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
+    val filterDef = Array(ListFilterType("id", "=", id.toString))
+    val sortDef = Array[ListSortType]()
+    val req = ListRequestType(1, 0, filterDef, sortDef)
+    ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
+  }
 
   // FIXME why both or none? support both or any or none
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
