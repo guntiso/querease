@@ -10,6 +10,7 @@ import kpsws.impl._
 import xsdgen.XsdTypeDef
 import xsdgen.XsdGen
 import xsdgen.Schema.xsdNameToDbName
+import org.tresql.Env
 
 object ort extends org.tresql.NameMap {
 
@@ -137,10 +138,13 @@ object ort extends org.tresql.NameMap {
   }
 
   // FIXME why both or none? support both or any or none
-  def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) =
-    Query.select(queryString(view, params), (values(params.Filter) ++
+  def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
+    val tresqlQuery = queryString(view, params)
+    Env.log(tresqlQuery)
+    Query.select(tresqlQuery, (values(params.Filter) ++
       (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
       else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
+  }
 
   private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
     where(view.table, params.Filter) + cols(view) + sort(view.table, params.Sort),
@@ -151,13 +155,14 @@ object ort extends org.tresql.NameMap {
     case Array(v, c) => tableName(v) + "." + colName(v, c)
   }
 
-  private def cols(view: XsdTypeDef) = // FIXME multi-table views (use f.table)
-    view.fields.map(f => view.table + "." + f.name).mkString(" {", ", ", "}")
+  private def cols(view: XsdTypeDef) =
+    view.fields.map(f => f.table + "." + f.name +
+      Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
 
-  private def from(view: XsdTypeDef) = view.table // FIXME multi-table views
-  /*
-    view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table).mkString("/")
-  */
+  private def from(view: XsdTypeDef) =
+    view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
+      .toList.reverse.mkString("/") // FIXME sucks. Which one is driving table?
+  // FIXME outer join here!
 
   // FIXME avoid injection - ensure field name can not drop database
   private def where(baseView: String, filter: Array[ListFilterType]) =
