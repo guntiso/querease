@@ -156,13 +156,18 @@ object ort extends org.tresql.NameMap {
   }
 
   private def cols(view: XsdTypeDef) =
-    view.fields.map(f => f.table + "." + f.name +
-      Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
+    view.fields.map(f =>
+      (if (f.tableAlias != null) f.tableAlias else if (f.table == view.table) "b" else f.table) +
+        "." + f.name + Option(f.alias).map(" " + _).getOrElse(""))
+      .mkString(" {", ", ", "}")
 
-  private def from(view: XsdTypeDef) =
-    view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
-      .toList.reverse.mkString("/") // FIXME sucks. Which one is driving table?
-  // FIXME outer join here!
+  private def from(view: XsdTypeDef) = if (view.joins != null) view.joins else {
+    val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
+    if (tables.size > 1) {
+      tables -= view.table
+      tables.mkString(view.table + " b/", "; b/", "") //b is base table alias 
+    } else view.table + " b"
+  }
 
   // FIXME avoid injection - ensure field name can not drop database
   private def where(baseView: String, filter: Array[ListFilterType]) =
