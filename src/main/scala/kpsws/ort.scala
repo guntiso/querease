@@ -9,8 +9,10 @@ import javax.xml.datatype._
 import kpsws.impl._
 import xsdgen.XsdTypeDef
 import xsdgen.XsdGen
+import xsdgen.XsdFieldDef
 import xsdgen.Schema.xsdNameToDbName
 import org.tresql.Env
+import xsdgen.Schema
 
 object ort extends org.tresql.NameMap {
 
@@ -141,54 +143,54 @@ object ort extends org.tresql.NameMap {
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
     val tresqlQuery = queryString(view, params)
     Env.log(tresqlQuery)
-    Query.select(tresqlQuery, (values(params.Filter) ++
+    import params._
+    val values = if (Filter == null) Array[String]() else Filter.map(_.Value)
+
+    Query.select(tresqlQuery, (values ++
       (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
       else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
   }
 
-  private def queryString(view: XsdTypeDef, params: ListRequestType) = limitOffset(from(view) +
-    where(view.table, params.Filter) + cols(view) + sort(view.table, params.Sort),
-    params.Limit, params.Offset)
+  def queryString(view: XsdTypeDef, params: ListRequestType) = {
+    import params.{ Filter => filter, Sort => sort }
 
-  private def fn(baseView: String, name: String) = name.split("\\.") match {
-    case Array(c) => tableName(baseView) + "." + colName(baseView, c)
-    case Array(v, c) => tableName(v) + "." + colName(v, c)
+    def queryColName(f: XsdFieldDef) =
+      (if (f.tableAlias != null) f.tableAlias
+      else if (f.table == view.table) "b" else f.table) + "." + f.name
+
+    def cols = view.fields.map(f =>
+      queryColName(f) + Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
+
+    def from = if (view.joins != null) view.joins else {
+      val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
+      if (tables.size > 1) {
+        tables -= view.table
+        tables.mkString(view.table + " b/", "; b/", "") //b is base table alias 
+      } else view.table + " b"
+    }
+    import Schema.{ dbNameToXsdName => xsdName }
+    val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
+    def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
+      sys.error("Field " + f + " not available from view " + xsdName(view.name)))
+
+    val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
+    def comparison(comp:String) = if (ComparisonOps.contains(comp)) comp
+      else sys.error("Comparison operator not supported: " + comp)
+    def where = if (filter == null || filter.size == 0) "" else filter.map(f =>
+      queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
+      " ?").mkString("[", " & ", "]")
+
+    def order = if (sort == null || sort.size == 0) ""
+    else sort.map(s => (if (s.Order == "desc") "~" else "") +
+      "#(" + queryColName(fieldNameToDef(s.Field)) + ")").mkString("")
+
+    // FIXME why both or none? support both or any or none
+    def limitOffset(query: String, limit: Int, offset: Int) = if (limit >= 0 && offset > 0) {
+      "/(" + query + ") [rownum >= ? & rownum < ?]"
+    } else query
+
+    limitOffset(from + where + cols + order, params.Limit, params.Offset)
   }
-
-  private def cols(view: XsdTypeDef) =
-    view.fields.map(f =>
-      (if (f.tableAlias != null) f.tableAlias else if (f.table == view.table) "b" else f.table) +
-        "." + f.name + Option(f.alias).map(" " + _).getOrElse(""))
-      .mkString(" {", ", ", "}")
-
-  private def from(view: XsdTypeDef) = if (view.joins != null) view.joins else {
-    val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
-    if (tables.size > 1) {
-      tables -= view.table
-      tables.mkString(view.table + " b/", "; b/", "") //b is base table alias 
-    } else view.table + " b"
-  }
-
-  // FIXME avoid injection - ensure field name can not drop database
-  private def where(baseView: String, filter: Array[ListFilterType]) =
-    if (filter == null || filter.size == 0) ""
-    else filter.map(f =>
-      fn(baseView, f.Field) + " " + f.Comparison + " ?").mkString("[", " & ", "]")
-
-  private def values(filter: Array[ListFilterType]) =
-    if (filter == null) Array[String]() else filter.map(_.Value)
-
-  // FIXME avoid injection - ensure field name can not drop database
-  private def sort(baseView: String, sort: Array[ListSortType]) =
-    if (sort == null || sort.size == 0) ""
-    else sort.map(s =>
-      (if (s.Order == "desc") "~" else "") +
-        "#(" + fn(baseView, s.Field) + ")").mkString("")
-
-  // FIXME why both or none? support both or any or none
-  private def limitOffset(query: String, limit: Int, offset: Int) = if (limit >= 0 && offset > 0) {
-    "/(" + query + ") [rownum >= ? & rownum < ?]"
-  } else query
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
 }
