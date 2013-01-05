@@ -78,8 +78,7 @@ object ort extends org.tresql.NameMap {
             case "Y" | "true" => m.invoke(pojo, java.lang.Boolean.TRUE)
             case "N" | "false" => m.invoke(pojo, java.lang.Boolean.FALSE)
             case null => m.invoke(pojo, java.lang.Boolean.FALSE)
-            case x => throw new RuntimeException(
-              "No idea how to convert to boolean: \"" + x + "\"")
+            case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
           }
           case x => m.invoke(pojo, x.asInstanceOf[Object])
         }
@@ -139,20 +138,15 @@ object ort extends org.tresql.NameMap {
     ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
   }
 
-  // FIXME why both or none? support both or any or none
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
     val tresqlQuery = queryString(view, params)
-    Env.log(tresqlQuery)
-    import params._
-    val values = if (Filter == null) Array[String]() else Filter.map(_.Value)
-
-    Query.select(tresqlQuery, (values ++
-      (if (params.Limit > 0 && params.Offset >= 0) Array(params.Offset, params.Limit + params.Offset)
-      else Array[String]())): _*).toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
+    Env.log(tresqlQuery._1)
+    Query.select(tresqlQuery._1, tresqlQuery._2: _*)
+      .toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
   }
 
   def queryString(view: XsdTypeDef, params: ListRequestType) = {
-    import params.{ Filter => filter, Sort => sort }
+    import params.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     def queryColName(f: XsdFieldDef) =
       (if (f.tableAlias != null) f.tableAlias
@@ -174,22 +168,41 @@ object ort extends org.tresql.NameMap {
       sys.error("Field " + f + " not available from view " + xsdName(view.name)))
 
     val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
-    def comparison(comp:String) = if (ComparisonOps.contains(comp)) comp
-      else sys.error("Comparison operator not supported: " + comp)
+    def comparison(comp: String) = if (ComparisonOps.contains(comp)) comp
+    else sys.error("Comparison operator not supported: " + comp)
     def where = if (filter == null || filter.size == 0) "" else filter.map(f =>
       queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
-      " ?").mkString("[", " & ", "]")
+        " ?").mkString("[", " & ", "]")
 
     def order = if (sort == null || sort.size == 0) ""
     else sort.map(s => (if (s.Order == "desc") "~" else "") +
       "#(" + queryColName(fieldNameToDef(s.Field)) + ")").mkString("")
 
-    // FIXME why both or none? support both or any or none
-    def limitOffset(query: String, limit: Int, offset: Int) = if (limit >= 0 && offset > 0) {
-      "/(" + query + ") [rownum >= ? & rownum < ?]"
-    } else query
+    def limitOffset(query: String) = "/(" + query + ") [rownum >= ? & rownum < ?]"
 
-    limitOffset(from + where + cols + order, params.Limit, params.Offset)
+    val values = if (filter == null) Array[String]() else filter.map(f => {
+      val v = f.Value
+      // TODO describe convertion error (field, table, value, ...)
+      Schema.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
+        case "string" => v
+        case "int" => v.toInt
+        case "long" => v.toLong
+        case "integer" => BigInt(v)
+        case "decimal" => BigDecimal(v)
+        case "date" => Format.xsdDate.parse(v)
+        case "dateTime" => Format.xsdDateTime.parse(v)
+        case "boolean" => v match {
+          case "true" => "Y"
+          case "false" => "N"
+          case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
+        }
+        case x => sys.error("Filter value type not supported: " + x)
+      }
+    })
+
+    val q = from + where + cols + order
+    if (limit >= 0 || offset > 0) (limitOffset(q), values ++ Array(offset, offset + limit))
+    else (q, values)
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
