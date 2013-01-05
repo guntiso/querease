@@ -13,6 +13,7 @@ import xsdgen.XsdFieldDef
 import xsdgen.Schema.xsdNameToDbName
 import org.tresql.Env
 import xsdgen.Schema
+import xsdgen.JoinsParser
 
 object ort extends org.tresql.NameMap {
 
@@ -148,9 +149,15 @@ object ort extends org.tresql.NameMap {
   def queryString(view: XsdTypeDef, params: ListRequestType) = {
     import params.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
+    //base table alias
+    val B = JoinsParser(view.joins).filter(_._2 == view.table).toList match {
+      case (a, _) :: Nil if a != null => a // if only one base table encountered return alias
+      case _ => "b" // default base table alias 
+    }
+
     def queryColName(f: XsdFieldDef) =
       (if (f.tableAlias != null) f.tableAlias
-      else if (f.table == view.table) "b" else f.table) + "." + f.name
+      else if (f.table == view.table) B else f.table) + "." + f.name
 
     def cols = view.fields.map(f =>
       queryColName(f) + Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
@@ -159,8 +166,8 @@ object ort extends org.tresql.NameMap {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
-        tables.mkString(view.table + " b/", "; b/", "") //b is base table alias 
-      } else view.table + " b"
+        tables.mkString(view.table + " " + B + "/", "; " + B + "/", "") // B is base table alias 
+      } else view.table + " " + B
     }
     import Schema.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
