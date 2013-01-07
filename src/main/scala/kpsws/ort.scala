@@ -133,7 +133,7 @@ object ort extends org.tresql.NameMap {
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
     query(getViewDef(pojoClass), pojoClass, params)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
-    val filterDef = Array(ListFilterType("id", "=", id.toString))
+    val filterDef = Array(ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
     ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
@@ -142,8 +142,9 @@ object ort extends org.tresql.NameMap {
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
     val tresqlQuery = queryString(view, params)
     Env.log(tresqlQuery._1)
-    Query.select(tresqlQuery._1, tresqlQuery._2: _*)
-      .toListRowAsMap.map(mapToPojo(_, pojoClass.newInstance))
+    def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
+    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
+    Query.select(tresqlQuery._1, tresqlQuery._2: _*).toListRowAsMap.map(pojo)
   }
 
   def queryString(view: XsdTypeDef, params: ListRequestType) = {
@@ -159,33 +160,46 @@ object ort extends org.tresql.NameMap {
       (if (f.tableAlias != null) f.tableAlias
       else if (f.table == view.table) B else f.table) + "." + f.name
 
-    def cols = view.fields.map(f =>
+    val cols = view.fields.map(f =>
       queryColName(f) + Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
 
-    def from = if (view.joins != null) view.joins else {
+    val from = if (view.joins != null) view.joins else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
-        tables.mkString(view.table + " " + B + "/", "; " + B + "/", "") // B is base table alias 
+        // B is base table alias, ? is outer join
+        tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
       } else view.table + " " + B
     }
     import Schema.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
-      sys.error("Field " + f + " not available from view " + xsdName(view.name)))
+      sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
 
     val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
-    def comparison(comp: String) = if (ComparisonOps.contains(comp)) comp
-    else sys.error("Comparison operator not supported: " + comp)
-    def where = if (filter == null || filter.size == 0) "" else filter.map(f =>
+    def comparison(comp: String) =
+      if (ComparisonOps.contains(comp)) comp
+      else sys.error("Comparison operator not supported: " + comp)
+
+    val where = if (filter == null || filter.size == 0) "" else filter.map(f =>
       queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
         " ?").mkString("[", " & ", "]")
 
-    def order = if (sort == null || sort.size == 0) ""
-    else sort.map(s => (if (s.Order == "desc") "~" else "") +
-      "#(" + queryColName(fieldNameToDef(s.Field)) + ")").mkString("")
+    val order =
+      if (sort == null || sort.size == 0) ""
+      else sort.map(s => (if (s.Order == "desc") "~" else "") +
+        "#(" + queryColName(fieldNameToDef(s.Field)) + ")").mkString("")
 
-    def limitOffset(query: String) = "/(" + query + ") [rownum >= ? & rownum < ?]"
+    def limitOffset(query: String) = (limit, offset) match {
+      case (0, 0) => (query, Array())
+      case (limit, 0) => // TODO no need for subquery here
+        ("/(" + query + ") [rownum <= ?]", Array(limit))
+      case (0, offset) =>
+        ("/(/(" + query + ") w {rownum rnum, w.*}) [rnum > ?]", Array(offset))
+      case (limit, offset) =>
+        ("/(/(" + query + ") w [rownum <= ?] {rownum rnum, w.*}) [rnum > ?]",
+          Array(offset + limit, offset))
+    }
 
     val values = if (filter == null) Array[String]() else filter.map(f => {
       val v = f.Value
@@ -207,9 +221,8 @@ object ort extends org.tresql.NameMap {
       }
     })
 
-    val q = from + where + cols + order
-    if (limit >= 0 || offset > 0) (limitOffset(q), values ++ Array(offset, offset + limit))
-    else (q, values)
+    val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
+    (q, values ++ limitOffsetPars)
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
