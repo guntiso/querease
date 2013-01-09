@@ -3,21 +3,23 @@ package xsdgen
 import org.tresql.QueryParser._
 
 object JoinsParser {
-  def apply(joins: String): Map[String, String] = if (joins == null) Map() else {
+  def apply(joins: String):List[(String, String)] = if (joins == null) List() else {
     parseExp(joins) match {
       case Query(tables, _, _, _, _, _, _, _) => (tables flatMap {
-        // primary key join: customer c[c.m_id m, c.f_id f]person  
         case Obj(Ident(name), null, Join(false, Arr(jl), _), _) => (jl map {
-          case Obj(Ident(_), al, _, _) if al != null => al -> name.mkString(".")
-          case _ => (null, null)
-        }).filter(_._1 != null)
+          // primary key join: customer c[c.m_id m, c.f_id f]person
+          case Obj(Ident(_), al, _, _) => al -> name.mkString(".")
+          // normal join
+          case _ => (null, name.mkString(".")) 
+        })
         // normal join: customer c[c.person_id = p.id]person p
         // default join: customer c/person m
         // alias join: customer c/person m;c/person f
-        case Obj(Ident(name), alias, _, _) if alias != null => List(alias -> name.mkString("."))
+        case Obj(Ident(name), alias, _, _) => List(alias -> name.mkString("."))
         case _ => Nil
-      }).filter(_._1 != null).toMap
+      })
       case _ => sys.error("Invalid join: " + joins)
     }
   }
+  def aliases(joins:String) = apply(joins).filter(_._1 != null).toMap
 }
