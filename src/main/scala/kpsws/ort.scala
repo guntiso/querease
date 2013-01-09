@@ -152,7 +152,8 @@ object ort extends org.tresql.NameMap {
 
     //base table alias
     val B = JoinsParser(view.joins).filter(_._2 == view.table).toList match {
-      case (a, _) :: Nil if a != null => a // if only one base table encountered return alias
+      case (a, _) :: Nil => // if only one base table encountered return alias
+        Option(a) getOrElse view.table
       case _ => "b" // default base table alias 
     }
 
