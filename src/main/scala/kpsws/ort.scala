@@ -22,7 +22,8 @@ object ort extends org.tresql.NameMap {
   def pojoToMap(pojo: Any): Map[String, _] =
     if (pojo == null) Map.empty
     else pojo.getClass.getMethods filter (m =>
-      m.getName.startsWith("get") && m.getParameterTypes.size == 0) map (m =>
+      m.getName.startsWith("get") && m.getName != "getClass"
+        && m.getParameterTypes.size == 0) map (m =>
       m.getName.drop(3) -> (m.invoke(pojo) match {
         case null => null
         case x: String => x
@@ -117,6 +118,14 @@ object ort extends org.tresql.NameMap {
     if (isNew) ORT.insert(tableName, propMap + ("id" -> id))
     else ORT.update(tableName, propMap)
     id
+  }
+
+  def insertNoId(pojo: AnyRef) {
+    val viewDef = getViewDef(pojo.getClass)
+    val tableName = viewDef.table
+    val propMap = pojoToMap(pojo).map(e =>
+      (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
+    ORT.insert(tableName, propMap)
   }
 
   def save(pojo: AnyRef, id: Long) = {
