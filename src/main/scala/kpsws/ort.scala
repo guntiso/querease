@@ -148,10 +148,17 @@ object ort extends org.tresql.NameMap {
     ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
   }
 
+  private def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
+  // private def mapToPojo[T](m: Map[String, _], pojoClass: Class[T]): T = mapToPojo(lowerNames(m), pojoClass.newInstance)
+  def selectToPojo[T](query: String, pojoClass: Class[T]) =  {
+    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
+    Query.select(query).toListRowAsMap.map(pojo)
+  }
+
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
     val tresqlQuery = queryString(view, params)
     Env.log(tresqlQuery._1)
-    def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
+    
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
     Query.select(tresqlQuery._1, tresqlQuery._2: _*).toListRowAsMap.map(pojo)
   }
