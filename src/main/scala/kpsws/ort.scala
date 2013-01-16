@@ -49,9 +49,9 @@ object ort extends org.tresql.NameMap {
           //between map entry value type and setter parameter type
           //hopefully scala reflection will help with this
           case d: BigDecimal => {
-            if (t == classOf[java.lang.Integer])
+            if (t == classOf[Int] || t == classOf[java.lang.Integer])
               m.invoke(pojo, new java.lang.Integer(d.toInt))
-            else if (t == classOf[java.lang.Long])
+            else if (t == classOf[Long] || t == classOf[java.lang.Long])
               m.invoke(pojo, new java.lang.Long(d.toLong))
             else if (t == classOf[Double] || t == classOf[java.lang.Double])
               m.invoke(pojo, d.doubleValue.asInstanceOf[Object])
