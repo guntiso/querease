@@ -135,6 +135,7 @@ object ort extends org.tresql.NameMap {
       pojoToMap(pojo).map(e => (xsdNameToDbName(e._1), e._2)) + ("id" -> id))
   }
 
+
   /* -------- Query support methods -------- */
   def getViewDef(viewClass: Class[_ <: AnyRef]) =
     XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
