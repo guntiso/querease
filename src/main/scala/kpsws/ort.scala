@@ -76,7 +76,7 @@ object ort extends org.tresql.NameMap {
             val col: java.util.Collection[_] = s.map(mapToPojo(_, Class.forName(propClass).newInstance))
             m.invoke(pojo, col)
           }
-          case x: String if t == classOf[java.lang.Boolean] => value match {
+          case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => value match {
             case "Y" | "true" => m.invoke(pojo, java.lang.Boolean.TRUE)
             case "N" | "false" => m.invoke(pojo, java.lang.Boolean.FALSE)
             case null => m.invoke(pojo, java.lang.Boolean.FALSE)
