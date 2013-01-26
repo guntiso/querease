@@ -19,12 +19,22 @@ object ort extends org.tresql.NameMap {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
+  private def propName(m: java.lang.reflect.Method) = {
+    val mName = m.getName
+    if (mName.startsWith("get") && mName.length > 3 &&
+      mName.charAt(3).isUpper) mName.substring(3)
+    else if (mName.startsWith("is") && mName.length > 2 &&
+      mName.charAt(2).isUpper) mName.substring(2)
+    else throw new RuntimeException(
+      "Failed to extract property name from method name: " + mName)
+  }
   def pojoToMap(pojo: Any): Map[String, _] =
     if (pojo == null) Map.empty
     else pojo.getClass.getMethods filter (m =>
       m.getName.startsWith("get") && m.getName != "getClass"
-        && m.getParameterTypes.size == 0) map (m =>
-      m.getName.drop(3) -> (m.invoke(pojo) match {
+        || m.getName.startsWith("is")) filter (m =>
+      m.getParameterTypes.size == 0) map (m =>
+      propName(m) -> (m.invoke(pojo) match {
         case null => null
         case x: String => x
         case c: Class[_] => c
@@ -135,7 +145,6 @@ object ort extends org.tresql.NameMap {
       pojoToMap(pojo).map(e => (xsdNameToDbName(e._1), e._2)) + ("id" -> id))
   }
 
-
   /* -------- Query support methods -------- */
   def getViewDef(viewClass: Class[_ <: AnyRef]) =
     XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
@@ -151,7 +160,7 @@ object ort extends org.tresql.NameMap {
 
   private def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
   // private def mapToPojo[T](m: Map[String, _], pojoClass: Class[T]): T = mapToPojo(lowerNames(m), pojoClass.newInstance)
-  def selectToPojo[T](query: String, pojoClass: Class[T]) =  {
+  def selectToPojo[T](query: String, pojoClass: Class[T]) = {
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
     Query.select(query).toListRowAsMap.map(pojo)
   }
@@ -159,7 +168,7 @@ object ort extends org.tresql.NameMap {
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
     val tresqlQuery = queryString(view, params)
     Env.log(tresqlQuery._1)
-    
+
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
     Query.select(tresqlQuery._1, tresqlQuery._2: _*).toListRowAsMap.map(pojo)
   }
