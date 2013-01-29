@@ -146,9 +146,19 @@ object ort extends org.tresql.NameMap {
   }
 
   /* -------- Query support methods -------- */
-  def getViewDef(viewClass: Class[_ <: AnyRef]) =
+  def getViewDef(viewClass: Class[_ <: AnyRef]): XsdTypeDef =
     XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
-      XsdGen.xtd(ElementName.get(viewClass).replace("-", "_"))
+      (XsdGen.xtd.get(ElementName.get(viewClass).replace("-", "_")) getOrElse
+        (viewClass.getSuperclass match {
+          case c: Class[_] =>
+            try getViewDef(c.asInstanceOf[Class[_ <: AnyRef]]) catch {
+              case e: Exception => throw new RuntimeException(
+                "Failed to get view definition for " + viewClass.getName, e)
+            }
+          case x => throw new RuntimeException(
+            "Failed to get view definition for " + viewClass.getName)
+        }))
+
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
     query(getViewDef(pojoClass), pojoClass, params)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
