@@ -86,9 +86,9 @@ object ort extends org.tresql.NameMap {
             val col: java.util.Collection[_] = s.map(mapToPojo(_, Class.forName(propClass).newInstance))
             m.invoke(pojo, col)
           }
-          case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => value match {
-            case "Y" | "true" => m.invoke(pojo, java.lang.Boolean.TRUE)
-            case "N" | "false" => m.invoke(pojo, java.lang.Boolean.FALSE)
+          case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => toLowerOrNull(value.toString) match {
+            case "y" | "true" => m.invoke(pojo, java.lang.Boolean.TRUE)
+            case "n" | "false" => m.invoke(pojo, java.lang.Boolean.FALSE)
             case null => m.invoke(pojo, java.lang.Boolean.FALSE)
             case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
           }
@@ -103,6 +103,8 @@ object ort extends org.tresql.NameMap {
     }
     pojo
   }
+
+  private def toLowerOrNull(value: String) = if (value==null) value else value.toLowerCase
 
   private def isPrimitive[T](x: T)(implicit evidence: T <:< AnyVal = null) = evidence != null || (x match {
     case _: java.lang.Number | _: java.lang.Boolean | _: java.util.Date | _: XMLGregorianCalendar => true
@@ -249,7 +251,7 @@ object ort extends org.tresql.NameMap {
         case "decimal" => BigDecimal(v)
         case "date" => Format.xsdDate.parse(v)
         case "dateTime" => Format.xsdDateTime.parse(v)
-        case "boolean" => v match {
+        case "boolean" => toLowerOrNull(v) match {
           case "true" => "Y"
           case "false" => "N"
           case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
