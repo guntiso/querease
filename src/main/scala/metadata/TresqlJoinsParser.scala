@@ -1,4 +1,4 @@
-package xsdgen
+package metadata
 
 import org.tresql.QueryParser._
 
