@@ -14,6 +14,7 @@ import xsdgen.Schema.xsdNameToDbName
 import org.tresql.Env
 import xsdgen.Schema
 import xsdgen.JoinsParser
+import java.util.Date
 
 object ort extends org.tresql.NameMap {
 
@@ -120,11 +121,19 @@ object ort extends org.tresql.NameMap {
 
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
+  private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
+    val propMap = pojoToMap(pojo).map(e =>
+      (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
+    def hasModificationDateField =
+      Schema.tableDef(viewDef).cols.find(_.name == "last_modified") != None
+    if (!hasModificationDateField) propMap
+    else propMap + ("last_modified" -> new Date())
+  }
+
   def save(pojo: AnyRef): Long = {
     val viewDef = getViewDef(pojo.getClass)
     val tableName = viewDef.table
-    val propMap = pojoToMap(pojo).map(e =>
-      (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
+    val propMap = pojoToSaveableMap(pojo, viewDef)
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
       _.toString.toLong -> false) getOrElse (nextId(), true)
     if (isNew) ORT.insert(tableName, propMap + ("id" -> id))
@@ -132,6 +141,7 @@ object ort extends org.tresql.NameMap {
     id
   }
 
+/*
   def insertNoId(pojo: AnyRef) {
     val viewDef = getViewDef(pojo.getClass)
     val tableName = viewDef.table
@@ -139,12 +149,13 @@ object ort extends org.tresql.NameMap {
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
     ORT.insert(tableName, propMap)
   }
+*/
 
   def save(pojo: AnyRef, id: Long) = {
     val viewDef = getViewDef(pojo.getClass)
     val tableName = viewDef.table
-    ORT.save(tableName,
-      pojoToMap(pojo).map(e => (xsdNameToDbName(e._1), e._2)) + ("id" -> id))
+    val propMap = pojoToSaveableMap(pojo, viewDef)
+    ORT.save(tableName, propMap + ("id" -> id))
   }
 
   /* -------- Query support methods -------- */
