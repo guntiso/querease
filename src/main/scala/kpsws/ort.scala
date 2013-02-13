@@ -105,7 +105,7 @@ object ort extends org.tresql.NameMap {
     pojo
   }
 
-  private def toLowerOrNull(value: String) = if (value==null) value else value.toLowerCase
+  private def toLowerOrNull(value: String) = if (value == null) value else value.toLowerCase
 
   private def isPrimitive[T](x: T)(implicit evidence: T <:< AnyVal = null) = evidence != null || (x match {
     case _: java.lang.Number | _: java.lang.Boolean | _: java.util.Date | _: XMLGregorianCalendar => true
@@ -141,7 +141,7 @@ object ort extends org.tresql.NameMap {
     id
   }
 
-/*
+  /*
   def insertNoId(pojo: AnyRef) {
     val viewDef = getViewDef(pojo.getClass)
     val tableName = viewDef.table
@@ -172,6 +172,11 @@ object ort extends org.tresql.NameMap {
             "Failed to get view definition for " + viewClass.getName)
         }))
 
+  def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType) = {
+    val filter = params.copy(Limit = 0, Offset = 0, Sort = Array())
+    // FIXME Needs some optimization :)
+    query(getViewDef(pojoClass), pojoClass, filter).size
+  }
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
     query(getViewDef(pojoClass), pojoClass, params)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
