@@ -139,7 +139,11 @@ object ort extends org.tresql.NameMap {
       new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
         .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
     import kpsws.RequestContext.userId
-    propMap ++ List(
+    def trim(value: Any) = value match {
+      case s: String => s.trim()
+      case x => x
+    }
+    propMap.map(e => (e._1, trim(e._2))) ++ List(
       modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
       checksumField.map(f => ("record_checksum" -> checksum)),
       modifiedByField.map(f => ("last_modified_by_id" -> userId)))
