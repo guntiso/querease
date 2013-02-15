@@ -15,6 +15,8 @@ import org.tresql.Env
 import xsdgen.Schema
 import xsdgen.JoinsParser
 import java.util.Date
+import java.security.MessageDigest
+import java.text.SimpleDateFormat
 
 object ort extends org.tresql.NameMap {
 
@@ -124,10 +126,24 @@ object ort extends org.tresql.NameMap {
   private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
-    def hasModificationDateField =
-      Schema.tableDef(viewDef).cols.find(_.name == "last_modified") != None
-    if (!hasModificationDateField) propMap
-    else propMap + ("last_modified" -> new Date())
+    val modificationDateField =
+      Schema.tableDef(viewDef).cols.find(_.name == "last_modified")
+    val checksumField =
+      Schema.tableDef(viewDef).cols.find(_.name == "record_checksum")
+    val modifiedByField =
+      Schema.tableDef(viewDef).cols.find(_.name == "last_modified_by_id")
+    val lastModifiedDate =
+      if (modificationDateField.isDefined || checksumField.isDefined) new Date()
+      else null
+    def checksum = MessageDigest.getInstance("MD5").digest(
+      new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
+        .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
+    import kpsws.RequestContext.userId
+    propMap ++ List(
+      modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
+      checksumField.map(f => ("record_checksum" -> checksum)),
+      modifiedByField.map(f => ("last_modified_by_id" -> userId)))
+      .flatMap(x => x)
   }
 
   def save(pojo: AnyRef): Long = {
