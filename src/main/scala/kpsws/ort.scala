@@ -7,16 +7,16 @@ import xsdgen.ElementName
 import scala.collection.JavaConversions._
 import javax.xml.datatype._
 import kpsws.impl._
-import xsdgen.XsdTypeDef
-import xsdgen.XsdGen
-import xsdgen.XsdFieldDef
-import xsdgen.Schema.xsdNameToDbName
+import metadata.XsdTypeDef
+import metadata.XsdFieldDef
+import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
-import xsdgen.Schema
-import xsdgen.JoinsParser
 import java.util.Date
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
+import metadata.JoinsParser
+import metadata.Metadata
+import metadata.YamlViewDefLoader
 
 object ort extends org.tresql.NameMap {
 
@@ -124,6 +124,7 @@ object ort extends org.tresql.NameMap {
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
   private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
+    import metadata.{Metadata => Schema}
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
     val modificationDateField =
@@ -160,7 +161,7 @@ object ort extends org.tresql.NameMap {
   }
 
   def save(pojo: AnyRef): Long = {
-    val viewDef = getViewDef(pojo.getClass)
+    val viewDef = Metadata.getViewDef(pojo.getClass)
     val tableName = viewDef.table
     val propMap = pojoToSaveableMap(pojo, viewDef)
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
@@ -172,7 +173,7 @@ object ort extends org.tresql.NameMap {
 
   /*
   def insertNoId(pojo: AnyRef) {
-    val viewDef = getViewDef(pojo.getClass)
+    val viewDef = Metadata.getViewDef(pojo.getClass)
     val tableName = viewDef.table
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
@@ -181,33 +182,20 @@ object ort extends org.tresql.NameMap {
 */
 
   def save(pojo: AnyRef, id: Long) = {
-    val viewDef = getViewDef(pojo.getClass)
+    val viewDef = Metadata.getViewDef(pojo.getClass)
     val tableName = viewDef.table
     val propMap = pojoToSaveableMap(pojo, viewDef)
     ORT.save(tableName, propMap + ("id" -> id))
   }
 
   /* -------- Query support methods -------- */
-  def getViewDef(viewClass: Class[_ <: AnyRef]): XsdTypeDef =
-    XsdGen.xtd.get(ElementName.get(viewClass)) getOrElse
-      (XsdGen.xtd.get(ElementName.get(viewClass).replace("-", "_")) getOrElse
-        (viewClass.getSuperclass match {
-          case c: Class[_] =>
-            try getViewDef(c.asInstanceOf[Class[_ <: AnyRef]]) catch {
-              case e: Exception => throw new RuntimeException(
-                "Failed to get view definition for " + viewClass.getName, e)
-            }
-          case x => throw new RuntimeException(
-            "Failed to get view definition for " + viewClass.getName)
-        }))
-
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType) = {
     val filter = params.copy(Limit = 0, Offset = 0, Sort = Array())
     // FIXME Needs some optimization :)
-    query(getViewDef(pojoClass), pojoClass, filter).size
+    query(Metadata.getViewDef(pojoClass), pojoClass, filter).size
   }
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
-    query(getViewDef(pojoClass), pojoClass, params)
+    query(Metadata.getViewDef(pojoClass), pojoClass, params)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
     val filterDef = Array(ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
@@ -255,7 +243,7 @@ object ort extends org.tresql.NameMap {
         tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
       } else view.table + " " + B
     }
-    import Schema.{ dbNameToXsdName => xsdName }
+    import metadata.DbConventions.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
@@ -288,7 +276,7 @@ object ort extends org.tresql.NameMap {
     val values = if (filter == null) Array[String]() else filter.map(f => {
       val v = f.Value
       // TODO describe convertion error (field, table, value, ...)
-      Schema.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
+      Metadata.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
         case "string" => v
         case "int" => v.toInt
         case "long" => v.toLong
