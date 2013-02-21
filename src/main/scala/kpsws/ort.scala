@@ -43,6 +43,7 @@ object ort extends org.tresql.NameMap {
         case c: Class[_] => c
         case x: XMLGregorianCalendar => x.toGregorianCalendar.getTime
         case x if (isPrimitive(x)) => x
+        // FIXME blob support - case b: Array[Byte] => b
         case l: Seq[_] => l map pojoToMap
         case l: Array[_] => l map pojoToMap
         case l: java.util.Collection[_] => l map pojoToMap
@@ -95,6 +96,8 @@ object ort extends org.tresql.NameMap {
             case null => m.invoke(pojo, java.lang.Boolean.FALSE)
             case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
           }
+          case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
+            m.invoke(pojo, blob.getBytes(1, blob.length.toInt)) // FIXME toInt!
           case x => m.invoke(pojo, x.asInstanceOf[Object])
         }
       } catch {
@@ -124,7 +127,7 @@ object ort extends org.tresql.NameMap {
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
   private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
-    import metadata.{Metadata => Schema}
+    import metadata.{ Metadata => Schema }
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
     val modificationDateField =
