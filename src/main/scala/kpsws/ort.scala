@@ -235,7 +235,7 @@ object ort extends org.tresql.NameMap {
       (if (f.tableAlias != null) f.tableAlias
       else if (f.table == view.table) B else f.table) + "." + f.name
 
-    val cols = view.fields.map(f =>
+    val cols = view.fields.filter(!_.isExpression).map(f =>
       queryColName(f) + Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
 
     val from = if (view.joins != null) view.joins else {
