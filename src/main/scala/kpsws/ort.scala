@@ -192,13 +192,15 @@ object ort extends org.tresql.NameMap {
   }
 
   /* -------- Query support methods -------- */
-  def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType) = {
+  def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
+    wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val filter = params.copy(Limit = 0, Offset = 0, Sort = Array())
     // FIXME Needs some optimization :)
-    query(Metadata.getViewDef(pojoClass), pojoClass, filter).size
+    query(Metadata.getViewDef(pojoClass), pojoClass, filter, wherePlus).size
   }
-  def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType): List[T] =
-    query(Metadata.getViewDef(pojoClass), pojoClass, params)
+  def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
+    wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
+    query(Metadata.getViewDef(pojoClass), pojoClass, params, wherePlus)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
     val filterDef = Array(ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
@@ -213,7 +215,8 @@ object ort extends org.tresql.NameMap {
     Query.select(query).toListRowAsMap.map(pojo)
   }
 
-  def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType) = {
+  def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
+    wherePlus: (String, Map[String, Any])) = {
     val tresqlQuery = queryString(view, params)
     Env.log(tresqlQuery._1)
 
@@ -221,8 +224,10 @@ object ort extends org.tresql.NameMap {
     Query.select(tresqlQuery._1, tresqlQuery._2: _*).toListRowAsMap.map(pojo)
   }
 
-  def queryString(view: XsdTypeDef, params: ListRequestType) = {
-    import params.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
+  def queryString(view: XsdTypeDef, params: ListRequestType,
+    wherePlus: (String, Map[String, Any]) = (null, Map())) = {
+    val filteredParams = params.copy(Filter = params.Filter.filter(f=> !wherePlus._2.contains(f.Field)))
+    import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     //base table alias
     val B = JoinsParser(view.joins).filter(_._2 == view.table).toList match {
@@ -258,7 +263,7 @@ object ort extends org.tresql.NameMap {
 
     val where = if (filter == null || filter.size == 0) "" else filter.map(f =>
       queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
-        " ?").mkString("[", " & ", "]")
+        " ?").mkString("[", " & ", Option(wherePlus._1).map(" & " + _).getOrElse("") + "]")
 
     val order =
       if (sort == null || sort.size == 0) ""
@@ -297,7 +302,7 @@ object ort extends org.tresql.NameMap {
     })
 
     val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
-    (q, values ++ limitOffsetPars)
+    (q, values ++ wherePlus._2.values.toList ++ limitOffsetPars)
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
