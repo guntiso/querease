@@ -221,7 +221,7 @@ object ort extends org.tresql.NameMap {
     Env.log(tresqlQuery._1)
 
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
-    Query.select(tresqlQuery._1, tresqlQuery._2: _*).toListRowAsMap.map(pojo)
+    Query.select(tresqlQuery._1, tresqlQuery._2).toListRowAsMap.map(pojo)
   }
 
   def queryString(view: XsdTypeDef, params: ListRequestType,
@@ -263,7 +263,7 @@ object ort extends org.tresql.NameMap {
 
     val where = if (filter == null || filter.size == 0) "" else filter.map(f =>
       queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
-        " ?").mkString("[", " & ", Option(wherePlus._1).map(" & " + _).getOrElse("") + "]")
+        " :" + f.Field).mkString("[", " & ", Option(wherePlus._1).map(" & " + _).getOrElse("") + "]")
 
     val order =
       if (sort == null || sort.size == 0) ""
@@ -281,10 +281,10 @@ object ort extends org.tresql.NameMap {
           Array(offset + limit, offset))
     }
 
-    val values = if (filter == null) Array[String]() else filter.map(f => {
+    val values = if (filter == null) Map[String, Any]() else filter.map(f => {
       val v = f.Value
       // TODO describe convertion error (field, table, value, ...)
-      Metadata.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
+      f.Field -> (Metadata.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
         case "string" => v
         case "int" => v.toInt
         case "long" => v.toLong
@@ -298,11 +298,11 @@ object ort extends org.tresql.NameMap {
           case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
         }
         case x => sys.error("Filter value type not supported: " + x)
-      }
-    })
+      })
+    }).toMap
 
     val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
-    (q, values ++ wherePlus._2.values.toList ++ limitOffsetPars)
+    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t=> (t._2 + 1).toString -> t._1).toMap)
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
