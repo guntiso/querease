@@ -217,7 +217,7 @@ object ort extends org.tresql.NameMap {
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
-    val tresqlQuery = queryString(view, params)
+    val tresqlQuery = queryString(view, params, wherePlus)
     Env.log(tresqlQuery._1)
 
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
@@ -226,7 +226,10 @@ object ort extends org.tresql.NameMap {
 
   def queryString(view: XsdTypeDef, params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
-    val filteredParams = params.copy(Filter = params.Filter.filter(f=> !wherePlus._2.contains(f.Field)))
+    val paramsFilter =
+      Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
+    val filteredParams = params.copy(Filter =
+      paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).toArray)
     import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     //base table alias
@@ -261,9 +264,10 @@ object ort extends org.tresql.NameMap {
       if (ComparisonOps.contains(comp)) comp
       else sys.error("Comparison operator not supported: " + comp)
 
-    val where = if (filter == null || filter.size == 0) "" else filter.map(f =>
+    val where = (filter.map(f =>
       queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
-        " :" + f.Field).mkString("[", " & ", Option(wherePlus._1).map(" & " + _).getOrElse("") + "]")
+        " :" + f.Field) ++ Option(wherePlus._1).filter(_ != ""))
+      .mkString("[", " & ", "]")
 
     val order =
       if (sort == null || sort.size == 0) ""
