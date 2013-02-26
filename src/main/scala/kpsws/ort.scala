@@ -272,7 +272,11 @@ object ort extends org.tresql.NameMap {
     val order =
       if (sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc") "~" else "") +
-        "#(" + queryColName(fieldNameToDef(s.Field)) + ")").mkString("")
+        "#(" + (queryColName(fieldNameToDef(s.Field)) match {
+          case rus if rus endsWith "_rus" =>
+            "NLSSORT(" + rus + ", 'NLS_SORT = RUSSIAN')"
+          case x => x
+        }) + ")").mkString("")
 
     def limitOffset(query: String) = (limit, offset) match {
       case (0, 0) => (query, Array())
