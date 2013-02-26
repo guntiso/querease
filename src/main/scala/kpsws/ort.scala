@@ -154,12 +154,16 @@ object ort extends org.tresql.NameMap {
       case s: String => s.trim()
       case x => x
     }
+    def isSaveable(fieldName: String) =
+      viewDef.fields.find(f => f.name == fieldName && f.isExpression).isEmpty
 
-    propMap.map(e => (e._1, trim(e._2))) ++ List(
-      modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
-      checksumField.map(f => ("record_checksum" -> checksum)),
-      createdByField.map(f => ("created_by_id" -> userId)),
-      modifiedByField.map(f => ("last_modified_by_id" -> userId)))
+    propMap.map(e => (e._1, trim(e._2)))
+      .filter(e => isSaveable(e._1)) ++
+      List(
+        modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
+        checksumField.map(f => ("record_checksum" -> checksum)),
+        createdByField.map(f => ("created_by_id" -> userId)),
+        modifiedByField.map(f => ("last_modified_by_id" -> userId)))
       .flatMap(x => x)
   }
 
