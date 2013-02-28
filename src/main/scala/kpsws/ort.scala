@@ -296,7 +296,7 @@ object ort extends org.tresql.NameMap {
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
       val v = f.Value
       // TODO describe convertion error (field, table, value, ...)
-      f.Field -> (Metadata.getCol(view, fieldNameToDef(f.Field)).xsdType.name match {
+      f.Field -> (fieldNameToDef(f.Field).xsdType.name match {
         case "string" => v
         case "int" => v.toInt
         case "long" => v.toLong
