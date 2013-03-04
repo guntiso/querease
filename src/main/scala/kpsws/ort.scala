@@ -228,6 +228,12 @@ object ort extends org.tresql.NameMap {
     Query.select(tresqlQuery._1, tresqlQuery._2).toListRowAsMap.map(pojo)
   }
 
+  // TODO refactor query() to call this, if it is ok.
+  def tresql2Pojo[T](tresql: String, params: Map[String, Any], pojoClass: Class[T]) = {
+    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
+    Query.select(tresql, params).toListRowAsMap.map(pojo)
+  }
+
   def queryString(view: XsdTypeDef, params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val paramsFilter =
