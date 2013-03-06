@@ -167,17 +167,18 @@ object ort extends org.tresql.NameMap {
       .flatMap(x => x)
   }
 
-  def save(pojo: AnyRef): Long = {
+  // addParams allows to specify additional columns to be saved that are not present in pojo.
+  def save(pojo: AnyRef, addParams: Map[String, Any] = null): Long = {
     val viewDef = Metadata.getViewDef(pojo.getClass)
     val tableName = viewDef.table
-    val propMap = pojoToSaveableMap(pojo, viewDef)
+    val pojoPropMap = pojoToSaveableMap(pojo, viewDef)
+    val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
       _.toString.toLong -> false) getOrElse (nextId(), true)
     if (isNew) ORT.insert(tableName, propMap + ("id" -> id))
     else ORT.update(tableName, propMap)
     id
   }
-
   /*
   def insertNoId(pojo: AnyRef) {
     val viewDef = Metadata.getViewDef(pojo.getClass)
