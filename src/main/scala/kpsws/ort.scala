@@ -248,13 +248,28 @@ object ort extends org.tresql.NameMap {
         Option(a) getOrElse view.table
       case _ => "b" // default base table alias 
     }
+    val preferRu = RequestContext.languagePreferences(0) == "ru"
+    def isI18n(f: XsdFieldDef) = preferRu && f.isI18n
+    def queryColTableAlias(f: XsdFieldDef) =
+      Option(f.tableAlias) getOrElse
+        (if (f.table == view.table) B else f.table)
+
+    def queryColExpression(f: XsdFieldDef) =
+      if (isI18n(f)) "nvl(" + queryColTableAlias(f) + "." + f.name + "_rus" +
+        ", " + queryColTableAlias(f) + "." + f.name + ")"
+      else queryColTableAlias(f) + "." + f.name
+
+    def queryColAlias(f: XsdFieldDef) =
+      Option(f.alias).getOrElse(if (isI18n(f)) f.name else null)
 
     def queryColName(f: XsdFieldDef) =
-      (if (f.tableAlias != null) f.tableAlias
-      else if (f.table == view.table) B else f.table) + "." + f.name
+      Option(f.alias).getOrElse(
+        if (isI18n(f)) f.name else queryColTableAlias(f) + "." + f.name)
 
     val cols = view.fields.filter(!_.isExpression).map(f =>
-      queryColName(f) + Option(f.alias).map(" " + _).getOrElse("")).mkString(" {", ", ", "}")
+      queryColExpression(f)
+        + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
+      .mkString(" {", ", ", "}")
 
     val from = if (view.joins != null) view.joins else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
@@ -282,10 +297,10 @@ object ort extends org.tresql.NameMap {
     val order =
       if (sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc") "~" else "") +
-        "#(" + (queryColName(fieldNameToDef(s.Field)) match {
-          case rus if rus endsWith "_rus" =>
-            "NLSSORT(" + rus + ", 'NLS_SORT = RUSSIAN')"
-          case x => x
+        "#(" + (fieldNameToDef(s.Field) match {
+          case f if isI18n(f) =>
+            "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
+          case f => queryColName(f)
         }) + ")").mkString("")
 
     def limitOffset(query: String) = (limit, offset) match {
@@ -320,7 +335,7 @@ object ort extends org.tresql.NameMap {
     }).toMap
 
     val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
-    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t=> (t._2 + 1).toString -> t._1).toMap)
+    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
