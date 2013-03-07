@@ -291,7 +291,7 @@ object ort extends org.tresql.NameMap {
       else sys.error("Comparison operator not supported: " + comp)
 
     val where = (filter.map(f =>
-      queryColName(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
+      queryColExpression(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
         " :" + f.Field) ++ Option(wherePlus._1).filter(_ != ""))
       .mkString("[", " & ", "]")
 
