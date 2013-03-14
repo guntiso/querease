@@ -235,6 +235,11 @@ object ort extends org.tresql.NameMap {
     Query.select(tresql, params).toListRowAsMap.map(pojo)
   }
 
+  val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
+  def comparison(comp: String) =
+    if (ComparisonOps.contains(comp)) comp
+    else sys.error("Comparison operator not supported: " + comp)
+
   def queryString(view: XsdTypeDef, params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val paramsFilter =
@@ -284,11 +289,6 @@ object ort extends org.tresql.NameMap {
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
-
-    val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
-    def comparison(comp: String) =
-      if (ComparisonOps.contains(comp)) comp
-      else sys.error("Comparison operator not supported: " + comp)
 
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
