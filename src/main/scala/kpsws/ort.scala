@@ -149,7 +149,11 @@ object ort extends org.tresql.NameMap {
     def checksum = MessageDigest.getInstance("MD5").digest(
       new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
         .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
-    import kpsws.RequestContext.userId
+    val currentUserId = RequestContext.userId
+    def userId =
+      if (currentUserId <= 0)
+        throw new RuntimeException("Request context - missing userId")
+      else currentUserId
     def trim(value: Any) = value match {
       case s: String => s.trim()
       case x => x
