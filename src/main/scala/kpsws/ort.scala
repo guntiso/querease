@@ -301,12 +301,12 @@ object ort extends org.tresql.NameMap {
 
     val order =
       if (sort == null || sort.size == 0) ""
-      else sort.map(s => (if (s.Order == "desc") "~" else "") +
+      else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
         "#(" + (fieldNameToDef(s.Field) match {
           case f if isI18n(f) =>
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
-        }) + ")").mkString("")
+        }) + (if (s.Order endsWith " null") " null" else "") + ")").mkString("")
 
     def limitOffset(query: String) = (limit, offset) match {
       case (0, 0) => (query, Array())
