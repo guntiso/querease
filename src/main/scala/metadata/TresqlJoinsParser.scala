@@ -1,12 +1,15 @@
 package metadata
 
-import org.tresql.QueryParser._
+import org.tresql.QueryParser.{Join => QPJoin, _}
+
+case class Join(alias: String, name: String, nullable: Boolean)
 
 object JoinsParser {
   def apply(joins: String):List[(String, String)] = if (joins == null) List() else {
+    var currentJoin: Join = null
     parseExp(joins) match {
       case Query(tables, _, _, _, _, _, _, _) => (tables flatMap {
-        case Obj(Ident(name), null, Join(false, Arr(jl), _), _) => (jl map {
+        case Obj(Ident(name), null, QPJoin(false, Arr(jl), _), _) => (jl map {
           // primary key join: customer c[c.m_id m, c.f_id f]person
           case Obj(Ident(_), al, _, _) => al -> name.mkString(".")
           // normal join
