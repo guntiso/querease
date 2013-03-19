@@ -253,8 +253,16 @@ object ort extends org.tresql.NameMap {
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
+    import metadata.DbConventions.{ dbNameToXsdName => xsdName }
+    val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
+    def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
+      sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
+    def isFilterable(f: ListFilterType): Boolean =
+      if (fieldNameToDef(f.Field).isExpression) sys.error("Field " + f +
+        " is not available for filtering from view " + xsdName(view.name))
+      else true
     val filteredParams = params.copy(Filter =
-      paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).toArray)
+      paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     //base table alias
@@ -310,11 +318,6 @@ object ort extends org.tresql.NameMap {
       List(view.joins, autoJoins, view.joins).filter(_ != null).mkString("; ")
     }
     */
-    import metadata.DbConventions.{ dbNameToXsdName => xsdName }
-    val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
-    def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
-      sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
-
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
         " :" + f.Field) ++ Option(wherePlus._1).filter(_ != ""))
