@@ -15,6 +15,7 @@ import java.util.Date
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import metadata.JoinsParser
+import metadata.Join
 import metadata.Metadata
 import metadata.YamlViewDefLoader
 
@@ -257,8 +258,8 @@ object ort extends org.tresql.NameMap {
     import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     //base table alias
-    val B = JoinsParser(view.joins).filter(_._2 == view.table).toList match {
-      case (a, _) :: Nil => // if only one base table encountered return alias
+    val B = JoinsParser(view.joins).filter(_.name == view.table).toList match {
+      case Join(a, _, _) :: Nil => // if only one base table encountered return alias
         Option(a) getOrElse view.table
       case _ => "b" // default base table alias 
     }
