@@ -258,7 +258,7 @@ object ort extends org.tresql.NameMap {
     import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
 
     //base table alias
-    val B = JoinsParser(view.joins).filter(_.name == view.table).toList match {
+    val B = JoinsParser(view.table, view.joins).filter(_.table == view.table).toList match {
       case Join(a, _, _) :: Nil => // if only one base table encountered return alias
         Option(a) getOrElse view.table
       case _ => "b" // default base table alias 
@@ -286,6 +286,7 @@ object ort extends org.tresql.NameMap {
         + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
       .mkString(" {", ", ", "}")
 
+    //DELEME when next todo done
     val from = if (view.joins != null) view.joins else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
@@ -294,6 +295,21 @@ object ort extends org.tresql.NameMap {
         tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
       } else view.table + " " + B
     }
+    /* TODO merge joins, outer join intelligently (according to metadata)
+    val from = {
+      val jtables = Option(view.joins).map(JoinsParser(view.table, _).map(_.table).toSet) getOrElse Set()
+      val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table) -- jtables
+      val autoBase = if (!jtables.contains(view.table)) view.table + " " + B else null 
+      val autoJoins =
+        if (tables.size > 1) {
+          tables -= view.table
+          // B is base table alias, ? is outer join
+          tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
+        } else 
+        else 
+      List(view.joins, autoJoins, view.joins).filter(_ != null).mkString("; ")
+    }
+    */
     import metadata.DbConventions.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
