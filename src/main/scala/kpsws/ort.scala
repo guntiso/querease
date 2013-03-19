@@ -121,6 +121,10 @@ object ort extends org.tresql.NameMap {
   private def xsdValueToDbValue(xsdValue: Any) = xsdValue match {
     case true => "Y"
     case false => "N"
+    // avoid unfriendly oracledb error message
+    case x: String if x.length > 1000 && x.getBytes("UTF-8").length > 4000 =>
+      throw new BusinessException("TEXT_TOO_LONG", "Teksta garums baitos ir "
+        + x.getBytes("UTF-8").length + ", bet nav iespējams saglabāt vairāk par 4000")
     case x => x
   }
 
