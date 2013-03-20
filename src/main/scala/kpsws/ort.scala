@@ -260,7 +260,7 @@ object ort extends org.tresql.NameMap {
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
     def isFilterable(f: ListFilterType): Boolean =
-      if (fieldNameToDef(f.Field).isExpression) sys.error("Field " + f +
+      if (fieldNameToDef(f.Field).isExpression) sys.error("Calculated field " + f.Field +
         " is not available for filtering from view " + xsdName(view.name))
       else true
     val filteredParams = params.copy(Filter =
