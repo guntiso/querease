@@ -151,6 +151,8 @@ object ort extends org.tresql.NameMap {
     val lastModifiedDate =
       if (modificationDateField.isDefined || checksumField.isDefined) new Date()
       else null
+    // FIXME require record checksum for updates!
+    // FIXME check record checksum for updates!
     def checksum = MessageDigest.getInstance("MD5").digest(
       new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
         .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
