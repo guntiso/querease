@@ -60,5 +60,4 @@ object JoinsParser {
       case _ => sys.error("Invalid join: " + joins)
     }
   }
-  def aliases(joins: String) = apply(null, joins).filter(_.alias != null).map(j => j.alias -> j.table).toMap
 }
