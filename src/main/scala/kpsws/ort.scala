@@ -216,7 +216,7 @@ object ort extends org.tresql.NameMap {
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
     query(Metadata.getViewDef(pojoClass), pojoClass, params, wherePlus)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
-    val filterDef = Array(ListFilterType("Id", "=", id.toString))
+    val filterDef = Array(new ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
     ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
