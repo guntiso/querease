@@ -131,6 +131,18 @@ object ort extends org.tresql.NameMap {
 
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
+  def getChecksum(lastModifiedDate: Date) = MessageDigest.getInstance("MD5").digest(
+      new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
+        .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
+
+  
+  def getCurrentUserId = {
+    val currentUserId = RequestContext.userId
+    if (currentUserId <= 0)
+      throw new RuntimeException("Request context - missing userId")
+    else currentUserId
+  }
+
   private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     import metadata.{ Metadata => Schema }
     val propMap = pojoToMap(pojo).map(e =>
@@ -153,14 +165,9 @@ object ort extends org.tresql.NameMap {
       else null
     // FIXME require record checksum for updates!
     // FIXME check record checksum for updates!
-    def checksum = MessageDigest.getInstance("MD5").digest(
-      new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
-        .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
-    val currentUserId = RequestContext.userId
-    def userId =
-      if (currentUserId <= 0)
-        throw new RuntimeException("Request context - missing userId")
-      else currentUserId
+    def checksum = getChecksum(lastModifiedDate)
+
+    val userId = getCurrentUserId
     def trim(value: Any) = value match {
       case s: String => s.trim()
       case x => x
