@@ -339,7 +339,7 @@ object ort extends org.tresql.NameMap {
           case f if isI18n(f) =>
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
-        }) + (if (s.Order endsWith " null") " null" else "") + ")").mkString("")
+        }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "") + ")").mkString("")
 
     def limitOffset(query: String) = (limit, offset) match {
       case (0, 0) => (query, Array())
