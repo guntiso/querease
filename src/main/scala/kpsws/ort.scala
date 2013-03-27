@@ -217,9 +217,10 @@ object ort extends org.tresql.NameMap {
   /* -------- Query support methods -------- */
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
-    val filter = params.copy(Limit = 0, Offset = 0, Sort = Array())
-    // FIXME Needs some optimization :)
-    query(Metadata.getViewDef(pojoClass), pojoClass, filter, wherePlus).size
+    val tresqlQuery =
+      queryString(Metadata.getViewDef(pojoClass), params, wherePlus, true)
+    Env.log(tresqlQuery._1)
+    Query.unique[Int](tresqlQuery._1, tresqlQuery._2)
   }
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
@@ -259,7 +260,8 @@ object ort extends org.tresql.NameMap {
     else sys.error("Comparison operator not supported: " + comp)
 
   def queryString(view: XsdTypeDef, params: ListRequestType,
-    wherePlus: (String, Map[String, Any]) = (null, Map())) = {
+    wherePlus: (String, Map[String, Any]) = (null, Map()),
+    countAll: Boolean = false) = {
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
     import metadata.DbConventions.{ dbNameToXsdName => xsdName }
@@ -298,10 +300,12 @@ object ort extends org.tresql.NameMap {
       Option(f.alias).getOrElse(
         if (isI18n(f)) f.name else queryColTableAlias(f) + "." + f.name)
 
-    val cols = view.fields.filter(!_.isExpression).map(f =>
-      queryColExpression(f)
-        + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
-      .mkString(" {", ", ", "}")
+    val cols =
+      if (countAll) " {count(*)}"
+      else view.fields.filter(!_.isExpression).map(f =>
+        queryColExpression(f)
+          + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
+        .mkString(" {", ", ", "}")
 
     //DELEME when next todo done
     val from = if (view.joins != null) view.joins else {
@@ -333,7 +337,7 @@ object ort extends org.tresql.NameMap {
       .mkString("[", " & ", "]")
 
     val order =
-      if (sort == null || sort.size == 0) ""
+      if (countAll || sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
         "#(" + (fieldNameToDef(s.Field) match {
           case f if isI18n(f) =>
@@ -341,7 +345,7 @@ object ort extends org.tresql.NameMap {
           case f => queryColName(f)
         }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "") + ")").mkString("")
 
-    def limitOffset(query: String) = (limit, offset) match {
+    def limitOffset(query: String) = (if (countAll) (0, 0) else (limit, offset)) match {
       case (0, 0) => (query, Array())
       case (limit, 0) => // TODO no need for subquery here
         ("/(" + query + ") [rownum <= ?]", Array(limit))
