@@ -132,10 +132,9 @@ object ort extends org.tresql.NameMap {
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
 
   def getChecksum(lastModifiedDate: Date) = MessageDigest.getInstance("MD5").digest(
-      new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
-        .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
+    new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
+      .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
 
-  
   def getCurrentUserId = {
     val currentUserId = RequestContext.userId
     if (currentUserId <= 0)
@@ -282,16 +281,25 @@ object ort extends org.tresql.NameMap {
         Option(a) getOrElse view.table
       case _ => "b" // default base table alias 
     }
-    val preferRu = RequestContext.languagePreferences(0) == "ru"
-    def isI18n(f: XsdFieldDef) = preferRu && f.isI18n
+    val langs = RequestContext.languagePreferences
+    val preferRu = langs(0) == "ru"
+    val lSuff = langs.map {
+      case "lv" => ""
+      case "en" => "_eng"
+      case "ru" => "_rus"
+    }
+    def isRu(f: XsdFieldDef) = preferRu && f.isI18n
+    def isI18n(f: XsdFieldDef) = f.isI18n
     def queryColTableAlias(f: XsdFieldDef) =
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) B else f.table)
 
-    def queryColExpression(f: XsdFieldDef) =
-      if (isI18n(f)) "nvl(" + queryColTableAlias(f) + "." + f.name + "_rus" +
-        ", " + queryColTableAlias(f) + "." + f.name + ")"
-      else queryColTableAlias(f) + "." + f.name
+    def queryColExpression(f: XsdFieldDef) = {
+      val qName = queryColTableAlias(f) + "." + f.name
+      if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
+        "nvl(" + expr + ", " + qName + suff + ")")
+      else qName
+    }
 
     def queryColAlias(f: XsdFieldDef) =
       Option(f.alias).getOrElse(if (isI18n(f)) f.name else null)
@@ -340,7 +348,7 @@ object ort extends org.tresql.NameMap {
       if (countAll || sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
         "#(" + (fieldNameToDef(s.Field) match {
-          case f if isI18n(f) =>
+          case f if isRu(f) =>
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
         }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "") + ")").mkString("")
