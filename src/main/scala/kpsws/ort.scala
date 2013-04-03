@@ -265,8 +265,14 @@ object ort extends org.tresql.NameMap {
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
     import metadata.DbConventions.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
+    // FIXME extra order by, injection-safe!
+    val safeExpr = List("decode(cnt, null, 0, 1)")
+      .map(expr => (expr,
+        XsdFieldDef("", "", "", "", false, true, expr, true, null, false, "")))
+      .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
-      sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
+      safeExpr.get(f) getOrElse
+        sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
     def isFilterable(f: ListFilterType): Boolean =
       if (fieldNameToDef(f.Field).isExpression) sys.error("Calculated field " + f.Field +
         " is not available for filtering from view " + xsdName(view.name))
@@ -348,6 +354,8 @@ object ort extends org.tresql.NameMap {
       if (countAll || sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
         "#(" + (fieldNameToDef(s.Field) match {
+          case f if f.isExpression && f.expression != null =>
+            f.expression
           case f if isRu(f) =>
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
