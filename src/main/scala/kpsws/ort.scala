@@ -152,9 +152,14 @@ object ort extends org.tresql.NameMap {
       Schema.tableDef(viewDef).cols.find(_.name == "record_checksum")
     val idField =
       Schema.tableDef(viewDef).cols.find(_.name == "id")
+    val idOption =
+      if (idField.isDefined)
+        propMap.get("id")
+          .filter(v => v != null && v != "")
+          .map(_.toString.toLong)
+      else None
     val createdByField =
-      if (idField.isDefined &&
-        propMap.get("id").filter(v => v != null && v != "") == None)
+      if (idField.isDefined && idOption == None)
         Schema.tableDef(viewDef).cols.find(_.name == "created_by_id")
       else None
     val modifiedByField =
@@ -162,8 +167,12 @@ object ort extends org.tresql.NameMap {
     val lastModifiedDate =
       if (modificationDateField.isDefined || checksumField.isDefined) new Date()
       else null
-    // FIXME require record checksum for updates!
-    // FIXME check record checksum for updates!
+    if (idOption.isDefined && checksumField.isDefined) {
+      val oldChecksum = Query.unique[String](
+        viewDef.table + "[id=?]{record_checksum}", idOption.get)
+      if (oldChecksum != propMap.getOrElse("record_checksum", ""))
+        throw new RuntimeException("SYS_ERR_SOFT_LOCK_OCCURED")
+    }
     def checksum = getChecksum(lastModifiedDate)
 
     val userId = getCurrentUserId
