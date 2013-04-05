@@ -275,7 +275,8 @@ object ort extends org.tresql.NameMap {
     import metadata.DbConventions.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     // FIXME extra order by, injection-safe!
-    val safeExpr = List("decode(cnt, null, 0, 1)")
+    val safeExpr = List("decode(cnt, null, 0, 1)",
+      "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
         XsdFieldDef("", "", "", "", false, true, expr, true, null, false, "")))
       .toMap
