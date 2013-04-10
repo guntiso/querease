@@ -289,8 +289,12 @@ object ort extends org.tresql.NameMap {
       else true
     val filteredParams = params.copy(Filter =
       paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
-    import filteredParams.{ Filter => filter, Sort => sort, Limit => limit, Offset => offset }
-
+    import filteredParams.{ Sort => sort, Limit => limit, Offset => offset }
+    //list of tuples (bind variable name -> ListFilterType)
+    val filter = filteredParams.Filter.groupBy(_.Field).toList.flatMap(f =>
+      if (f._2.size > 1) f._2.zipWithIndex.map(t => (f._1 + t._2) -> t._1) else
+        f._2.toList.map(f._1 -> _)).toArray
+    
     //base table alias
     val B = JoinsParser(view.table, view.joins).filter(_.table == view.table).toList match {
       case Join(a, _, _) :: Nil => // if only one base table encountered return alias
@@ -356,8 +360,8 @@ object ort extends org.tresql.NameMap {
     }
     */
     val where = (filter.map(f =>
-      queryColExpression(fieldNameToDef(f.Field)) + " " + comparison(f.Comparison) +
-        " :" + f.Field) ++ Option(wherePlus._1).filter(_ != ""))
+      queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
+        " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
       .mkString("[", " & ", "]")
 
     val order =
@@ -383,9 +387,9 @@ object ort extends org.tresql.NameMap {
     }
 
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
-      val v = f.Value
+      val v = f._2.Value
       // TODO describe convertion error (field, table, value, ...)
-      f.Field -> (fieldNameToDef(f.Field).xsdType.name match {
+      f._1 -> (fieldNameToDef(f._2.Field).xsdType.name match {
         case "string" => v
         case "int" => v.toInt
         case "long" => v.toLong
