@@ -291,7 +291,7 @@ object ort extends org.tresql.NameMap {
       paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Sort => sort, Offset => offset }
     //LIMIT threshold
-    val limit = if (filteredParams.Limit > 100) 100 else filteredParams.Limit
+    val limit = math.min(100, filteredParams.Limit)
     //list of tuples (bind variable name -> ListFilterType)
     val filter = filteredParams.Filter.groupBy(_.Field).toList.flatMap(f =>
       if (f._2.size > 1) f._2.zipWithIndex.map(t => (f._1 + t._2) -> t._1) else
