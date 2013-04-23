@@ -171,7 +171,8 @@ object ort extends org.tresql.NameMap {
       val oldChecksum = Query.unique[String](
         viewDef.table + "[id=?]{record_checksum}", idOption.get)
       if (oldChecksum != propMap.getOrElse("record_checksum", ""))
-        throw new RuntimeException("SYS_ERR_SOFT_LOCK_OCCURED")
+        throw new BusinessException("SYS_ERR_SOFT_LOCK_OCCURED",
+          "Darbība vairs nav pieejama, jo šos datus kāds nesen ir izmainījis")
     }
     def checksum = getChecksum(lastModifiedDate)
 
