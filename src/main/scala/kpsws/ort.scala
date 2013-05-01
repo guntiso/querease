@@ -7,6 +7,7 @@ import xsdgen.ElementName
 import scala.collection.JavaConversions._
 import javax.xml.datatype._
 import kpsws.impl._
+import kpsws.impl.Error._
 import metadata.XsdTypeDef
 import metadata.XsdFieldDef
 import metadata.DbConventions.xsdNameToDbName
@@ -124,8 +125,7 @@ object ort extends org.tresql.NameMap {
     case false => "N"
     // avoid unfriendly oracledb error message
     case x: String if x.length > 1000 && x.getBytes("UTF-8").length > 4000 =>
-      throw new BusinessException("TEXT_TOO_LONG", "Teksta garums baitos ir "
-        + x.getBytes("UTF-8").length + ", bet nav iespējams saglabāt vairāk par 4000")
+      err(TEXT_TOO_LONG, "" + x.getBytes("UTF-8").length)
     case x => x
   }
 
@@ -171,8 +171,7 @@ object ort extends org.tresql.NameMap {
       val oldChecksum = Query.unique[String](
         viewDef.table + "[id=?]{record_checksum}", idOption.get)
       if (oldChecksum != propMap.getOrElse("record_checksum", ""))
-        throw new BusinessException("SYS_ERR_SOFT_LOCK_OCCURED",
-          "Darbība vairs nav pieejama, jo šos datus kāds nesen ir izmainījis")
+        err(SYS_ERR_SOFT_LOCK_OCCURED)
     }
     def checksum = getChecksum(lastModifiedDate)
 
