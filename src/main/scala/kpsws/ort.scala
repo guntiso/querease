@@ -233,11 +233,12 @@ object ort extends org.tresql.NameMap {
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
     query(Metadata.getViewDef(pojoClass), pojoClass, params, wherePlus)
-  def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long): T = {
+  def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
+      wherePlus: (String, Map[String, Any])): T = {
     val filterDef = Array(new ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
-    ort.query(viewClass, req).headOption getOrElse null.asInstanceOf[T]
+    ort.query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
   }
 
   private def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
