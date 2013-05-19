@@ -4,6 +4,7 @@ import org.tresql.ORT
 import org.tresql.NameMap
 import org.tresql.Query
 import xsdgen.ElementName
+import language.postfixOps
 import scala.collection.JavaConversions._
 import javax.xml.datatype._
 import kpsws.impl._
@@ -84,12 +85,14 @@ object ort extends org.tresql.NameMap {
             gc.setTime(x)
             m.invoke(pojo, XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc))
           }
-          case inMap: Map[String, _] if (t == Class.forName(propClass)) => m.invoke(pojo, mapToPojo(inMap,
-            Class.forName(propClass).newInstance).asInstanceOf[Object])
+          case inMap: Map[_, _] if (t == Class.forName(propClass)) =>
+            m.invoke(pojo, mapToPojo(inMap.asInstanceOf[Map[String, _]],
+              Class.forName(propClass).newInstance).asInstanceOf[Object])
           //may be exact collection which is used in xsd generated pojos must be used?
           case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => t.newInstance
-          case s: Seq[Map[String, _]] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
-            val col: java.util.Collection[_] = s.map(mapToPojo(_, Class.forName(propClass).newInstance))
+          case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
+            val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
+              .map(mapToPojo(_, Class.forName(propClass).newInstance))
             m.invoke(pojo, col)
           }
           case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => toLowerOrNull(value.toString) match {
@@ -409,6 +412,7 @@ object ort extends org.tresql.NameMap {
       })
     }).toMap
 
+    import language.existentials
     val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
     (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
