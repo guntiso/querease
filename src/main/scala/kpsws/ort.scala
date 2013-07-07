@@ -178,7 +178,7 @@ object ort extends org.tresql.NameMap {
     }
     def checksum = getChecksum(lastModifiedDate)
 
-    val userId = getCurrentUserId
+    lazy val userId = getCurrentUserId
     def trim(value: Any) = value match {
       case s: String => s.trim()
       case x => x
