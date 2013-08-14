@@ -145,7 +145,7 @@ object ort extends org.tresql.NameMap {
     else currentUserId
   }
 
-  private def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
+  def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     import metadata.{ Metadata => Schema }
     val propMap = pojoToMap(pojo).map(e =>
       (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
@@ -186,7 +186,22 @@ object ort extends org.tresql.NameMap {
     def isSaveable(fieldName: String) =
       viewDef.fields.find(f => f.name == fieldName && f.isExpression).isEmpty
 
-    propMap.map(e => (e._1, trim(e._2)))
+    def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] =
+      propMap.map {
+        case entry @ (key, l: List[Map[String, _]]) =>
+          val fieldName = key.dropRight(1) // XXX undo JAXB plural
+          val fieldDef = viewDef.fields.find(_.name == fieldName)
+            .getOrElse(sys.error("Field not found for property: " + viewDef.name + "." + fieldName))
+          if (isSaveable(fieldDef.name)) {
+            val childViewDef =
+              Metadata.nameToViewDef.getOrElse(fieldDef.xsdType.name,
+                sys.error("Child viewDef not found for field " + fieldName))
+            childViewDef.table -> l.map(toSaveableDetails(_, childViewDef))
+          } else entry
+        case x => x
+      }
+    toSaveableDetails(propMap, viewDef)
+      .map(e => (e._1, trim(e._2)))
       .filter(e => isSaveable(e._1)) ++
       List(
         modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
