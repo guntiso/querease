@@ -211,20 +211,12 @@ object ort extends org.tresql.NameMap {
       .flatMap(x => x)
   }
 
-  def saveToTable(pojo: AnyRef, tableName: String, addParams: Map[String, Any] = null): Long = {
-    // TODO FIXME code duplication with save() 
-    val (pojoPropMap, dummy) = getPropMapTableName(pojo, addParams)
-    val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
-    val (id, isNew) = propMap.get("id").filter(_ != null).map(
-      _.toString.toLong -> false) getOrElse (nextId(), true)
-    if (isNew) ORT.insert(tableName, propMap + ("id" -> id))
-    else ORT.update(tableName, propMap)
-    id
-  }
-
   // addParams allows to specify additional columns to be saved that are not present in pojo.
-  def save(pojo: AnyRef, addParams: Map[String, Any] = null): Long = {
-    val (pojoPropMap, tableName) = getPropMapTableName(pojo, addParams)
+  def save(pojo: AnyRef, addParams: Map[String, Any] = null): Long =
+    saveTo(getViewDef(pojo).table, pojo, addParams)
+
+  def saveTo(tableName: String, pojo: AnyRef, addParams: Map[String, Any] = null): Long = {    
+    val pojoPropMap = pojoToSaveableMap(pojo, getViewDef(pojo))
     val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
       _.toString.toLong -> false) getOrElse (nextId(), true)
@@ -232,16 +224,12 @@ object ort extends org.tresql.NameMap {
     else ORT.update(tableName, propMap)
     id
   }
-
-  private def getPropMapTableName(pojo: AnyRef, addParams: Map[String, Any] = null) = {
-    val viewDef = Metadata.getViewDef(pojo.getClass)
-    val tableName = viewDef.table
-    val pojoPropMap = pojoToSaveableMap(pojo, viewDef)
-    (pojoPropMap, tableName) 
-  }
+  def getViewDef(pojo: AnyRef) = Metadata.getViewDef(pojo.getClass)
 
   def insert(pojo: AnyRef, addParams: Map[String, Any] = null): Long = {
-    val (pojoPropMap, tableName) = getPropMapTableName(pojo, addParams)
+    val viewDef = getViewDef(pojo)
+    val tableName = viewDef.table
+    val pojoPropMap = pojoToSaveableMap(pojo, getViewDef(pojo))
 
     val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
