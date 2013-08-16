@@ -216,43 +216,23 @@ object ort extends org.tresql.NameMap {
   }
 
   // addParams allows to specify additional columns to be saved that are not present in pojo.
-  def save(pojo: AnyRef, addParams: Map[String, Any] = null): Long =
-    saveTo(getViewDef(pojo).table, pojo, addParams)
+  def save(pojo: AnyRef, addParams: Map[String, Any] = null, forceInsert: Boolean = false): Long =
+    saveTo(getViewDef(pojo).table, pojo, addParams, forceInsert)
 
-  def saveTo(tableName: String, pojo: AnyRef, addParams: Map[String, Any] = null): Long = {    
+  def saveTo(tableName: String, pojo: AnyRef, addParams: Map[String, Any] = null,
+    forceInsert: Boolean = false): Long = {
     val pojoPropMap = pojoToSaveableMap(pojo, getViewDef(pojo))
     val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
-      _.toString.toLong -> false) getOrElse (nextId(), true)
+      _.toString.toLong -> forceInsert) getOrElse (nextId(), true)
     if (isNew) ORT.insert(tableName, propMap + ("id" -> id))
     else ORT.update(tableName, propMap)
     id
   }
   def getViewDef(pojo: AnyRef) = Metadata.getViewDef(pojo.getClass)
 
-  def insert(pojo: AnyRef, addParams: Map[String, Any] = null): Long = {
-    val viewDef = getViewDef(pojo)
-    val tableName = viewDef.table
-    val pojoPropMap = pojoToSaveableMap(pojo, getViewDef(pojo))
-
-    val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
-    val (id, isNew) = propMap.get("id").filter(_ != null).map(
-      _.toString.toLong -> false) getOrElse (nextId(), true)
-    ORT.insert(tableName, propMap + ("id" -> id))
-    id
-  }
-  /*
-  def insertNoId(pojo: AnyRef) {
-    val viewDef = Metadata.getViewDef(pojo.getClass)
-    val tableName = viewDef.table
-    val propMap = pojoToMap(pojo).map(e =>
-      (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
-    ORT.insert(tableName, propMap)
-  }
-*/
-
   def save(pojo: AnyRef, id: Long) = {
-    val viewDef = Metadata.getViewDef(pojo.getClass)
+    val viewDef = getViewDef(pojo)
     val tableName = viewDef.table
     val propMap = pojoToSaveableMap(pojo, viewDef)
     ORT.save(tableName, propMap + ("id" -> id))
@@ -270,7 +250,7 @@ object ort extends org.tresql.NameMap {
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
     query(Metadata.getViewDef(pojoClass), pojoClass, params, wherePlus)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
-      wherePlus: (String, Map[String, Any])): T = {
+    wherePlus: (String, Map[String, Any])): T = {
     val filterDef = Array(new ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
@@ -333,7 +313,7 @@ object ort extends org.tresql.NameMap {
     val filter = filteredParams.Filter.groupBy(_.Field).toList.flatMap(f =>
       if (f._2.size > 1) f._2.zipWithIndex.map(t => (f._1 + t._2) -> t._1) else
         f._2.toList.map(f._1 -> _)).toArray
-    
+
     //base table alias
     val B = JoinsParser(view.table, view.joins).filter(_.table == view.table).toList match {
       case Join(a, _, _) :: Nil => // if only one base table encountered return alias
