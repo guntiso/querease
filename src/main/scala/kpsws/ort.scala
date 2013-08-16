@@ -147,8 +147,12 @@ object ort extends org.tresql.NameMap {
 
   def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     import metadata.{ Metadata => Schema }
-    val propMap = pojoToMap(pojo).map(e =>
-      (xsdNameToDbName(e._1), xsdValueToDbValue(e._2)))
+    def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
+      case (k, vList: List[Map[String, _]]) =>
+        (xsdNameToDbName(k), vList map toDbFormat)
+      case (k, v) => (xsdNameToDbName(k), xsdValueToDbValue(v))
+    }
+    val propMap = toDbFormat(pojoToMap(pojo))
     val modificationDateField =
       Schema.tableDef(viewDef).cols.find(_.name == "last_modified")
     val checksumField =
@@ -365,7 +369,7 @@ object ort extends org.tresql.NameMap {
 
     val cols =
       if (countAll) " {count(*)}"
-      else view.fields.filter(!_.isExpression).map(f =>
+      else view.fields.filter(!_.isExpression).filter(!_.isCollection).map(f =>
         queryColExpression(f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
