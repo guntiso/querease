@@ -256,25 +256,16 @@ object ort extends org.tresql.NameMap {
   }
 
   private def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
-  // private def mapToPojo[T](m: Map[String, _], pojoClass: Class[T]): T = mapToPojo(lowerNames(m), pojoClass.newInstance)
-  def selectToPojo[T](query: String, pojoClass: Class[T]) = {
+  def selectToPojo[T](query: String, pojoClass: Class[T], params: Map[String, Any] = null) = {
     def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
-    Query.select(query).toListRowAsMap.map(pojo)
+    Query.select(query, params).toListRowAsMap.map(pojo)
   }
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
     val tresqlQuery = queryString(view, params, wherePlus)
     Env.log(tresqlQuery._1)
-
-    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
-    Query.select(tresqlQuery._1, tresqlQuery._2).toListRowAsMap.map(pojo)
-  }
-
-  // TODO refactor query() to call this, if it is ok.
-  def tresql2Pojo[T](tresql: String, params: Map[String, Any], pojoClass: Class[T]) = {
-    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
-    Query.select(tresql, params).toListRowAsMap.map(pojo)
+    selectToPojo(tresqlQuery._1, pojoClass, tresqlQuery._2)
   }
 
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
