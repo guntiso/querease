@@ -188,10 +188,15 @@ object ort extends org.tresql.NameMap {
     def isSaveable(fieldName: String) =
       viewDef.fields.find(f => f.name == fieldName && f.isExpression).isEmpty
 
+    def toSingular(s: String) = // XXX to undo JAXB plural
+      if (s endsWith "ies") s.dropRight(3) + "y"
+      else if (s endsWith "s") s.dropRight(1)
+      else s
+
     def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] =
       propMap.map {
         case entry @ (key, l: List[Map[String, _]]) =>
-          val fieldName = key.dropRight(1) // XXX undo JAXB plural
+          val fieldName = toSingular(key) // XXX undo JAXB plural 
           val fieldDef = viewDef.fields.find(_.name == fieldName)
             .getOrElse(sys.error("Field not found for property: " + viewDef.name + "." + fieldName))
           if (isSaveable(fieldDef.name)) {
