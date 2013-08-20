@@ -60,7 +60,7 @@ object ort extends org.tresql.NameMap {
       val propName = m.getName.drop(3) //property name
       val propClass = propToClassName(propName) //find class name in the case value is map or list i.e. not primitive object
       val t = m.getParameterTypes()(0)
-      map.get(xsdNameToDbName(propName)).map(value => try {
+      map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
         value match {
           //this may require tuning since it is difficult with java reflection to determine compatibility
           //between map entry value type and setter parameter type
