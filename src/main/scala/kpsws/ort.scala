@@ -185,31 +185,44 @@ object ort extends org.tresql.NameMap {
       case s: String => s.trim()
       case x => x
     }
-    def isSaveable(fieldName: String) =
-      viewDef.fields.find(f => f.name == fieldName && f.isExpression).isEmpty
 
     def toSingular(s: String) = // XXX to undo JAXB plural
       if (s endsWith "ies") s.dropRight(3) + "y"
       else if (s endsWith "s") s.dropRight(1)
       else s
 
-    def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] =
-      propMap.map {
-        case entry @ (key, l: List[Map[String, _]]) =>
+    def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
+      def isSaveable(f: XsdFieldDef) = !f.isExpression
+      def getFieldDef(fieldName: String) =
+        viewDef.fields.find(_.name == fieldName).getOrElse(sys.error(
+          "Field not found for property: " + viewDef.name + "." + fieldName))
+      def getChildViewDef(fieldDef: XsdFieldDef) =
+        YamlViewDefLoader.nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
+          sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
+            " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
+      propMap.filter(_._1 != "clazz").map {
+        case (key, l: List[Map[String, _]]) =>
           val fieldName = toSingular(key) // XXX undo JAXB plural 
-          val fieldDef = viewDef.fields.find(_.name == fieldName)
-            .getOrElse(sys.error("Field not found for property: " + viewDef.name + "." + fieldName))
-          if (isSaveable(fieldDef.name)) {
-            val childViewDef =
-              Metadata.nameToViewDef.getOrElse(fieldDef.xsdType.name,
-                sys.error("Child viewDef not found for field " + fieldName))
+          val fieldDef = getFieldDef(fieldName)
+          if (isSaveable(fieldDef)) {
+            val childViewDef = getChildViewDef(fieldDef)
             childViewDef.table -> l.map(toSaveableDetails(_, childViewDef))
-          } else entry
-        case x => x
+          } else ("!" + key, l)
+        case (key, value) =>
+          val fieldName = key
+          val fieldDef = getFieldDef(fieldName)
+          if (isSaveable(fieldDef))
+            if (fieldDef.xsdType.isComplexType) {
+              val childViewDef = getChildViewDef(fieldDef)
+              childViewDef.table -> toSaveableDetails(
+                value.asInstanceOf[Map[String, Any]], childViewDef)
+            } else (key, value)
+          else ("!" + key, value)
       }
+    }
     toSaveableDetails(propMap, viewDef)
-      .map(e => (e._1, trim(e._2)))
-      .filter(e => isSaveable(e._1)) ++
+      .filter(e => !(e._1 startsWith "!"))
+      .map(e => (e._1, trim(e._2))) ++
       List(
         modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
         checksumField.map(f => ("record_checksum" -> checksum)),
