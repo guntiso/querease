@@ -306,7 +306,7 @@ object ort extends org.tresql.NameMap {
     val safeExpr = List("decode(cnt, null, 0, 1)",
       "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
-        XsdFieldDef("", "", "", "", false, true, expr, true, null, false, "")))
+        XsdFieldDef("", "", "", "", false, true, expr, true, false, null, false, "")))
       .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       safeExpr.get(f) getOrElse
