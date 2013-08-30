@@ -109,7 +109,7 @@ object ort extends org.tresql.NameMap {
         case ex: Exception =>
           throw new RuntimeException("Failed to invoke setter " + m.getName +
             "(" + t.getName + ") with value " + value +
-            " of class " + value.getClass.getName, ex)
+            " of class " + (Option(value).map(_.getClass.getName) getOrElse "?"), ex)
       })
     }
     pojo
