@@ -61,50 +61,10 @@ object ort extends org.tresql.NameMap {
       val propClass = propToClassName(propName) //find class name in the case value is map or list i.e. not primitive object
       val t = m.getParameterTypes()(0)
       map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
-        value match {
           //this may require tuning since it is difficult with java reflection to determine compatibility
           //between map entry value type and setter parameter type
           //hopefully scala reflection will help with this
-          case d: BigDecimal => {
-            if (t == classOf[Int] || t == classOf[java.lang.Integer])
-              m.invoke(pojo, new java.lang.Integer(d.toInt))
-            else if (t == classOf[Long] || t == classOf[java.lang.Long])
-              m.invoke(pojo, new java.lang.Long(d.toLong))
-            else if (t == classOf[Double] || t == classOf[java.lang.Double])
-              m.invoke(pojo, d.doubleValue.asInstanceOf[Object])
-            else if (t == classOf[java.math.BigDecimal])
-              m.invoke(pojo, d.bigDecimal)
-            else if (t == classOf[java.math.BigInteger])
-              m.invoke(pojo, d.bigDecimal.unscaledValue)
-            else try m.invoke(pojo, d)
-          }
-          case x if (t == classOf[java.math.BigInteger] && x != null) =>
-            m.invoke(pojo, new java.math.BigInteger(x.toString))
-          case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
-            val gc = new java.util.GregorianCalendar()
-            gc.setTime(x)
-            m.invoke(pojo, XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc))
-          }
-          case inMap: Map[_, _] if (t == Class.forName(propClass)) =>
-            m.invoke(pojo, mapToPojo(inMap.asInstanceOf[Map[String, _]],
-              Class.forName(propClass).newInstance).asInstanceOf[Object])
-          //may be exact collection which is used in xsd generated pojos must be used?
-          case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => t.newInstance
-          case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
-            val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
-              .map(mapToPojo(_, Class.forName(propClass).newInstance))
-            m.invoke(pojo, col)
-          }
-          case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
-            case "y" | "Y" | "true" | "TRUE" => m.invoke(pojo, java.lang.Boolean.TRUE)
-            case "n" | "N" | "false" | "FALSE" => m.invoke(pojo, java.lang.Boolean.FALSE)
-            case null => m.invoke(pojo, java.lang.Boolean.FALSE)
-            case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
-          }
-          case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
-            m.invoke(pojo, blob.getBytes(1, blob.length.toInt)) // FIXME toInt!
-          case x => m.invoke(pojo, x.asInstanceOf[Object])
-        }
+        m.invoke(pojo, convertValue(value, t, propClass))
       } catch {
         case ex: Exception =>
           throw new RuntimeException("Failed to invoke setter " + m.getName +
@@ -113,6 +73,50 @@ object ort extends org.tresql.NameMap {
       })
     }
     pojo
+  }
+
+  def convertValue(value: Any, t: Class[_],
+    itemClassName: String = "<collections not supported>"): AnyRef = value match {
+    case d: BigDecimal => {
+      if (t == classOf[Int] || t == classOf[java.lang.Integer])
+        new java.lang.Integer(d.toInt)
+      else if (t == classOf[Long] || t == classOf[java.lang.Long])
+        new java.lang.Long(d.toLong)
+      else if (t == classOf[Double] || t == classOf[java.lang.Double])
+        d.doubleValue.asInstanceOf[Object]
+      else if (t == classOf[java.math.BigDecimal])
+        d.bigDecimal
+      else if (t == classOf[java.math.BigInteger])
+        d.bigDecimal.unscaledValue
+      else d
+    }
+    case x if (t == classOf[java.math.BigInteger] && x != null) =>
+      new java.math.BigInteger(x.toString)
+    case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
+      val gc = new java.util.GregorianCalendar()
+      gc.setTime(x)
+      XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
+    }
+    case inMap: Map[_, _] if (t == Class.forName(itemClassName)) =>
+      mapToPojo(inMap.asInstanceOf[Map[String, _]],
+        Class.forName(itemClassName).newInstance).asInstanceOf[Object]
+    //may be exact collection which is used in xsd generated pojos must be used?
+    case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
+      t.newInstance.asInstanceOf[java.util.Collection[_]]
+    case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
+      val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
+        .map(mapToPojo(_, Class.forName(itemClassName).newInstance))
+      col
+    }
+    case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
+      case "y" | "Y" | "true" | "TRUE" => java.lang.Boolean.TRUE
+      case "n" | "N" | "false" | "FALSE" => java.lang.Boolean.FALSE
+      case null => java.lang.Boolean.FALSE
+      case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
+    }
+    case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
+      blob.getBytes(1, blob.length.toInt) // FIXME toInt!
+    case x => x.asInstanceOf[Object]
   }
 
   private def isPrimitive[T](x: T)(implicit evidence: T <:< AnyVal = null) = evidence != null || (x match {
