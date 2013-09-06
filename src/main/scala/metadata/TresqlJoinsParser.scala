@@ -16,11 +16,12 @@ object JoinsParser {
       case (Left(nullable), true) => Right(true)
       case (x, false) => x
     }
-    parseExp(joins) match {
+    //prefix joins with [] so that parser knows that it is a join not division operation
+    parseExp("\\w".r.findFirstIn(joins.substring(0, 1)).map(x=> "[]").getOrElse("") + joins) match {
       case Query(tables, _, _, _, _, _, _, _) => (tables.foldLeft(List[Join]()) { (joins, j) =>
         j match {
           //base table
-          case Obj(Ident(name), alias, null, outerJoin, _) =>
+          case Obj(Ident(name), alias, _, outerJoin, _) if joins.size == 0 =>
             val n = name.mkString(".")
             currentJoin = Join(alias, n, if (n == baseTable) Right(outerJoin != null) else Left(n))
             fillJoinMap(currentJoin)
