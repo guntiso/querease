@@ -136,6 +136,21 @@ object ort extends org.tresql.NameMap {
         i.toString
       else i
     }
+    case l: java.lang.Long => {
+      if (t == classOf[Int] || t == classOf[java.lang.Integer])
+        new java.lang.Integer(l.toInt)
+      else if (t == classOf[Long] || t == classOf[java.lang.Long])
+        l
+      else if (t == classOf[Double] || t == classOf[java.lang.Double])
+        l.doubleValue.asInstanceOf[Object]
+      else if (t == classOf[java.math.BigDecimal])
+        new java.math.BigDecimal(l.longValue)
+      else if (t == classOf[java.math.BigInteger])
+        java.math.BigInteger.valueOf(l.toLong)
+      else if (t == classOf[String] || t == classOf[java.lang.String])
+        l.toString
+      else l
+    }
     case x if (t == classOf[java.math.BigInteger] && x != null) =>
       new java.math.BigInteger(x.toString)
     case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
