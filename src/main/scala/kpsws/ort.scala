@@ -13,13 +13,17 @@ import metadata.XsdTypeDef
 import metadata.XsdFieldDef
 import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
-import java.util.Date
+import java.util.{ArrayList, Date}
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import metadata.JoinsParser
 import metadata.Join
 import metadata.Metadata
 import metadata.YamlViewDefLoader
+import java.util
+import java.lang.reflect.ParameterizedType
+
+
 
 object ort extends org.tresql.NameMap {
 
@@ -60,6 +64,7 @@ object ort extends org.tresql.NameMap {
       val propName = m.getName.drop(3) //property name
       val propClass = propToClassName(propName) //find class name in the case value is map or list i.e. not primitive object
       val t = m.getParameterTypes()(0)
+
       map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
           //this may require tuning since it is difficult with java reflection to determine compatibility
           //between map entry value type and setter parameter type
@@ -72,7 +77,33 @@ object ort extends org.tresql.NameMap {
             " of class " + (Option(value).map(_.getClass.getName) getOrElse "?"), ex)
       })
     }
+    // collection part, supports now only list of maps->to list of pojos part
+    pojo.getClass.getMethods.filter(m =>
+      m.getName.startsWith("get") &&
+      classOf[java.util.Collection[_]].isAssignableFrom(m.getReturnType) &&
+      m.getParameterTypes.size == 0
+      ).foreach { m =>
+        val propName = m.getName.drop(3) //property name
+        val genericType = getCollectionType(m.getGenericReturnType)
+        map.get(xsdNameToDbName(propName)).foreach{mapElement =>
+          mapElement match {
+            case list: List[_] =>
+              val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
+              list.foreach {data =>
+                val child = genericType.newInstance.asInstanceOf[java.lang.Object]
+                mapToPojo(data.asInstanceOf[Map[String, _]], child)
+                collection.add(child)
+              }
+            case _ =>
+          }
+        }
+    }
     pojo
+  }
+
+  def getCollectionType(t: java.lang.reflect.Type) = {
+    val parametrisedType = t.asInstanceOf[ParameterizedType]
+    parametrisedType.getActualTypeArguments()(0). asInstanceOf[java.lang.Class[_]];
   }
 
   def convertValue(value: Any, t: Class[_],
