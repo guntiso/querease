@@ -253,6 +253,7 @@ object ort extends org.tresql.NameMap {
 
     def toSingular(s: String) = // XXX to undo JAXB plural
       if (s endsWith "ies") s.dropRight(3) + "y"
+      else if (s endsWith "tuses") s.dropRight(2)
       else if (s endsWith "s") s.dropRight(1)
       else s
 
