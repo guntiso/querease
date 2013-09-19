@@ -381,8 +381,9 @@ object ort extends org.tresql.NameMap {
       if (fieldNameToDef(f.Field).isExpression) sys.error("Calculated field " + f.Field +
         " is not available for filtering from view " + xsdName(view.name))
       else true
-    val filteredParams = params.copy(Filter =
-      paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
+    val filteredParams = Option(params).getOrElse(
+      new ListRequestType(0, 0, Array(), Array())).copy(Filter =
+        paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Sort => sort, Offset => offset }
     //LIMIT threshold
     val limit = math.min(100, filteredParams.Limit)
