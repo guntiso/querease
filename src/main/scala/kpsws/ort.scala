@@ -22,12 +22,28 @@ import metadata.Metadata
 import metadata.YamlViewDefLoader
 import java.util
 import java.lang.reflect.ParameterizedType
-
+import scala.xml.{Elem, Node}
 
 
 object ort extends org.tresql.NameMap {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
+
+  def xmlToMap(elem: Node):java.util.Map[String, _] ={
+    def getElem(n: Node) =
+      if (n.child.count(!_.isAtom) > 0) xmlToMap(n)
+      else if (n.text.trim.isEmpty) null else n.text
+    def getListOfElems(s: Seq[Node]): java.util.List[_] = s.map(li => getElem(li)).filter(_!= null)
+    elem.child.groupBy(_.label).flatMap(e =>
+      if(e._2.length == 1) getElem(e._2.head) match {
+        case null => Nil
+        case p => List((e._1, p))
+      }else getListOfElems(e._2) match {
+        case l if (l.isEmpty) => Nil
+        case l => List((e._1, l))
+      }
+    )
+  }
 
   private def propName(m: java.lang.reflect.Method) = {
     val mName = m.getName
