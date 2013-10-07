@@ -20,9 +20,8 @@ import metadata.JoinsParser
 import metadata.Join
 import metadata.Metadata
 import metadata.YamlViewDefLoader
-import java.util
 import java.lang.reflect.ParameterizedType
-import scala.xml.{Elem, Node}
+import scala.xml.{XML, Elem, Node}
 
 
 object ort extends org.tresql.NameMap {
@@ -43,6 +42,21 @@ object ort extends org.tresql.NameMap {
         case l => List((e._1, l))
       }
     )
+  }
+
+  def mapToXml(map: java.util.Map[String, _], root: String): Node = {
+   def mapList(list: java.util.List[_], name: String): List[Node] = list.map(c => c match{
+     case m : java.util.Map[String, _] => (<t/>).copy(label = name, child = mapMap(m).toSeq)
+     case v => (<t>{v}</t>).copy(label = name)
+     }
+   ).toList
+   def mapMap(map: java.util.Map[String, _]): List[Node] = map.flatMap(c=> c._2 match {
+        case l : java.util.List[_] => mapList(l, c._1)
+        case m : java.util.Map[String, _] => (<t/>).copy(label = c._1, child = mapMap(m).toSeq)
+        case v => (<t>{v}</t>).copy(label = c._1)
+      }
+    ).toList
+    <t/>.copy(label = root, child = mapMap(map).toSeq)
   }
 
   private def propName(m: java.lang.reflect.Method) = {
