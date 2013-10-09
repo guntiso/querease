@@ -33,7 +33,9 @@ object ort extends org.tresql.NameMap {
       if (n.child.count(!_.isAtom) > 0) xmlToMap(n)
       else if (n.text.trim.isEmpty) null else n.text
     def getListOfElems(s: Seq[Node]): java.util.List[_] = s.map(li => getElem(li)).filter(_!= null)
-    elem.child.groupBy(n => (if(n.prefix != null) n.prefix + "_" + n.label else n.label)).flatMap(e =>
+    def getFieldName(n: Node)= if(n.prefix != null) n.prefix + "_" + n.label else n.label
+    /*ListMap(*/elem.child.groupBy(getFieldName).flatMap(e =>
+    //  (getFieldName(e), getElem(e))
       if(e._2.length == 1) getElem(e._2.head) match {
         case null => Nil
         case p => List((e._1, p))
@@ -44,23 +46,25 @@ object ort extends org.tresql.NameMap {
     )
   }
 
-  def mapToXml(map: java.util.Map[String, _]): List[Elem] = {
+  def mapToXml(map: java.util.Map[String, _], mapComparator: ((String) => ((String, Any),(String, Any)) => Boolean) = null): List[Elem] = {
    def updateNode(node: Elem, name: String, children: Seq[Elem] = null): Elem = name.split("_") match {
      case Array(l: String) => node.copy(label = l, child = if(children != null) children else node.child)
      case Array(p: String, l: String) => node.copy(label = l, prefix = p,  child = if(children != null) children else node.child)
    }
    def mapList(list: java.util.List[_], name: String): List[Elem] = list.map(c => c match{
-     case m : java.util.Map[String, _] => updateNode(<t/>, name, mapMap(m).toSeq)
+     case m : java.util.Map[String, _] => updateNode(<t/>, name, mapMap(m, name).toSeq)
      case v => updateNode(<t>{v}</t>, name)
      }
    ).toList
-   def mapMap(map: java.util.Map[String, _]): List[Elem] = map.flatMap(c=> c._2 match {
+   def mapMap(map: java.util.Map[String, _], name: String): List[Elem] =
+     (if(mapComparator != null && name != null) map.toList.sortWith(mapComparator(name)) else map.toList).
+       flatMap(c=> c._2 match {
         case l : java.util.List[_] => mapList(l, c._1)
-        case m : java.util.Map[String, _] => List(updateNode(<t/>, c._1, mapMap(m).toSeq))
+        case m : java.util.Map[String, _] => List(updateNode(<t/>, c._1, mapMap(m, c._1).toSeq))
         case v => List(updateNode(<t>{v}</t>,  c._1))
       }
     ).toList
-    mapMap(map)
+    mapMap(map, null)
   }
 
   private def propName(m: java.lang.reflect.Method) = {
