@@ -430,11 +430,7 @@ object ort extends org.tresql.NameMap {
         f._2.toList.map(f._1 -> _)).toArray
 
     //base table alias
-    val B = JoinsParser(view.table, view.joins).filter(_.table == view.table).toList match {
-      case Join(a, _, _) :: Nil => // if only one base table encountered return alias
-        Option(a) getOrElse view.table
-      case _ => "b" // default base table alias 
-    }
+    val B = view.tableAlias
     val langs = RequestContext.languagePreferences
     val preferRu = langs(0) == "ru"
     val lSuff = langs.map {
