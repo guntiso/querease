@@ -28,12 +28,12 @@ object ort extends org.tresql.NameMap {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
-  def xmlToMap(elem: Node):Map[String, _] ={
+  def xmlToMap(elem: Node, maintainNamespace: Boolean):Map[String, _] ={
     def getElem(n: Node) =
-      if (n.child.count(!_.isAtom) > 0) xmlToMap(n)
+      if (n.child.count(!_.isAtom) > 0) xmlToMap(n, maintainNamespace)
       else if (n.text.trim.isEmpty) null else n.text
     def getListOfElems(s: Seq[Node]): List[_] = s.map(li => getElem(li)).filter(_!= null).toList
-    def getFieldName(n: Node)= if(n.prefix != null) n.prefix + "_" + n.label else n.label
+    def getFieldName(n: Node)= if (maintainNamespace && n.prefix != null) n.prefix + "_" + n.label else n.label
     elem.child.groupBy(getFieldName).flatMap(e =>
       if(e._2.length == 1) getElem(e._2.head) match {
         case null => Nil
