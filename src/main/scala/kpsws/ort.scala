@@ -36,7 +36,7 @@ object ort extends org.tresql.NameMap {
     def getFieldName(n: Node)= if (maintainNamespace && n.prefix != null) n.prefix + "_" + n.label else n.label
     elem.child.groupBy(getFieldName).flatMap(e =>
       if(e._2.length == 1) getElem(e._2.head) match {
-        case null => Nil
+        case null => List((e._1, null))
         case p => List((e._1, p))
       }else getListOfElems(e._2) match {
         case l if (l.isEmpty) => Nil
