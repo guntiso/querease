@@ -446,13 +446,17 @@ object ort extends org.tresql.NameMap {
 
     def queryColExpression(f: XsdFieldDef) = {
       val qName = queryColTableAlias(f) + "." + f.name
-      if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
+      if (f.expression != null) f.expression
+      else if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
         "nvl(" + expr + ", " + qName + suff + ")")
       else qName
     }
 
     def queryColAlias(f: XsdFieldDef) =
-      Option(f.alias).getOrElse(if (isI18n(f)) f.name else null)
+      Option(f.alias) getOrElse {
+        if (f.isExpression && f.expression != null || isI18n(f)) f.name
+        else null
+      }
 
     def queryColName(f: XsdFieldDef) =
       Option(f.alias).getOrElse(
@@ -460,7 +464,9 @@ object ort extends org.tresql.NameMap {
 
     val cols =
       if (countAll) " {count(*)}"
-      else view.fields.filter(!_.isExpression).filter(!_.isCollection).map(f =>
+      else view.fields
+      .filter(f => !f.isExpression || f.expression != null)
+      .filter(!_.isCollection).map(f =>
         queryColExpression(f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
