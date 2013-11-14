@@ -474,10 +474,9 @@ object ort extends org.tresql.NameMap {
     val cols =
       if (countAll) " {count(*)}"
       else view.fields
-        .filter(f => !f.isExpression || f.expression != null ||
-          (f.xsdType.isComplexType && !countAll))
+        .filter(f => !f.isExpression || f.expression != null)
         .filter(f => !f.isCollection ||
-          (f.xsdType.isComplexType && !countAll))
+          (f.xsdType.isComplexType && !countAll && !f.isExpression))
         .map(f => queryColExpression(f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
