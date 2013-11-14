@@ -245,6 +245,11 @@ object ort extends org.tresql.NameMap {
     else currentUserId
   }
 
+  private def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
+    YamlViewDefLoader.nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
+      sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
+        " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
+
   def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     import metadata.{ Metadata => Schema }
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
@@ -299,16 +304,12 @@ object ort extends org.tresql.NameMap {
       def getFieldDef(fieldName: String) =
         viewDef.fields.find(_.name == fieldName).getOrElse(sys.error(
           "Field not found for property: " + viewDef.name + "." + fieldName))
-      def getChildViewDef(fieldDef: XsdFieldDef) =
-        YamlViewDefLoader.nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
-          sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
-            " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
       propMap.filter(_._1 != "clazz").map {
         case (key, l: List[Map[String, _]]) =>
           val fieldName = toSingular(key) // XXX undo JAXB plural 
           val fieldDef = getFieldDef(fieldName)
           if (isSaveable(fieldDef)) {
-            val childViewDef = getChildViewDef(fieldDef)
+            val childViewDef = getChildViewDef(viewDef, fieldDef)
             childViewDef.table -> l.map(toSaveableDetails(_, childViewDef))
           } else ("!" + key, l)
         case (key, value) =>
@@ -316,7 +317,7 @@ object ort extends org.tresql.NameMap {
           val fieldDef = getFieldDef(fieldName)
           if (isSaveable(fieldDef))
             if (fieldDef.xsdType.isComplexType) {
-              val childViewDef = getChildViewDef(fieldDef)
+              val childViewDef = getChildViewDef(viewDef, fieldDef)
               childViewDef.table -> toSaveableDetails(
                 value.asInstanceOf[Map[String, Any]], childViewDef)
             } else (key, value)
@@ -364,10 +365,10 @@ object ort extends org.tresql.NameMap {
   /* -------- Query support methods -------- */
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
-    val tresqlQuery =
-      queryString(Metadata.getViewDef(pojoClass), params, wherePlus, true)
-    Env.log(tresqlQuery._1)
-    Query.unique[Int](tresqlQuery._1, tresqlQuery._2)
+    val (tresqlQueryString, paramsMap) =
+      queryStringAndParams(Metadata.getViewDef(pojoClass), params, wherePlus, true)
+    Env.log(tresqlQueryString)
+    Query.unique[Int](tresqlQueryString, paramsMap)
   }
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
@@ -380,17 +381,19 @@ object ort extends org.tresql.NameMap {
     ort.query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
   }
 
-  private def lowerNames(m: Map[String, _]) = m.map(e => (e._1.toLowerCase, e._2))
+  private def lowerNames(m: Map[String, Any]) = m.map(e => (e._1.toLowerCase, e._2))
   def selectToPojo[T](query: String, pojoClass: Class[T], params: Map[String, Any] = null) = {
-    def pojo(m: Map[String, _]) = mapToPojo(lowerNames(m), pojoClass.newInstance)
-    Query.select(query, params).toListOfMaps.map(pojo)
+    def toPojo(m: Map[String, Any]) = mapToPojo(m, pojoClass.newInstance)
+    val maps = Query.select(query, params).toListOfMaps.map(lowerNames)
+    maps map toPojo
   }
 
   def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
-    val tresqlQuery = queryString(view, params, wherePlus)
-    Env.log(tresqlQuery._1)
-    selectToPojo(tresqlQuery._1, pojoClass, tresqlQuery._2)
+    val (tresqlQueryString, paramsMap) =
+      queryStringAndParams(view, params, wherePlus)
+    Env.log(tresqlQueryString)
+    selectToPojo(tresqlQueryString, pojoClass, paramsMap)
   }
 
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
@@ -398,9 +401,9 @@ object ort extends org.tresql.NameMap {
     if (ComparisonOps.contains(comp)) comp
     else sys.error("Comparison operator not supported: " + comp)
 
-  def queryString(view: XsdTypeDef, params: ListRequestType,
+  def queryStringAndParams(view: XsdTypeDef, params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map()),
-    countAll: Boolean = false) = {
+    countAll: Boolean = false): (String, Map[String, Any]) = {
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
     import metadata.DbConventions.{ dbNameToXsdName => xsdName }
@@ -447,6 +450,11 @@ object ort extends org.tresql.NameMap {
     def queryColExpression(f: XsdFieldDef) = {
       val qName = queryColTableAlias(f) + "." + f.name
       if (f.expression != null) f.expression
+      else if (f.isComplexType) {
+        val (tresqlQueryString, _) =
+          queryStringAndParams(getChildViewDef(view, f), null)
+        "|" + tresqlQueryString
+      }
       else if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
         "nvl(" + expr + ", " + qName + suff + ")")
       else qName
@@ -465,9 +473,11 @@ object ort extends org.tresql.NameMap {
     val cols =
       if (countAll) " {count(*)}"
       else view.fields
-      .filter(f => !f.isExpression || f.expression != null)
-      .filter(!_.isCollection).map(f =>
-        queryColExpression(f)
+        .filter(f => !f.isExpression || f.expression != null ||
+          (f.xsdType.isComplexType && !countAll))
+        .filter(f => !f.isCollection ||
+          (f.xsdType.isComplexType && !countAll))
+        .map(f => queryColExpression(f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
 
