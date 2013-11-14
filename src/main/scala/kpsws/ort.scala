@@ -463,6 +463,7 @@ object ort extends org.tresql.NameMap {
     def queryColAlias(f: XsdFieldDef) =
       Option(f.alias) getOrElse {
         if (f.isExpression && f.expression != null || isI18n(f)) f.name
+        else if (f.isComplexType && f.isCollection) f.name + "s" // XXX plural
         else null
       }
 
