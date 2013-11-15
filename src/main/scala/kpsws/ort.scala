@@ -9,17 +9,13 @@ import scala.collection.JavaConversions._
 import javax.xml.datatype._
 import kpsws.impl._
 import kpsws.impl.Error._
-import metadata.XsdTypeDef
-import metadata.XsdFieldDef
+import metadata._
 import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
 import java.util.{ArrayList, Date}
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import metadata.JoinsParser
-import metadata.Join
-import metadata.Metadata
-import metadata.YamlViewDefLoader
 import java.lang.reflect.ParameterizedType
 import scala.xml.{XML, Elem, Node}
 
@@ -451,9 +447,35 @@ object ort extends org.tresql.NameMap {
       val qName = queryColTableAlias(f) + "." + f.name
       if (f.expression != null) f.expression
       else if (f.isComplexType) {
+        val childViewDef = getChildViewDef(view, f)
+        val joinToParent = childViewDef.table match { // XXX FIXME get from metadata
+          case "smgs_border_station" =>
+            "[smgs_.id = smb.smgs_id]"
+          case _ => ""
+        }
+        val sortDetails = childViewDef.table match { // XXX FIXME get from metadata
+          case "cnote_doc_mapping" => "CnoteDocId"
+          case "cnote_rr_doc_mapping" => "CnoteDocId"
+          case "cnote_carrier_data" => null
+          case _ => "Id" // preserve detail ordering
+        }
+        lazy val sortDetailsDbName = DbConventions.xsdNameToDbName(sortDetails)
+        val isSortFieldIncluded = sortDetails == null ||
+          childViewDef.fields.map(f => Option(f.alias) getOrElse f.name).toSet
+          .contains(sortDetailsDbName)
+        val extendedChildViewDef = // XXX add missing TODO GET RID OF THIS BS
+          if (isSortFieldIncluded) childViewDef
+          else {
+            val fd = XsdFieldDef(childViewDef.table, null, sortDetailsDbName,
+              null, false, false, null, true, false, null, false, null)
+            childViewDef.copy(fields = childViewDef.fields ++
+              Seq(fd.copy(xsdType = Metadata.getCol(childViewDef, fd).xsdType)))
+          }
         val (tresqlQueryString, _) =
-          queryStringAndParams(getChildViewDef(view, f), null)
-        "|" + tresqlQueryString
+          queryStringAndParams(extendedChildViewDef,
+            new ListRequestType(0, 0, null,
+              Option(sortDetails).map(ListSortType(_, "asc")).toArray))
+        "|" + joinToParent + tresqlQueryString 
       }
       else if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
         "nvl(" + expr + ", " + qName + suff + ")")
