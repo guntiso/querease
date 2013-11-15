@@ -541,13 +541,13 @@ object ort extends org.tresql.NameMap {
 
     def limitOffset(query: String) = (if (countAll) (0, 0) else (limit, offset)) match {
       case (0, 0) => (query, Array())
-      case (limit, 0) => // TODO no need for subquery here
-        ("/(" + query + ") [rownum <= ?]", Array(limit))
+      case (limit, 0) =>
+        (query + "@(?)", Array(limit))
       case (0, offset) =>
-        ("/(/(" + query + ") w {rownum rnum, w.*}) [rnum > ?]", Array(offset))
+        (query + "@(?,)", Array(offset))
       case (limit, offset) =>
-        ("/(/(" + query + ") w [rownum <= ?] {rownum rnum, w.*}) [rnum > ?]",
-          Array(offset + limit, offset))
+        // use limit + offset instead of limit because ora dialect not ready
+        (query + "@(? ?)", Array(offset, limit + offset))
     }
 
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
