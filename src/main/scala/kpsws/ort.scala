@@ -505,9 +505,16 @@ object ort extends org.tresql.NameMap {
       List(view.joins, autoJoins, view.joins).filter(_ != null).mkString("; ")
     }
     */
+
+    val inlineLimit = (countAll, limit, offset) match {
+      case (_, 0, _) => null
+      case (false, limit, 0) => "rownum <= ?"
+      case _ => null
+    }
+
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
-        " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
+        " :" + f._1) ++ Option(wherePlus._1).filter(_ != "") ++ Option(inlineLimit))
       .mkString("[", " & ", "]")
 
     val order =
@@ -523,8 +530,7 @@ object ort extends org.tresql.NameMap {
 
     def limitOffset(query: String) = (if (countAll) (0, 0) else (limit, offset)) match {
       case (0, 0) => (query, Array())
-      case (limit, 0) => // TODO no need for subquery here
-        ("/(" + query + ") [rownum <= ?]", Array(limit))
+      case (limit, 0) => (query, Array(limit)) // inlined limit, do not modify
       case (0, offset) =>
         ("/(/(" + query + ") w {rownum rnum, w.*}) [rnum > ?]", Array(offset))
       case (limit, offset) =>
