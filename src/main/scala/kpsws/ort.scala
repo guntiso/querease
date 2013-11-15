@@ -408,7 +408,7 @@ object ort extends org.tresql.NameMap {
     val safeExpr = List("decode(cnt, null, 0, 1)",
       "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
-        XsdFieldDef("", "", "", "", false, true, expr, true, false, null, false, "")))
+        XsdFieldDef("", "", "", "", false, true, expr, true, false, null, null, false, "")))
       .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       safeExpr.get(f) getOrElse
@@ -448,11 +448,7 @@ object ort extends org.tresql.NameMap {
       if (f.expression != null) f.expression
       else if (f.isComplexType) {
         val childViewDef = getChildViewDef(view, f)
-        val joinToParent = childViewDef.table match { // XXX FIXME get from metadata
-          case "smgs_border_station" =>
-            "[smgs_.id = smb.smgs_id]"
-          case _ => ""
-        }
+        val joinToParent = Option(f.joinToParent) getOrElse ""
         val sortDetails = childViewDef.table match { // XXX FIXME get from metadata
           case "cnote_doc_mapping" => "CnoteDocId"
           case "cnote_rr_doc_mapping" => "CnoteDocId"
@@ -467,7 +463,7 @@ object ort extends org.tresql.NameMap {
           if (isSortFieldIncluded) childViewDef
           else {
             val fd = XsdFieldDef(childViewDef.table, null, sortDetailsDbName,
-              null, false, false, null, true, false, null, false, null)
+              null, false, false, null, true, false, null, null, false, null)
             childViewDef.copy(fields = childViewDef.fields ++
               Seq(fd.copy(xsdType = Metadata.getCol(childViewDef, fd).xsdType)))
           }
