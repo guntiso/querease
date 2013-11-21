@@ -527,7 +527,7 @@ object ort extends org.tresql.NameMap {
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
         " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
-      .mkString("[", " & ", "]")
+      .mkString("[", " & ", "]") match {case "[]" => "" case a => a}
 
     val order =
       if (countAll || sort == null || sort.size == 0) ""
