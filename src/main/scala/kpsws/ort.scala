@@ -298,7 +298,8 @@ object ort extends org.tresql.NameMap {
     def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
       def isSaveable(f: XsdFieldDef) = !f.isExpression
       def getFieldDef(fieldName: String) =
-        viewDef.fields.find(_.name == fieldName).getOrElse(sys.error(
+        viewDef.fields.find(f =>
+          Option(f.alias).getOrElse(f.name) == fieldName).getOrElse(sys.error(
           "Field not found for property: " + viewDef.name + "." + fieldName))
       propMap.filter(_._1 != "clazz").map {
         case (key, l: List[Map[String, _]]) =>
