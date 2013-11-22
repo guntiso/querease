@@ -246,6 +246,17 @@ object ort extends org.tresql.NameMap {
       sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
+  def toPlural(s: String) = // comply with JAXB plural
+    if (s.endsWith("y")) s.dropRight(1) + "ies"
+    else if (s endsWith "tus") s + "es"
+    else s + "s"
+
+  def toSingular(s: String) = // XXX to undo JAXB plural
+    if (s endsWith "ies") s.dropRight(3) + "y"
+    else if (s endsWith "tuses") s.dropRight(2)
+    else if (s endsWith "s") s.dropRight(1)
+    else s
+
   def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
     import metadata.{ Metadata => Schema }
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
@@ -288,12 +299,8 @@ object ort extends org.tresql.NameMap {
       case s: String => s.trim()
       case x => x
     }
+    
 
-    def toSingular(s: String) = // XXX to undo JAXB plural
-      if (s endsWith "ies") s.dropRight(3) + "y"
-      else if (s endsWith "tuses") s.dropRight(2)
-      else if (s endsWith "s") s.dropRight(1)
-      else s
 
     def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
       def isSaveable(f: XsdFieldDef) = !f.isExpression
@@ -482,7 +489,7 @@ object ort extends org.tresql.NameMap {
     def queryColAlias(f: XsdFieldDef) =
       Option(f.alias) getOrElse {
         if (f.isExpression && f.expression != null || isI18n(f)) f.name
-        else if (f.isComplexType && f.isCollection) f.name + "s" // XXX plural
+        else if (f.isComplexType && f.isCollection) toPlural(f.name)
         else null
       }
 
