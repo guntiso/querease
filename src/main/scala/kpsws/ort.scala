@@ -1,7 +1,6 @@
 package kpsws
 
 import org.tresql.ORT
-import org.tresql.NameMap
 import org.tresql.Query
 import xsdgen.ElementName
 import language.postfixOps
