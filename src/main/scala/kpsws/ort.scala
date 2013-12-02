@@ -117,7 +117,10 @@ object ort extends org.tresql.NameMap {
       ).foreach { m =>
         val propName = m.getName.drop(3) //property name
         val genericType = getCollectionType(m.getGenericReturnType)
-        map.get(xsdNameToDbName(propName)).foreach{mapElement =>
+        map.get(xsdNameToDbName(propName) match{
+          case "cnote_to_apiks" => "cnote_to_apikss" // XXX FIXME handling incorect to plural support
+          case a => a
+        }).foreach{mapElement =>
           mapElement match {
             case list: List[_] =>
               val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
