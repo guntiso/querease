@@ -541,13 +541,13 @@ object ort extends org.tresql.NameMap {
     val order =
       if (countAll || sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
-        "#(" + (fieldNameToDef(s.Field) match {
+        (fieldNameToDef(s.Field) match {
           case f if f.isExpression && f.expression != null =>
             f.expression
           case f if isRu(f) =>
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
-        }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "") + ")").mkString("")
+        }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "")).mkString("#(", ", ", ")")
 
     def limitOffset(query: String) = (if (countAll) (0, 0) else (limit, offset)) match {
       case (0, 0) => (query, Array())
