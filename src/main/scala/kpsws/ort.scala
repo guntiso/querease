@@ -11,6 +11,7 @@ import kpsws.impl.Error._
 import metadata._
 import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
+import org.tresql.QueryParser
 import java.util.{ArrayList, Date}
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
@@ -509,8 +510,15 @@ object ort extends org.tresql.NameMap {
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
 
+    def ast(queryString: String) =
+      QueryParser.parseExp(queryString).asInstanceOf[QueryParser.Query]
+    def fromAndWhere(queryString: String) = ast(queryString)
+      .copy(cols = null, group = null, order = null, offset = null, limit = null)
+      .tresql
+    val groupBy = Option(view.joins).map(ast).map(_.group)
+      .filter(_ != null).map(_.tresql) getOrElse ""
     //DELEME when next todo done
-    val from = if (view.joins != null) view.joins else {
+    val from = if (view.joins != null) fromAndWhere(view.joins) else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
@@ -581,7 +589,7 @@ object ort extends org.tresql.NameMap {
     }).toMap
 
     import language.existentials
-    val (q, limitOffsetPars) = limitOffset(from + where + cols + order)
+    val (q, limitOffsetPars) = limitOffset(from + where + cols + groupBy + order)
     (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
 
