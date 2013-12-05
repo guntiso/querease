@@ -579,11 +579,7 @@ object ort extends org.tresql.NameMap {
         case "decimal" => BigDecimal(v)
         case "date" => Format.xsdDate.parse(v)
         case "dateTime" => Format.xsdDateTime.parse(v)
-        case "boolean" => v match {
-          case "true" | "TRUE" => "Y"
-          case "false" | "FALSE" => "N"
-          case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
-        }
+        case "boolean" => reqBooleanToString(v)
         case x => sys.error("Filter value type not supported: " + x)
       })
     }).toMap
@@ -591,6 +587,12 @@ object ort extends org.tresql.NameMap {
     import language.existentials
     val (q, limitOffsetPars) = limitOffset(from + where + cols + groupBy + order)
     (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+  }
+
+  def reqBooleanToString(v: String) = v match {
+    case "true" | "TRUE" => "Y"
+    case "false" | "FALSE" => "N"
+    case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
   }
 
   def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
