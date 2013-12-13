@@ -125,6 +125,7 @@ object ort extends org.tresql.NameMap {
           mapElement match {
             case list: List[_] =>
               val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
+              collection.clear
               list.foreach {data =>
                 val child = genericType.newInstance.asInstanceOf[java.lang.Object]
                 mapToPojo(data.asInstanceOf[Map[String, _]], child)
