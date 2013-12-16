@@ -420,13 +420,13 @@ object ort extends org.tresql.NameMap {
     val safeExpr = List("decode(cnt, null, 0, 1)",
       "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
-        XsdFieldDef("", "", "", "", false, null, true, expr, true, false, null, null, null, false, "")))
+        XsdFieldDef("", "", "", "", false, null, true, true, expr, true, false, null, null, null, false, "")))
       .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       safeExpr.get(f) getOrElse
         sys.error("Field " + f + " is not available from view " + xsdName(view.name)))
     def isFilterable(f: ListFilterType): Boolean =
-      if (fieldNameToDef(f.Field).isExpression) sys.error("Calculated field " + f.Field +
+      if (!fieldNameToDef(f.Field).isFilterable) sys.error("Calculated field " + f.Field +
         " is not available for filtering from view " + xsdName(view.name))
       else true
     val filteredParams = Option(params).getOrElse(
@@ -475,7 +475,7 @@ object ort extends org.tresql.NameMap {
           if (isSortFieldIncluded) childViewDef
           else {
             val fd = XsdFieldDef(childViewDef.table, null, sortDetailsDbName,
-              null, false, null, false, null, true, false, null, null, null, false, null)
+              null, false, null, false, true, null, true, false, null, null, null, false, null)
             childViewDef.copy(fields = childViewDef.fields ++
               Seq(fd.copy(xsdType = Metadata.getCol(childViewDef, fd).xsdType)))
           }
