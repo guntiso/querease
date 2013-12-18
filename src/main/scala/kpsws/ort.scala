@@ -118,10 +118,7 @@ object ort extends org.tresql.NameMap {
       ).foreach { m =>
         val propName = m.getName.drop(3) //property name
         val genericType = getCollectionType(m.getGenericReturnType)
-        map.get(xsdNameToDbName(propName) match{
-          case "cnote_to_apiks" => "cnote_to_apikss" // XXX FIXME handling incorect to plural support
-          case a => a
-        }).foreach{mapElement =>
+        map.get(xsdNameToDbName(propName)).foreach{mapElement =>
           mapElement match {
             case list: List[_] =>
               val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
@@ -253,11 +250,13 @@ object ort extends org.tresql.NameMap {
   def toPlural(s: String) = // comply with JAXB plural
     if (s.endsWith("y")) s.dropRight(1) + "ies"
     else if (s endsWith "tus") s + "es"
+    else if (s endsWith "apiks") s
     else s + "s"
 
   def toSingular(s: String) = // XXX to undo JAXB plural
     if (s endsWith "ies") s.dropRight(3) + "y"
     else if (s endsWith "tuses") s.dropRight(2)
+    else if (s endsWith "apiks") s
     else if (s endsWith "s") s.dropRight(1)
     else s
 
