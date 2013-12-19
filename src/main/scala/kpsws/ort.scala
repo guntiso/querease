@@ -362,13 +362,6 @@ object ort extends org.tresql.NameMap {
   }
   def getViewDef(pojo: AnyRef) = Metadata.getViewDef(pojo.getClass)
 
-  def save(pojo: AnyRef, id: Long) = {
-    val viewDef = getViewDef(pojo)
-    val tableName = viewDef.table
-    val propMap = pojoToSaveableMap(pojo, viewDef)
-    ORT.save(tableName, propMap + ("id" -> id))
-  }
-
   /* -------- Query support methods -------- */
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
