@@ -18,6 +18,8 @@ import java.text.SimpleDateFormat
 import metadata.JoinsParser
 import java.lang.reflect.ParameterizedType
 import scala.xml.{XML, Elem, Node}
+import java.sql.Timestamp
+import scala.compat.Platform
 
 
 object ort extends org.tresql.NameMap {
@@ -287,7 +289,8 @@ object ort extends org.tresql.NameMap {
     val modifiedByField =
       Schema.tableDef(viewDef).cols.find(_.name == "last_modified_by_id")
     val lastModifiedDate =
-      if (modificationDateField.isDefined || checksumField.isDefined) new Date()
+      if (modificationDateField.isDefined || checksumField.isDefined)
+        new Timestamp(Platform.currentTime)
       else null
     if (idOption.isDefined && checksumField.isDefined) {
       val oldChecksum = Query.unique[String](
