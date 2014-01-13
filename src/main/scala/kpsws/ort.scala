@@ -85,7 +85,7 @@ object ort extends org.tresql.NameMap {
         case c: Class[_] => c
         case x: XMLGregorianCalendar => x.toGregorianCalendar.getTime
         case x if (isPrimitive(x)) => x
-        // FIXME blob support - case b: Array[Byte] => b
+        case b: Array[Byte] => new java.io.ByteArrayInputStream(b)
         case l: Seq[_] => l map pojoToMap
         case l: Array[_] => l map pojoToMap
         case l: java.util.Collection[_] => l map pojoToMap
