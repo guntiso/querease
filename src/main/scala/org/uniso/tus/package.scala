@@ -105,13 +105,13 @@ package object tus {
     }
   }
 
-  implicit object PohaJsonFormat extends RootJsonFormat[Poha] with JsonConverter {
+  implicit object DtoJsonFormat extends RootJsonFormat[Dto] with JsonConverter {
     def read(value: JsValue) = sys.error("not implemented yet!")
-    def write(value: Poha) = w(value.toMap)
+    def write(value: Dto) = w(value.toMap)
   }
-  implicit object PohaListJsonFormat extends RootJsonFormat[List[Poha]] with JsonConverter {
+  implicit object DtoListJsonFormat extends RootJsonFormat[List[Dto]] with JsonConverter {
     def read(value: JsValue) = sys.error("not implemented yet!")
-    def write(value: List[Poha]) = w(value map (_.toMap))
+    def write(value: List[Dto]) = w(value map (_.toMap))
   }
 
   implicit object MapJsonFormat extends JsonFormat[Map[String, Any]] with JsonConverter {
@@ -136,13 +136,13 @@ package object tus {
       w(value).asInstanceOf[JsArray]
     }
   }
-  implicit val toResponsePohaMarshaller = Marshaller.of[Poha](`application/json`) {
-    (poha, contentType, ctx) => ctx.marshalTo(HttpEntity(contentType, poha.toMap.toJson.prettyPrint))
+  implicit val toResponseDtoMarshaller = Marshaller.of[Dto](`application/json`) {
+    (dto, contentType, ctx) => ctx.marshalTo(HttpEntity(contentType, dto.toMap.toJson.prettyPrint))
   }
-  implicit val toResponsePohaListMarshaller = Marshaller.of[List[Poha]](`application/json`) {
-    (pohaList, contentType, ctx) =>
+  implicit val toResponseDtoListMarshaller = Marshaller.of[List[Dto]](`application/json`) {
+    (dtoList, contentType, ctx) =>
       ctx.marshalTo(HttpEntity(contentType,
-        pohaList.map(_.toMap).toJson.prettyPrint))
+        dtoList.map(_.toMap).toJson.prettyPrint))
   }
   implicit val jsonUnmarshaller: FromRequestUnmarshaller[JsValue] = new Deserializer[HttpRequest, JsValue] {
     def apply(req: HttpRequest) = req.header[`Content-Type`].filter {
@@ -163,13 +163,13 @@ package object tus {
         case Left(e) => Left(e)
       }
     }
-  implicit val pohaUnmarshaller: FromRequestUnmarshaller[Poha] =
-    new Deserializer[HttpRequest, Poha] {
+  implicit val dtoUnmarshaller: FromRequestUnmarshaller[Dto] =
+    new Deserializer[HttpRequest, Dto] {
       def apply(req: HttpRequest) = jsonUnmarshaller.apply(req) match {
         case Right(o: JsObject) => req.method match {
           //insert TODO get class name from uri -> class name map
           case HttpMethods.POST => req.uri.path.reverse.head match {
-            case s: String => Right(Class.forName(s).newInstance.asInstanceOf[Poha].fill(o))
+            case s: String => Right(Class.forName(s).newInstance.asInstanceOf[Dto].fill(o))
           }
         }
         case Right(x) => Left(MalformedContent(x.toString))
@@ -178,19 +178,19 @@ package object tus {
     }
 
   //retrieving from tresql plain objects with public var fields
-  object Poha {
-    implicit def rowLikeToPoha[T <: Poha](r: RowLike, m: Manifest[T]): T =
+  object Dto {
+    implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
       m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
-    //poha to map for ORT
-    implicit def pohaToMap[T <: Poha](p: T): (String, Map[String, _]) = {
+    //dto to map for ORT
+    implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, _]) = {
       val n = p.getClass.getName.toLowerCase
       n.substring(n.lastIndexOf("$") + 1) -> p.toMap
     }
   }
-  trait Poha {
+  trait Dto {
     //filling in object from RowLike
-    private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Poha]))] =
+    private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
       (for (
         m <- getClass.getMethods;
         if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
@@ -210,10 +210,10 @@ package object tus {
     protected def set(dbName: String, r: RowLike) =
       for (s <- setters.get(dbToPropName(dbName))) {
         if (s._2._2 != null) { //child result
-          val m: Manifest[_ <: Poha] = s._2._2
+          val m: Manifest[_ <: Dto] = s._2._2
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Poha](Poha.rowLikeToPoha _,
-            m.asInstanceOf[Manifest[Poha]]).asInstanceOf[Object])
+          s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
+            m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
         } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       }
     protected def dbToPropName(name: String) = name.toLowerCase
@@ -229,7 +229,7 @@ package object tus {
         case java.lang.Double.TYPE => ManifestFactory.Double
         case java.lang.Boolean.TYPE => ManifestFactory.Boolean
       }) -> null
-    protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Poha] = {
+    protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
       val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
       val clazz = parametrisedType.getActualTypeArguments()(0).asInstanceOf[java.lang.Class[_]]
       ManifestFactory.classType(clazz)
@@ -239,12 +239,12 @@ package object tus {
     //creating map from object
     def toMap: Map[String, Any] = setters.flatMap { m =>
       scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        case s: Seq[Poha] => m._1 -> (s map (_.toMap))
+        case s: Seq[Dto] => m._1 -> (s map (_.toMap))
         case x => m._1 -> x
       }
     } toMap
 
-    //creating poha from JsObject
+    //creating dto from JsObject
     def fill(js: JsObject): this.type = {
       js.fields foreach (_ match {
         case (n, v: JsString) =>
@@ -277,19 +277,19 @@ package object tus {
               met._1.invoke(this, v.value.asInstanceOf[Object])
           })
         case (n, v: JsObject) => setters.get(n).map(met => {
-          if (classOf[Poha].isAssignableFrom(met._2._1.runtimeClass)) {
-            val o = met._2._1.runtimeClass.newInstance.asInstanceOf[Poha].fill(v)
+          if (classOf[Dto].isAssignableFrom(met._2._1.runtimeClass)) {
+            val o = met._2._1.runtimeClass.newInstance.asInstanceOf[Dto].fill(v)
             met._1.invoke(this, o.asInstanceOf[Object])
           }
         })
         case (n, v: JsArray) => setters.get(n).map(met => {
           val c = met._2._1.runtimeClass
           if (classOf[Seq[_]].isAssignableFrom(c) && c.isAssignableFrom(classOf[List[_]]) &&
-              met._2._2 != null && classOf[Poha].isAssignableFrom(met._2._2.runtimeClass)) {
+              met._2._2 != null && classOf[Dto].isAssignableFrom(met._2._2.runtimeClass)) {
             val chClass = met._2._2.runtimeClass
             println("\n\n" + chClass + "\n\n")
             val l = v.elements.map (
-                o => chClass.newInstance.asInstanceOf[Poha].fill(o.asInstanceOf[JsObject]))
+                o => chClass.newInstance.asInstanceOf[Dto].fill(o.asInstanceOf[JsObject]))
             met._1.invoke(this, l.asInstanceOf[Object])
           }
         })
