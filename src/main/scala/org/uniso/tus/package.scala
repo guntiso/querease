@@ -42,6 +42,9 @@ package object tus {
   //tresql environment configuration
   val tresqlDebug = config.getBoolean("tresql.debug")
   Env update ((m, l) => if (tresqlDebug) println(m))
+  Env.dialect = dialects.InsensitiveCmp("ĒŪĪĀŠĢĶĻŽČŅēūīāšģķļžčņ", "EUIASGKLZCNeuiasgklzcn") orElse
+    dialects.OracleDialect
+  Env.idExpr = _ => "dual {hibernate_sequence.nextval}"
 
   private def setenv(pool: BoneCP) {
     Env.conn = pool.getConnection
@@ -163,19 +166,28 @@ package object tus {
         case Left(e) => Left(e)
       }
     }
-  implicit val dtoUnmarshaller: FromRequestUnmarshaller[Dto] =
-    new Deserializer[HttpRequest, Dto] {
+
+  implicit val dtoUnmarshaller: FromRequestUnmarshaller[DtoWithId] =
+    new Deserializer[HttpRequest, DtoWithId] {
       def apply(req: HttpRequest) = jsonUnmarshaller.apply(req) match {
         case Right(o: JsObject) => req.method match {
           //insert TODO get class name from uri -> class name map
           case HttpMethods.POST => req.uri.path.reverse.head match {
-            case s: String => Right(Class.forName(s).newInstance.asInstanceOf[Dto].fill(o))
+            case s: String =>
+              Right(model.Metadata.serviceUriToDtoClass(s).newInstance.asInstanceOf[DtoWithId].fill(o))
+          }
+          case HttpMethods.PUT => req.uri.path.reverse.tail.tail.head match {
+            case s: String =>
+              Right(model.Metadata.serviceUriToDtoClass(s).newInstance.asInstanceOf[DtoWithId].fill(o))
           }
         }
         case Right(x) => Left(MalformedContent(x.toString))
         case Left(e) => Left(e)
       }
     }
+  
+  implicit val ObjToTable: ORT.ObjToMapConverter[DtoWithId] = (o: DtoWithId) =>
+    (model.Metadata.dtoClassToTable(o.getClass), o toMap)
 
   //retrieving from tresql plain objects with public var fields
   object Dto {
@@ -231,7 +243,11 @@ package object tus {
       }) -> null
     protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
       val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
-      val clazz = parametrisedType.getActualTypeArguments()(0).asInstanceOf[java.lang.Class[_]]
+      val clazz = parametrisedType.getActualTypeArguments()(0) match {
+        case c: Class[_] => c
+        case v: java.lang.reflect.TypeVariable[_] =>
+          v.getGenericDeclaration.asInstanceOf[Class[_]]
+      }
       ManifestFactory.classType(clazz)
     }
     //end filling in object from RowLike
@@ -285,11 +301,11 @@ package object tus {
         case (n, v: JsArray) => setters.get(n).map(met => {
           val c = met._2._1.runtimeClass
           if (classOf[Seq[_]].isAssignableFrom(c) && c.isAssignableFrom(classOf[List[_]]) &&
-              met._2._2 != null && classOf[Dto].isAssignableFrom(met._2._2.runtimeClass)) {
+            met._2._2 != null && classOf[Dto].isAssignableFrom(met._2._2.runtimeClass)) {
             val chClass = met._2._2.runtimeClass
             println("\n\n" + chClass + "\n\n")
-            val l = v.elements.map (
-                o => chClass.newInstance.asInstanceOf[Dto].fill(o.asInstanceOf[JsObject]))
+            val l = v.elements.map(
+              o => chClass.newInstance.asInstanceOf[Dto].fill(o.asInstanceOf[JsObject]))
             met._1.invoke(this, l.asInstanceOf[Object])
           }
         })
@@ -298,6 +314,11 @@ package object tus {
       })
       this
     }
+  }
+  
+  trait DtoWithId extends Dto {
+    def id: java.lang.Long
+    def id_=(id: java.lang.Long)    
   }
 
 }
