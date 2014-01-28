@@ -185,7 +185,7 @@ package object tus {
         case Left(e) => Left(e)
       }
     }
-  
+
   implicit val ObjToTable: ORT.ObjToMapConverter[DtoWithId] = (o: DtoWithId) =>
     (model.Metadata.dtoClassToTable(o.getClass), o toMap)
 
@@ -265,7 +265,10 @@ package object tus {
       js.fields foreach (_ match {
         case (n, v: JsString) =>
           setters.get(n).map(met => {
-            if (ManifestFactory.singleType(v.value) == met._2._1)
+            if (ManifestFactory.classType(classOf[java.sql.Date]) == met._2._1)
+              met._1.invoke(this, new java.sql.Date(new java.text.SimpleDateFormat("yyyy-MM-dd")
+              	.parse(v.value).getTime()).asInstanceOf[Object])
+            else if (ManifestFactory.singleType(v.value) == met._2._1)
               met._1.invoke(this, v.value.asInstanceOf[Object])
           })
         case (n, v: JsNumber) =>
@@ -315,10 +318,10 @@ package object tus {
       this
     }
   }
-  
+
   trait DtoWithId extends Dto {
     def id: java.lang.Long
-    def id_=(id: java.lang.Long)    
+    def id_=(id: java.lang.Long)
   }
 
 }
