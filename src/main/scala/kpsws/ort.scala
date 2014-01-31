@@ -404,6 +404,15 @@ object ort extends org.tresql.NameMap {
     if (ComparisonOps.contains(comp)) comp
     else sys.error("Comparison operator not supported: " + comp)
 
+  def getI18nColumnExpression(qName: String) ={
+    val langs = RequestContext.languagePreferences
+    val lSuff = langs.map {
+      case "lv" => ""
+      case "en" => "_eng"
+      case "ru" => "_rus"
+    }
+    lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
+  }
   def queryStringAndParams(view: XsdTypeDef, params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
@@ -438,13 +447,8 @@ object ort extends org.tresql.NameMap {
 
     //base table alias
     val B = view.tableAlias
-    val langs = RequestContext.languagePreferences
-    val preferRu = langs(0) == "ru"
-    val lSuff = langs.map {
-      case "lv" => ""
-      case "en" => "_eng"
-      case "ru" => "_rus"
-    }
+
+    val preferRu = RequestContext.languagePreferences(0) == "ru"
     def isRu(f: XsdFieldDef) = preferRu && f.isI18n
     def isI18n(f: XsdFieldDef) = f.isI18n
     def queryColTableAlias(f: XsdFieldDef) =
@@ -482,8 +486,7 @@ object ort extends org.tresql.NameMap {
               Option(sortDetails).map(ListSortType(_, "asc")).toArray))
         "|" + joinToParent + tresqlQueryString 
       }
-      else if (isI18n(f)) lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) =>
-        "nvl(" + expr + ", " + qName + suff + ")")
+      else if (isI18n(f))getI18nColumnExpression(qName)
       else qName
     }
 
