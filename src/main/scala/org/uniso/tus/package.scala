@@ -1,5 +1,6 @@
 package org.uniso
 
+import org.uniso.tus.tresql.CustomFunctions
 package object tus {
   import java.sql.Connection
   import org.tresql._
@@ -43,8 +44,9 @@ package object tus {
   val tresqlDebug = config.getBoolean("tresql.debug")
   Env update ((m, l) => if (tresqlDebug) println(m))
   Env.dialect = dialects.InsensitiveCmp("ĒŪĪĀŠĢĶĻŽČŅēūīāšģķļžčņ", "EUIASGKLZCNeuiasgklzcn") orElse
-    dialects.OracleDialect
+    dialects.SqlEscapeDialect orElse dialects.OracleDialect
   Env.idExpr = _ => "dual {hibernate_sequence.nextval}"
+  Env.functions = CustomFunctions
 
   private def setenv(pool: BoneCP) {
     Env.conn = pool.getConnection
@@ -268,6 +270,9 @@ package object tus {
             if (ManifestFactory.classType(classOf[java.sql.Date]) == met._2._1)
               met._1.invoke(this, new java.sql.Date(new java.text.SimpleDateFormat("yyyy-MM-dd")
               	.parse(v.value).getTime()).asInstanceOf[Object])
+            else if (ManifestFactory.classType(classOf[java.sql.Timestamp]) == met._2._1)
+              met._1.invoke(this, new java.sql.Timestamp(new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+              	.parse(v.value).getTime()).asInstanceOf[Object])  	
             else if (ManifestFactory.singleType(v.value) == met._2._1)
               met._1.invoke(this, v.value.asInstanceOf[Object])
           })
