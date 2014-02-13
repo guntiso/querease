@@ -2,10 +2,8 @@ package metadata
 
 import org.tresql.QueryParser.{ Join => QPJoin, _ }
 
-case class Join(alias: String, table: String, nullable: Either[String, Boolean])
-
-object JoinsParser {
-  def apply(baseTable: String, joins: String): List[Join] = if (joins == null) List() else {
+trait TresqlJoinsParser extends JoinsParser {
+  override def parseJoins(baseTable: String, joins: String) = if (joins == null) List() else {
     var currentJoin: Join = null
     var joinMap: Map[String, Join] = Map()
     def fillJoinMap(join: Join) {
