@@ -47,6 +47,7 @@ package object tus {
     dialects.SqlEscapeDialect orElse dialects.OracleDialect
   Env.idExpr = _ => "dual {hibernate_sequence.nextval}"
   Env.functions = CustomFunctions
+  Env.cache = new SimpleCache
 
   private def setenv(pool: BoneCP) {
     Env.conn = pool.getConnection
