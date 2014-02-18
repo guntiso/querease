@@ -1,0 +1,9 @@
+tmp*
+target
+lib_managed
+.cache
+.classpath
+.project
+.settings
+*.blame
+*.log
