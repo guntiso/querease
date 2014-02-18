@@ -1,4 +1,4 @@
-package org.uniso
+package querease
 
 import org.uniso.tus.tresql.CustomFunctions
 package object tus {

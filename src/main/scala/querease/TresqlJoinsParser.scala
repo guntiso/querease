@@ -1,4 +1,4 @@
-package metadata
+package querease
 
 import org.tresql.QueryParser.{ Join => QPJoin, _ }
 

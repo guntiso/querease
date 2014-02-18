@@ -1,7 +1,8 @@
-package org.tresql
+package querease
 
 import scala.collection.immutable.ListMap
 import sys._
+import org.tresql._
 
 /** Object Relational Transformations - ORT */
 trait ORT {

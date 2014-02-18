@@ -1,4 +1,4 @@
-package kpsws
+package querease
 
 import org.tresql.ORT
 import org.tresql.Query
