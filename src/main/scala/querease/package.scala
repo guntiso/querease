@@ -189,19 +189,14 @@ package object tus {
       }
     }
 
-  implicit val ObjToTable: ORT.ObjToMapConverter[DtoWithId] = (o: DtoWithId) =>
-    (model.Metadata.dtoClassToTable(o.getClass), o toMap)
-
   //retrieving from tresql plain objects with public var fields
   object Dto {
     implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
       m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
     //dto to map for ORT
-    implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, _]) = {
-      val n = p.getClass.getName.toLowerCase
-      n.substring(n.lastIndexOf("$") + 1) -> p.toMap
-    }
+    implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, Any]) = 
+      model.Metadata.dtoClassToTable(p.getClass) -> p.toMap
   }
   trait Dto {
     //filling in object from RowLike
@@ -256,12 +251,18 @@ package object tus {
     //end filling in object from RowLike
 
     //creating map from object
-    def toMap: Map[String, Any] = setters.flatMap { m =>
-      scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        case s: Seq[Dto] => m._1 -> (s map (_.toMap))
-        case x => m._1 -> x
+    def toMap: Map[String, Any] =
+      (setters.toList.flatMap { m =>
+        scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
+          //objects from one list can be put into different tables
+          case s: Seq[Dto] => s map Dto.dtoToMap groupBy (_._1) map (t => t._1 -> (t._2 map (_._2))) toList
+          case x => List(m._1 -> x)
+        } getOrElse Nil
+        //child objects from different lists can be put into one table
+      }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
+        case ("s", l: Seq[(_, Seq[_])]) =>
+          l groupBy (_._1) map (t => t._1 -> (t._2 flatMap (_._2))) case ("v", x) => x
       }
-    } toMap
 
     //creating dto from JsObject
     def fill(js: JsObject): this.type = {
