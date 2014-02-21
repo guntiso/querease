@@ -196,7 +196,7 @@ package object tus {
 
     //dto to map for ORT
     implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, Any]) = 
-      model.Metadata.dtoClassToTable(p.getClass) -> p.toMap
+      model.Metadata.dtoClassToTable(p.getClass) -> p.toSaveableMap
   }
   trait Dto {
     //filling in object from RowLike
@@ -208,7 +208,7 @@ package object tus {
         val name = m.getName.dropRight(4)
         name -> (m -> manifest(name, m.getParameterTypes()(0)))
       }).toMap
-
+    //end filling in object from RowLike
     def fill(r: RowLike): this.type = {
       for (i <- 0 to (r.columnCount - 1)) r.column(i) match {
         case Column(_, name, _) if name != null => set(name, r)
@@ -248,10 +248,16 @@ package object tus {
       }
       ManifestFactory.classType(clazz)
     }
-    //end filling in object from RowLike
 
+    def toMap: Map[String, Any] = setters.flatMap { m =>
+      scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
+        case s: Seq[Dto] => m._1 -> (s map (_.toMap))
+        case x => m._1 -> x
+      }
+    } toMap
+    
     //creating map from object
-    def toMap: Map[String, Any] =
+    def toSaveableMap: Map[String, Any] =
       (setters.toList.flatMap { m =>
         scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
           //objects from one list can be put into different tables
