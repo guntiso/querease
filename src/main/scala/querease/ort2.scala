@@ -1,13 +1,10 @@
 package querease
 
-import org.tresql.ORT
 import org.tresql.Query
 import xsdgen.ElementName
 import language.postfixOps
 import scala.collection.JavaConversions._
 import javax.xml.datatype._
-import kpsws.impl._
-import kpsws.impl.Error._
 import metadata._
 import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
@@ -25,44 +22,6 @@ import scala.compat.Platform
 object ort extends org.tresql.NameMap {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
-
-  def xmlToMap(elem: Node, maintainNamespace: Boolean):Map[String, _] ={
-    def getElem(n: Node) =
-      if (n.child.count(!_.isAtom) > 0) xmlToMap(n, maintainNamespace)
-      else if (n.text.trim.isEmpty) null else n.text
-    def getListOfElems(s: Seq[Node]): List[_] = s.map(li => getElem(li)).filter(_!= null).toList
-    def getFieldName(n: Node)= if (maintainNamespace && n.prefix != null) n.prefix + "_" + n.label else n.label
-    elem.child.groupBy(getFieldName).flatMap(e =>
-      if(e._2.length == 1) getElem(e._2.head) match {
-        case null => List((e._1, null))
-        case p => List((e._1, p))
-      }else getListOfElems(e._2) match {
-        case l if (l.isEmpty) => Nil
-        case l => List((e._1, l))
-      }
-    )
-  }
-
-  def mapToXml(map: Map[String, _], mapComparator: ((String) => ((String, Any),(String, Any)) => Boolean) = null): List[Elem] = {
-   def updateNode(node: Elem, name: String, children: Seq[Elem] = null): Elem = name.split("_") match {
-     case Array(l: String) => node.copy(label = l, child = if(children != null) children else node.child)
-     case Array(p: String, l: String) => node.copy(label = l, prefix = p,  child = if(children != null) children else node.child)
-   }
-   def mapList(list: List[_], name: String): List[Elem] = list.map(c => c match{
-     case m : Map[String, _] => updateNode(<t/>, name, mapMap(m, name).toSeq)
-     case v => updateNode(<t>{v}</t>, name)
-     }
-   ).toList
-   def mapMap(map: Map[String, _], name: String): List[Elem] =
-     (if(mapComparator != null && name != null) map.toList.sortWith(mapComparator(name)) else map.toList).
-       flatMap(c=> c._2 match {
-        case l : List[_] => mapList(l, c._1)
-        case m : Map[String, _] => List(updateNode(<t/>, c._1, mapMap(m, c._1).toSeq))
-        case v => List(updateNode(<t>{v}</t>,  c._1))
-      }
-    ).toList
-    mapMap(map, null)
-  }
 
   private def propName(m: java.lang.reflect.Method) = {
     val mName = m.getName
@@ -237,13 +196,6 @@ object ort extends org.tresql.NameMap {
     new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
       .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
 
-  def getCurrentUserId = {
-    val currentUserId = RequestContext.userId
-    if (currentUserId <= 0)
-      throw new RuntimeException("Request context - missing userId")
-    else currentUserId
-  }
-
   private def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
     YamlViewDefLoader.nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
       sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
@@ -263,50 +215,16 @@ object ort extends org.tresql.NameMap {
     else s
 
   def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
-    import metadata.{ Metadata => Schema }
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[Map[String, _]]) =>
         (xsdNameToDbName(k), vList map toDbFormat)
       case (k, v) => (xsdNameToDbName(k), xsdValueToDbValue(v))
     }
     val propMap = toDbFormat(pojoToMap(pojo))
-    val modificationDateField =
-      Schema.tableDef(viewDef).cols.find(_.name == "last_modified")
-    val checksumField =
-      Schema.tableDef(viewDef).cols.find(_.name == "record_checksum")
-    val idField =
-      Schema.tableDef(viewDef).cols.find(_.name == "id")
-    val idOption =
-      if (idField.isDefined)
-        propMap.get("id")
-          .filter(v => v != null && v != "")
-          .map(_.toString.toLong)
-      else None
-    val createdByField =
-      if (idField.isDefined && idOption == None)
-        Schema.tableDef(viewDef).cols.find(_.name == "created_by_id")
-      else None
-    val modifiedByField =
-      Schema.tableDef(viewDef).cols.find(_.name == "last_modified_by_id")
-    val lastModifiedDate =
-      if (modificationDateField.isDefined || checksumField.isDefined)
-        new Timestamp(Platform.currentTime)
-      else null
-    if (idOption.isDefined && checksumField.isDefined) {
-      val oldChecksum = Query.unique[String](
-        viewDef.table + "[id=?]{record_checksum}", idOption.get)
-      if (oldChecksum != propMap.getOrElse("record_checksum", ""))
-        err(SYS_ERR_SOFT_LOCK_OCCURED)
-    }
-    def checksum = getChecksum(lastModifiedDate)
-
-    lazy val userId = getCurrentUserId
     def trim(value: Any) = value match {
       case s: String => s.trim()
       case x => x
     }
-    
-
 
     def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
       def isSaveable(f: XsdFieldDef) = !f.isExpression
@@ -336,13 +254,7 @@ object ort extends org.tresql.NameMap {
     }
     toSaveableDetails(propMap, viewDef)
       .filter(e => !(e._1 startsWith "!"))
-      .map(e => (e._1, trim(e._2))) ++
-      List(
-        modificationDateField.map(f => ("last_modified" -> lastModifiedDate)),
-        checksumField.map(f => ("record_checksum" -> checksum)),
-        createdByField.map(f => ("created_by_id" -> userId)),
-        modifiedByField.map(f => ("last_modified_by_id" -> userId)))
-      .flatMap(x => x)
+      .map(e => (e._1, trim(e._2)))
   }
 
   // addParams allows to specify additional columns to be saved that are not present in pojo.
