@@ -18,8 +18,27 @@ import scala.xml.{XML, Elem, Node}
 import java.sql.Timestamp
 import scala.compat.Platform
 
+case class ListFilterType(Field: String, Comparison: String, Value: String) {
+  def this(f: String, v: String) = this(f, "=", v)
+}
+case class ListSortType(
+  Field: String,
+  Order: String) {
+  def this() = this(null, null)
+  def this(Field: String) = this(Field, "asc")
+}
+case class ListRequestType(
+  Limit: Int,
+  Offset: Int,
+  var Filter: Array[ListFilterType],
+  Sort: Array[ListSortType]) {
+  def this() = this(0, 0, null, null)
+  def this(filter: ListFilterType) = this(0, 0, Array(filter), null)
+  def this(filters: Array[ListFilterType], sorts: Array[ListSortType]) =
+    this(0, 0, filters, sorts)
+}
 
-object ort extends org.tresql.NameMap {
+trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
@@ -184,9 +203,11 @@ object ort extends org.tresql.NameMap {
   private def xsdValueToDbValue(xsdValue: Any) = xsdValue match {
     case true => "Y"
     case false => "N"
+    /*
     // avoid unfriendly oracledb error message
     case x: String if x.length > 1000 && x.getBytes("UTF-8").length > 4000 =>
       err(TEXT_TOO_LONG, "" + x.getBytes("UTF-8").length)
+    */
     case x => x
   }
 
@@ -197,7 +218,7 @@ object ort extends org.tresql.NameMap {
       .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
 
   private def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
-    YamlViewDefLoader.nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
+    nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
       sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
@@ -275,25 +296,25 @@ object ort extends org.tresql.NameMap {
     else ORT.update(tableName, transf(propMap))
     id
   }
-  def getViewDef(pojo: AnyRef) = Metadata.getViewDef(pojo.getClass)
+  def getViewDef(pojo: AnyRef): XsdTypeDef = getViewDef(pojo.getClass)
 
   /* -------- Query support methods -------- */
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(Metadata.getViewDef(pojoClass), params, wherePlus, true)
+      queryStringAndParams(getViewDef(pojoClass), params, wherePlus, true)
     Env.log(tresqlQueryString)
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
-    query(Metadata.getViewDef(pojoClass), pojoClass, params, wherePlus)
+    query(getViewDef(pojoClass), pojoClass, params, wherePlus)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
     wherePlus: (String, Map[String, Any])): T = {
     val filterDef = Array(new ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
-    ort.query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
+    query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
   }
 
   private def lowerNames(m: Map[String, Any]) = m.map(e => (e._1.toLowerCase, e._2))
@@ -316,8 +337,9 @@ object ort extends org.tresql.NameMap {
     if (ComparisonOps.contains(comp)) comp
     else sys.error("Comparison operator not supported: " + comp)
 
-  def getI18nColumnExpression(qName: String) ={
-    val langs = RequestContext.languagePreferences
+  def languagePreferences: List[String] = List("lv", "en", "ru")
+  def getI18nColumnExpression(qName: String) = {
+    val langs = languagePreferences
     val lSuff = langs.map {
       case "lv" => ""
       case "en" => "_eng"
@@ -351,6 +373,7 @@ object ort extends org.tresql.NameMap {
         paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Sort => sort, Offset => offset }
     //LIMIT threshold
+    // TODO overwritable
     val limit = math.min(100, filteredParams.Limit)
     //list of tuples (bind variable name -> ListFilterType)
     val filter = filteredParams.Filter.groupBy(_.Field).toList.flatMap(f =>
@@ -360,7 +383,7 @@ object ort extends org.tresql.NameMap {
     //base table alias
     val B = view.tableAlias
 
-    val preferRu = RequestContext.languagePreferences(0) == "ru"
+    val preferRu = languagePreferences(0) == "ru"
     def isRu(f: XsdFieldDef) = preferRu && f.isI18n
     def isI18n(f: XsdFieldDef) = f.isI18n
     def queryColTableAlias(f: XsdFieldDef) =
@@ -390,7 +413,7 @@ object ort extends org.tresql.NameMap {
               null, false, null, false, true, null, true, false,
               null, null, null, null, false, null)
             childViewDef.copy(fields = childViewDef.fields ++
-              Seq(fd.copy(xsdType = Metadata.getCol(childViewDef, fd).xsdType)))
+              Seq(fd.copy(xsdType = getCol(childViewDef, fd).xsdType)))
           }
         val (tresqlQueryString, _) =
           queryStringAndParams(extendedChildViewDef,
@@ -490,8 +513,11 @@ object ort extends org.tresql.NameMap {
         case "long" => v.toLong
         case "integer" => BigInt(v)
         case "decimal" => BigDecimal(v)
+        /*
+         * TODO
         case "date" => Format.xsdDate.parse(v)
         case "dateTime" => Format.xsdDateTime.parse(v)
+        */
         case "boolean" => reqBooleanToString(v)
         case x => sys.error("Filter value type not supported: " + x)
       })

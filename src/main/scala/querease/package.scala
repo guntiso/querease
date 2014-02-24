@@ -15,8 +15,11 @@ package object tus {
       m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
     //dto to map for ORT
-    implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, Any]) = 
+    implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, Any]) =
+      "TODO" -> p.toSaveableMap // TODO convert class to table name
+      /*
       model.Metadata.dtoClassToTable(p.getClass) -> p.toSaveableMap
+      */
   }
   trait Dto {
     //filling in object from RowLike
