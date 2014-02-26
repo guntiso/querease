@@ -1,22 +1,18 @@
 package querease
 
-import org.tresql.Query
-import xsdgen.ElementName
-import language.postfixOps
-import scala.collection.JavaConversions._
-import javax.xml.datatype._
-import metadata._
-import metadata.DbConventions.xsdNameToDbName
+import scala.language.existentials
+import scala.language.postfixOps
+
 import org.tresql.Env
+import org.tresql.Query
 import org.tresql.QueryParser
-import java.util.{ ArrayList, Date }
-import java.security.MessageDigest
-import java.text.SimpleDateFormat
-import metadata.JoinsParser
-import java.lang.reflect.ParameterizedType
-import scala.xml.{ XML, Elem, Node }
-import java.sql.Timestamp
-import scala.compat.Platform
+
+import metadata.DbConventions
+import metadata.DbConventions.{ dbNameToXsdName => xsdName }
+import metadata.Metadata
+import metadata.ViewDefSource
+import metadata.XsdFieldDef
+import metadata.XsdTypeDef
 
 case class ListFilterType(Field: String, Comparison: String, Value: String) {
   def this(f: String, v: String) = this(f, "=", v)
@@ -38,253 +34,20 @@ case class ListRequestType(
     this(0, 0, filters, sorts)
 }
 
-trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
-
-  val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
-
-  private def propName(m: java.lang.reflect.Method) = {
-    val mName = m.getName
-    if (mName.startsWith("get") && mName.length > 3 &&
-      mName.charAt(3).isUpper) mName.substring(3)
-    else if (mName.startsWith("is") && mName.length > 2 &&
-      mName.charAt(2).isUpper) mName.substring(2)
-    else throw new RuntimeException(
-      "Failed to extract property name from method name: " + mName)
-  }
-  def pojoToMap(pojo: Any): Map[String, _] =
-    if (pojo == null) Map.empty
-    else pojo.getClass.getMethods filter (m =>
-      m.getName.startsWith("get") && m.getName != "getClass"
-        || m.getName.startsWith("is")) filter (m =>
-      m.getParameterTypes.size == 0) map (m =>
-      propName(m) -> (m.invoke(pojo) match {
-        case null => null
-        case x: String => x
-        case c: Class[_] => c
-        case x: XMLGregorianCalendar => x.toGregorianCalendar.getTime
-        case x if (isPrimitive(x)) => x
-        case b: Array[Byte] => new java.io.ByteArrayInputStream(b)
-        case l: Seq[_] => l map pojoToMap
-        case l: Array[_] => l map pojoToMap
-        case l: java.util.Collection[_] => l map pojoToMap
-        case x => throw new RuntimeException(
-          "Pojo map not implemented - class: " + x.getClass + ", value: " + x)
-      })) toMap
-
-  def mapToPojo[T](map: Map[String, _], pojo: T): T = {
-    pojo.getClass.getMethods.filter(m => m.getName.startsWith("set") &&
-      m.getParameterTypes.size == 1) foreach { m =>
-      val propName = m.getName.drop(3) //property name
-      val propClass = propToClassName(propName) //find class name in the case value is map or list i.e. not primitive object
-      val t = m.getParameterTypes()(0)
-
-      map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
-        m.invoke(pojo, convertValue(value, t, propClass))
-      } catch {
-        case ex: Exception =>
-          throw new RuntimeException("Failed to invoke setter " + m.getName +
-            "(" + t.getName + ") with value " + value +
-            " of class " + (Option(value).map(_.getClass.getName) getOrElse "?"), ex)
-      })
-    }
-    // collection part, supports now only list of maps->to list of pojos part
-    pojo.getClass.getMethods.filter(m =>
-      m.getName.startsWith("get") &&
-        classOf[java.util.Collection[_]].isAssignableFrom(m.getReturnType) &&
-        m.getParameterTypes.size == 0)
-      .foreach { m =>
-        val propName = m.getName.drop(3) //property name
-        val genericType = getCollectionType(m.getGenericReturnType)
-        map.get(xsdNameToDbName(propName)).foreach { mapElement =>
-          mapElement match {
-            case list: List[_] =>
-              val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
-              collection.clear
-              list.foreach { data =>
-                val child = genericType.newInstance.asInstanceOf[java.lang.Object]
-                mapToPojo(data.asInstanceOf[Map[String, _]], child)
-                collection.add(child)
-              }
-            case _ =>
-          }
-        }
-      }
-    pojo
-  }
-
-  def getCollectionType(t: java.lang.reflect.Type) = {
-    val parametrisedType = t.asInstanceOf[ParameterizedType]
-    parametrisedType.getActualTypeArguments()(0).asInstanceOf[java.lang.Class[_]];
-  }
-
-  def convertValue(value: Any, t: Class[_],
-    itemClassName: String = "<collections not supported>"): AnyRef = value match {
-    case d: BigDecimal => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        new java.lang.Integer(d.toInt)
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        new java.lang.Long(d.toLong)
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        d.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        d.bigDecimal
-      else if (t == classOf[java.math.BigInteger])
-        d.bigDecimal.unscaledValue
-      else d
-    }
-    case i: Integer => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        i
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        new java.lang.Long(i.toLong)
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        i.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        new java.math.BigDecimal(i.intValue())
-      else if (t == classOf[java.math.BigInteger])
-        java.math.BigInteger.valueOf(i.toLong)
-      else if (t == classOf[String] || t == classOf[java.lang.String])
-        i.toString
-      else i
-    }
-    case l: java.lang.Long => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        new java.lang.Integer(l.toInt)
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        l
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        l.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        new java.math.BigDecimal(l.longValue)
-      else if (t == classOf[java.math.BigInteger])
-        java.math.BigInteger.valueOf(l.toLong)
-      else if (t == classOf[String] || t == classOf[java.lang.String])
-        l.toString
-      else l
-    }
-    case x if (t == classOf[java.math.BigInteger] && x != null) =>
-      new java.math.BigInteger(x.toString)
-    case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
-      val gc = new java.util.GregorianCalendar()
-      gc.setTime(x)
-      XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
-    }
-    case inMap: Map[_, _] if (t == Class.forName(itemClassName)) =>
-      mapToPojo(inMap.asInstanceOf[Map[String, _]],
-        Class.forName(itemClassName).newInstance).asInstanceOf[Object]
-    //may be exact collection which is used in xsd generated pojos must be used?
-    case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
-      t.newInstance.asInstanceOf[java.util.Collection[_]]
-    case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
-      val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
-        .map(mapToPojo(_, Class.forName(itemClassName).newInstance))
-      col
-    }
-    case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
-      case "y" | "Y" | "true" | "TRUE" => java.lang.Boolean.TRUE
-      case "n" | "N" | "false" | "FALSE" => java.lang.Boolean.FALSE
-      case null => java.lang.Boolean.FALSE
-      case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
-    }
-    case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
-      blob.getBytes(1, blob.length.toInt) // FIXME toInt!
-    case x => x.asInstanceOf[Object]
-  }
-
-  private def isPrimitive[T](x: T)(implicit evidence: T <:< AnyVal = null) = evidence != null || (x match {
-    case _: java.lang.Number | _: java.lang.Boolean | _: java.util.Date | _: XMLGregorianCalendar => true
-    case _ => false
-  })
-  private def propToClassName(prop: String) = if (prop.endsWith("List")) prop.dropRight(4) else prop
-
-  private def xsdValueToDbValue(xsdValue: Any) = xsdValue match {
-    case true => "Y"
-    case false => "N"
-    /*
-    // avoid unfriendly oracledb error message
-    case x: String if x.length > 1000 && x.getBytes("UTF-8").length > 4000 =>
-      err(TEXT_TOO_LONG, "" + x.getBytes("UTF-8").length)
-    */
-    case x => x
-  }
+trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
 
   private def nextId() = Query.unique[Long]("dual{seq.nextval}")
-
-  def getChecksum(lastModifiedDate: Date) = MessageDigest.getInstance("MD5").digest(
-    new SimpleDateFormat("yyyy.MM.dd hh24:mm:ss.SSS")
-      .format(lastModifiedDate).getBytes).map("%02X".format(_)).mkString
-
-  private def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
-    nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
-      sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
-        " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
-
-  def toPlural(s: String) = // comply with JAXB plural
-    if (s.endsWith("y")) s.dropRight(1) + "ies"
-    else if (s endsWith "tus") s + "es"
-    else if (s endsWith "apiks") s
-    else s + "s"
-
-  def toSingular(s: String) = // XXX to undo JAXB plural
-    if (s endsWith "ies") s.dropRight(3) + "y"
-    else if (s endsWith "tuses") s.dropRight(2)
-    else if (s endsWith "apiks") s
-    else if (s endsWith "s") s.dropRight(1)
-    else s
-
-  def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
-    def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
-      case (k, vList: List[Map[String, _]]) =>
-        (xsdNameToDbName(k), vList map toDbFormat)
-      case (k, v) => (xsdNameToDbName(k), xsdValueToDbValue(v))
-    }
-    val propMap = toDbFormat(pojoToMap(pojo))
-    def trim(value: Any) = value match {
-      case s: String => s.trim()
-      case x => x
-    }
-
-    def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
-      def isSaveable(f: XsdFieldDef) = !f.isExpression
-      def getFieldDef(fieldName: String) =
-        viewDef.fields.find(f =>
-          Option(f.alias).getOrElse(f.name) == fieldName).getOrElse(sys.error(
-          "Field not found for property: " + viewDef.name + "." + fieldName))
-      propMap.filter(_._1 != "clazz").map {
-        case (key, l: List[Map[String, _]]) =>
-          val fieldName = toSingular(key) // XXX undo JAXB plural 
-          val fieldDef = getFieldDef(fieldName)
-          if (isSaveable(fieldDef)) {
-            val childViewDef = getChildViewDef(viewDef, fieldDef)
-            childViewDef.table -> l.map(toSaveableDetails(_, childViewDef))
-          } else ("!" + key, l)
-        case (key, value) =>
-          val fieldName = key
-          val fieldDef = getFieldDef(fieldName)
-          if (isSaveable(fieldDef))
-            if (fieldDef.xsdType.isComplexType) {
-              val childViewDef = getChildViewDef(viewDef, fieldDef)
-              childViewDef.table -> toSaveableDetails(
-                value.asInstanceOf[Map[String, Any]], childViewDef)
-            } else (key, value)
-          else ("!" + key, value)
-      }
-    }
-    toSaveableDetails(propMap, viewDef)
-      .filter(e => !(e._1 startsWith "!"))
-      .map(e => (e._1, trim(e._2)))
-  }
 
   // addParams allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, addParams: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long =
-    saveTo(getViewDef(pojo).table, pojo, addParams, transform, forceInsert)
+    saveTo(getViewDef(pojo.getClass).table, pojo, addParams, transform, forceInsert)
 
   def saveTo(tableName: String, pojo: AnyRef, addParams: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long = {
-    val pojoPropMap = pojoToSaveableMap(pojo, getViewDef(pojo))
+    val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
     val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val transf = if (transform != null) transform else (m: Map[String, Any]) => m
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
@@ -293,9 +56,7 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     else ORT.update(tableName, transf(propMap))
     id
   }
-  def getViewDef(pojo: AnyRef): XsdTypeDef = getViewDef(pojo.getClass)
 
-  /* -------- Query support methods -------- */
   def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val (tresqlQueryString, paramsMap) =
@@ -314,14 +75,12 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
   }
 
-  private def lowerNames(m: Map[String, Any]) = m.map(e => (e._1.toLowerCase, e._2))
-  def selectToPojo[T](query: String, pojoClass: Class[T], params: Map[String, Any] = null) = {
-    def toPojo(m: Map[String, Any]) = mapToPojo(m, pojoClass.newInstance)
-    val maps = Query.select(query, params).toListOfMaps.map(lowerNames)
-    maps map toPojo
+  def selectToPojo[T <: AnyRef](query: String, pojoClass: Class[T], params: Map[String, Any] = null) = {
+    def toPojo(m: Map[String, Any]) = fromMap(m, pojoClass.newInstance)
+    Query.select(query, params).toListOfMaps map toPojo
   }
 
-  def query[T](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
+  def query[T <: AnyRef](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(view, params, wherePlus)
@@ -387,6 +146,11 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) B else f.table)
 
+    def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
+      nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
+        sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
+          " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
+
     def queryColExpression(f: XsdFieldDef) = {
       val qName = queryColTableAlias(f) + "." + f.name
       if (f.expression != null) f.expression
@@ -424,7 +188,7 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     def queryColAlias(f: XsdFieldDef) =
       Option(f.alias) getOrElse {
         if (f.isExpression && f.expression != null || isI18n(f)) f.name
-        else if (f.isComplexType && f.isCollection) toPlural(f.name)
+        else if (f.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
         else null
       }
 
@@ -503,6 +267,7 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
       val v = f._2.Value
       // TODO describe convertion error (field, table, value, ...)
+      // TODO extract filter type convertion to filter map for overrides
       f._1 -> (fieldNameToDef(f._2.Field).xsdType.name match {
         case "string" => v
         case "int" => v.toInt
@@ -514,7 +279,11 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
         case "date" => Format.xsdDate.parse(v)
         case "dateTime" => Format.xsdDateTime.parse(v)
         */
-        case "boolean" => reqBooleanToString(v)
+        case "boolean" => v match {
+          case "true" | "TRUE" => "Y"
+          case "false" | "FALSE" => "N"
+          case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
+        }
         case x => sys.error("Filter value type not supported: " + x)
       })
     }).toMap
@@ -523,12 +292,4 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     val (q, limitOffsetPars) = limitOffset(from + where + cols + groupBy + order)
     (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
-
-  def reqBooleanToString(v: String) = v match {
-    case "true" | "TRUE" => "Y"
-    case "false" | "FALSE" => "N"
-    case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
-  }
-
-  def db_ws_name_map(ws: Map[String, _]) = ws.map(t => t._1.toLowerCase -> t._1)
 }
