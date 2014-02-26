@@ -36,7 +36,8 @@ case class ListRequestType(
 
 trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
 
-  private def nextId() = Query.unique[Long]("dual{seq.nextval}")
+  def nextId(tableName: String) =
+    Query.unique[Long]("dual{seq.nextval}")
 
   // addParams allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, addParams: Map[String, Any] = null,
@@ -51,7 +52,7 @@ trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
     val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
     val transf = if (transform != null) transform else (m: Map[String, Any]) => m
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
-      _.toString.toLong -> forceInsert) getOrElse (nextId(), true)
+      _.toString.toLong -> forceInsert) getOrElse (nextId(tableName), true)
     if (isNew) ORT.insert(tableName, transf(propMap + ("id" -> id)))
     else ORT.update(tableName, transf(propMap))
     id
