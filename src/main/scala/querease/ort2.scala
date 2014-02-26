@@ -9,12 +9,12 @@ import metadata._
 import metadata.DbConventions.xsdNameToDbName
 import org.tresql.Env
 import org.tresql.QueryParser
-import java.util.{ArrayList, Date}
+import java.util.{ ArrayList, Date }
 import java.security.MessageDigest
 import java.text.SimpleDateFormat
 import metadata.JoinsParser
 import java.lang.reflect.ParameterizedType
-import scala.xml.{XML, Elem, Node}
+import scala.xml.{ XML, Elem, Node }
 import java.sql.Timestamp
 import scala.compat.Platform
 
@@ -79,9 +79,6 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
       val t = m.getParameterTypes()(0)
 
       map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
-          //this may require tuning since it is difficult with java reflection to determine compatibility
-          //between map entry value type and setter parameter type
-          //hopefully scala reflection will help with this
         m.invoke(pojo, convertValue(value, t, propClass))
       } catch {
         case ex: Exception =>
@@ -93,17 +90,17 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     // collection part, supports now only list of maps->to list of pojos part
     pojo.getClass.getMethods.filter(m =>
       m.getName.startsWith("get") &&
-      classOf[java.util.Collection[_]].isAssignableFrom(m.getReturnType) &&
-      m.getParameterTypes.size == 0
-      ).foreach { m =>
+        classOf[java.util.Collection[_]].isAssignableFrom(m.getReturnType) &&
+        m.getParameterTypes.size == 0)
+      .foreach { m =>
         val propName = m.getName.drop(3) //property name
         val genericType = getCollectionType(m.getGenericReturnType)
-        map.get(xsdNameToDbName(propName)).foreach{mapElement =>
+        map.get(xsdNameToDbName(propName)).foreach { mapElement =>
           mapElement match {
             case list: List[_] =>
               val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
               collection.clear
-              list.foreach {data =>
+              list.foreach { data =>
                 val child = genericType.newInstance.asInstanceOf[java.lang.Object]
                 mapToPojo(data.asInstanceOf[Map[String, _]], child)
                 collection.add(child)
@@ -111,13 +108,13 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
             case _ =>
           }
         }
-    }
+      }
     pojo
   }
 
   def getCollectionType(t: java.lang.reflect.Type) = {
     val parametrisedType = t.asInstanceOf[ParameterizedType]
-    parametrisedType.getActualTypeArguments()(0). asInstanceOf[java.lang.Class[_]];
+    parametrisedType.getActualTypeArguments()(0).asInstanceOf[java.lang.Class[_]];
   }
 
   def convertValue(value: Any, t: Class[_],
@@ -359,7 +356,7 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
       "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
         XsdFieldDef("", "", "", "", false, null, true, true, expr,
-            true, false, null, null, null, null, false, "")))
+          true, false, null, null, null, null, false, "")))
       .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
       safeExpr.get(f) getOrElse
@@ -419,9 +416,8 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
           queryStringAndParams(extendedChildViewDef,
             new ListRequestType(0, 0, null,
               Option(sortDetails).map(ListSortType(_, "asc")).toArray))
-        "|" + joinToParent + tresqlQueryString 
-      }
-      else if (isI18n(f))getI18nColumnExpression(qName)
+        "|" + joinToParent + tresqlQueryString
+      } else if (isI18n(f)) getI18nColumnExpression(qName)
       else qName
     }
 
@@ -480,7 +476,7 @@ trait ort extends org.tresql.NameMap { this: Metadata with ViewDefSource =>
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
         " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
-      .mkString("[", " & ", "]") match {case "[]" => "" case a => a}
+      .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     val order =
       if (countAll || sort == null || sort.size == 0) ""
