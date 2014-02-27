@@ -76,17 +76,15 @@ trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
     query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
   }
 
-  def selectToPojo[T <: AnyRef](query: String, pojoClass: Class[T], params: Map[String, Any] = null) = {
-    def toPojo(m: Map[String, Any]) = fromMap(m, pojoClass.newInstance)
-    Query.select(query, params).toListOfMaps map toPojo
-  }
+  def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any] = null) =
+    fromRows(Query.select(query, params), instanceClass)
 
   def query[T <: AnyRef](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(view, params, wherePlus)
     Env.log(tresqlQueryString)
-    selectToPojo(tresqlQueryString, pojoClass, paramsMap)
+    list(tresqlQueryString, pojoClass, paramsMap)
   }
 
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet

@@ -6,6 +6,8 @@ import scala.collection.JavaConversions.collectionAsScalaIterable
 import scala.collection.JavaConversions.seqAsJavaList
 import scala.language.postfixOps
 
+import org.tresql.Result
+
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
 import metadata.DbConventions.xsdNameToDbName
@@ -67,8 +69,10 @@ trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
       })) toMap
   }
 
-  override def fromMap[T](map: Map[String, _], pojo: T): T =
-    mapToPojo(map, pojo)
+  override def fromRows[T <: AnyRef](rows: Result, pojoClass: Class[T]) = {
+    def toPojo(m: Map[String, Any]) = mapToPojo(m, pojoClass.newInstance)
+    rows.toListOfMaps map toPojo
+  }
   def mapToPojo[T](m: Map[String, _], pojo: T): T = {
     def propToClassName(prop: String) =
       if (prop.endsWith("List")) prop.dropRight(4) else prop
