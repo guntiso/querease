@@ -1,0 +1,12 @@
+name: account
+fields:
+- id ?
+- bank_id
+- billing_account
+- currency * 3 =
+
+name: account_details
+extends: account
+fields:
+- bank.code
+- bank.name

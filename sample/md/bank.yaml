@@ -1,0 +1,8 @@
+name: bank_list_row
+table: bank
+fields:
+ - id
+ - code
+ - country_code
+ - country.name
+ - name

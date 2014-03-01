@@ -1,0 +1,42 @@
+table:   account
+comment: Klienta norēķina konts
+columns:
+- id                                   : Ieraksta identifikators.
+- bank.id              !               : Bankas ID, sasaiste ar Klasifikatori:Bankas.
+- billing_account      ! 64            : Norēķinu konts.
+- last_modified        ! dateTime      : Pēdējo izmaiņu datums un laiks.
+
+table:   account_currency
+comment: Kontam pieejamās norēķinu valūtas - sistēmā konfigurētās valūtas pret kontu
+columns:
+- account.id           !               : Konta identifikators.
+- currency.code        !               : Valūtas kods.
+
+table:   bank
+columns:
+- id                                   : Ieraksta identifikators.
+- code                 ! 16            : Bankas SWIFT kods.
+- country.code                         : Bankas valsts, izvēle no klasifikatora.
+- name                 ! 240           : Bankas pilnais nosaukums.
+- name_eng               240           : Bankas pilnais nosaukums, angliski.
+- name_rus               240           : Bankas pilnais nosaukums, transliterēts krieviski.
+
+table:   country
+comment: Valstu klasifikators
+columns:
+- code                 ! 2             : ISO 3166-1 divu burtu valsts kods
+- code3                ! 3             : ISO 3-burtu valsts kods
+- code_n3              ! 3             : ISO 3166-1 trísciparu valsts kods
+- name                 ! 64            : Valsts nosaukums.
+- name_eng               64            : Valsts nosaukums angliski.
+- name_rus               64            : Valsts nosaukums krieviski.
+- is_active            !
+- is_eu                !               : Vai valsts ir Eiropas Savienības dalībvalsts
+
+table:   currency
+comment: Sistēmā uzturēto valūtu klasifikators.
+columns:
+- code                 ! 3             : Starptautiski pieņemtais valūtas apzīmējums (burti).
+- name                 ! 100           : Valūtas nosaukums.
+- name_eng             ! 100           : Valūtas nosaukums angliski.
+- name_rus             ! 100           : Valūtas nosaukums krieviski.

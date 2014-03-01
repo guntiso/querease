@@ -1,5 +1,6 @@
 tmp*
 target
+lib
 lib_managed
 .cache
 .classpath
