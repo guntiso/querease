@@ -1,13 +1,35 @@
 package querease
 
-package object tus {
-  import java.sql.Connection
-  import org.tresql._
-  import scala.util.Try
-  import scala.util.Success
-  import scala.util.Failure
-  import scala.collection.JavaConversions._
-  import scala.reflect.ManifestFactory
+import scala.collection.JavaConversions._
+import scala.reflect.ManifestFactory
+import scala.util.Try
+
+import org.tresql.Column
+import org.tresql.Result
+import org.tresql.RowLike
+
+import metadata.ViewDefSource
+import metadata.XsdTypeDef
+import xsdgen.ElementName
+
+trait ScalaDtoQuerease extends QuereaseIo { this: ViewDefSource =>
+  override def toMap(instance: AnyRef) =
+    instance.asInstanceOf[Dto].toMap
+  override def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]) = {
+    def toDto(r: RowLike) = {
+      val t = clazz.newInstance
+      t.asInstanceOf[Dto].fill(r)
+      t
+    }
+    rows.map(toDto).toList
+  }
+  override def toSaveableMap(instance: AnyRef, viewDef: XsdTypeDef) =
+    instance.asInstanceOf[Dto].toSaveableMap
+  override def getViewDef(viewClass: Class[_ <: AnyRef]) = {
+    nameToExtendedViewDef.get(ElementName.get(viewClass).replace("-", "_"))
+      .getOrElse(sys.error(s"View definition for ${viewClass.getName} not found"))
+  }
+}
 
   //retrieving from tresql plain objects with public var fields
   object Dto {
@@ -98,4 +120,3 @@ package object tus {
     def id: java.lang.Long
     def id_=(id: java.lang.Long)
   }
-}
