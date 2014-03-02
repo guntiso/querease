@@ -1,3 +1,0 @@
-account.yaml
-bank.yaml
-schema.yaml

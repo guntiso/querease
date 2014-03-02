@@ -23,6 +23,19 @@ unmanagedResourceDirectories in Compile <<= baseDirectory(b => Seq(
   b / "md"
 ))
 
+resourceGenerators in Compile <+= (unmanagedResourceDirectories in Compile, resourceManaged in Compile) map {
+    (resDirs: Seq[File], outDir: File) =>
+  import metadata._
+  val file = outDir / "-md-files.txt"
+  object ResFiles extends FilesMdSource {
+    override def typedefFiles =
+      resDirs.flatMap(recursiveListFiles).toSeq.filter(filter)
+  }
+  val contents = ResFiles.typedefFiles.map(_.getName).mkString("", "\n", "\n")
+  IO.write(file, contents)
+  Seq(file)
+}
+
 sourceGenerators in Compile <+= (cacheDirectory, unmanagedResourceDirectories in Compile, sourceManaged in Compile) map {
       (cache: File, resDirs: Seq[File], outDir: File) => {
     import querease._
