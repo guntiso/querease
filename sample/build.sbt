@@ -27,7 +27,6 @@ sourceGenerators in Compile <+= (cacheDirectory, unmanagedResourceDirectories in
       (cache: File, resDirs: Seq[File], outDir: File) => {
     import querease._
     import metadata._
-    import java.io._
     trait MyI18nRules extends SuffixI18nRules { this: Metadata =>
       override val i18nSuffixes = Set("_eng", "_rus")
     }
@@ -39,8 +38,6 @@ sourceGenerators in Compile <+= (cacheDirectory, unmanagedResourceDirectories in
       with AllExpressionsFilterable
       with YamlViewDefLoader
       with Metadata {
-      override def path: String = null
-      override def filter: (File) => Boolean = _.getName endsWith ".yaml"
       override def typedefFiles =
         resDirs.flatMap(recursiveListFiles).toSeq.filter(filter)
     }

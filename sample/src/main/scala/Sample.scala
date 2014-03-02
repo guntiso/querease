@@ -8,18 +8,13 @@ import dto._
 import metadata._
 import querease._
 
-trait SampleResourcesMdSource extends ResourcesMdSource {
-  override def indexPath = "/-md-files.txt"
-  override def nameFilter = _.endsWith(".yaml")
-}
-
 trait SampleI18nRules extends SuffixI18nRules { this: Metadata =>
   override val i18nSuffixes = Set("_eng", "_rus")
 }
 
 object SampleMetadata
   extends YamlTableDefLoader
-  with SampleResourcesMdSource
+  with ResourcesMdSource
   with SampleI18nRules
   with TresqlJoinsParser
   with AllExpressionsFilterable
