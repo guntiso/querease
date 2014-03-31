@@ -6,7 +6,7 @@ import org.tresql.metadata.Key
 import org.tresql.metadata.{ Ref => TresqlRef }
 import org.tresql.metadata.Table
 
-import metadata.TableDef
+import mojoz.metadata.TableDef
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef],

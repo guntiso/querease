@@ -7,12 +7,12 @@ import org.tresql.Env
 import org.tresql.Query
 import org.tresql.QueryParser
 
-import metadata.DbConventions
-import metadata.DbConventions.{ dbNameToXsdName => xsdName }
-import metadata.Metadata
-import metadata.ViewDefSource
-import metadata.XsdFieldDef
-import metadata.XsdTypeDef
+import mojoz.metadata.DbConventions
+import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+import mojoz.metadata.Metadata
+import mojoz.metadata.ViewDefSource
+import mojoz.metadata.XsdFieldDef
+import mojoz.metadata.XsdTypeDef
 
 case class ListFilterType(Field: String, Comparison: String, Value: String) {
   def this(f: String, v: String) = this(f, "=", v)
@@ -34,7 +34,7 @@ case class ListRequestType(
     this(0, 0, filters, sorts)
 }
 
-trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
+trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
 
   def nextId(tableName: String) =
     Query.unique[Long]("dual{seq.nextval}")
@@ -107,7 +107,7 @@ trait Querease extends { this: Metadata with ViewDefSource with QuereaseIo =>
     countAll: Boolean = false): (String, Map[String, Any]) = {
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
-    import metadata.DbConventions.{ dbNameToXsdName => xsdName }
+    import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     // FIXME extra order by, injection-safe!
     val safeExpr = List("decode(cnt, null, 0, 1)",

@@ -5,7 +5,10 @@ import org.tresql.Env
 import com.typesafe.config.ConfigFactory
 
 import dto._
-import metadata._
+import mojoz.metadata._
+import mojoz.metadata.in._
+import mojoz.metadata.in.rules._
+import mojoz.metadata.out._
 import querease._
 
 trait SampleI18nRules extends SuffixI18nRules { this: Metadata =>

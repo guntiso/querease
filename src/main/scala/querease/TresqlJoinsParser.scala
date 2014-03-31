@@ -3,8 +3,8 @@ package querease
 import org.tresql.QueryParser._
 import org.tresql.QueryParser.{ Join => QPJoin }
 
-import metadata.Join
-import metadata.JoinsParser
+import mojoz.metadata.in.Join
+import mojoz.metadata.in.JoinsParser
 
 trait TresqlJoinsParser extends JoinsParser {
   override def parseJoins(baseTable: String, joins: String) = if (joins == null) List() else {

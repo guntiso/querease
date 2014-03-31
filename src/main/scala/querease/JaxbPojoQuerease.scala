@@ -10,19 +10,18 @@ import org.tresql.Result
 
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import metadata.DbConventions.xsdNameToDbName
-import metadata.ViewDefSource
-import metadata.XsdFieldDef
-import metadata.XsdTypeDef
-import xsdgen.ElementName
+import mojoz.metadata.DbConventions.xsdNameToDbName
+import mojoz.metadata.ViewDefSource
+import mojoz.metadata.XsdFieldDef
+import mojoz.metadata.XsdTypeDef
 
 trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
   override def getViewDef(viewClass: Class[_ <: AnyRef]): XsdTypeDef =
-    nameToExtendedViewDef.get(ElementName.get(viewClass)) getOrElse
-      (nameToExtendedViewDef.get(ElementName.get(viewClass)
+    nameToExtendedViewDef.get(ViewName.get(viewClass)) getOrElse
+      (nameToExtendedViewDef.get(ViewName.get(viewClass)
         .replace("-", "_")) getOrElse
         (viewClass.getSuperclass match {
           case c: Class[_] =>

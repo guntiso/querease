@@ -25,7 +25,7 @@ unmanagedResourceDirectories in Compile <<= baseDirectory(b => Seq(
 
 resourceGenerators in Compile <+= (unmanagedResourceDirectories in Compile, resourceManaged in Compile) map {
     (resDirs: Seq[File], outDir: File) =>
-  import metadata._
+  import mojoz.metadata.in.FilesMdSource
   val file = outDir / "-md-files.txt"
   object ResFiles extends FilesMdSource {
     override def typedefFiles =
@@ -39,7 +39,10 @@ resourceGenerators in Compile <+= (unmanagedResourceDirectories in Compile, reso
 sourceGenerators in Compile <+= (cacheDirectory, unmanagedResourceDirectories in Compile, sourceManaged in Compile) map {
       (cache: File, resDirs: Seq[File], outDir: File) => {
     import querease._
-    import metadata._
+    import mojoz.metadata._
+    import mojoz.metadata.in._
+    import mojoz.metadata.in.rules._
+    import mojoz.metadata.out._
     trait MyI18nRules extends SuffixI18nRules { this: Metadata =>
       override val i18nSuffixes = Set("_eng", "_rus")
     }
