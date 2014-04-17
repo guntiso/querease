@@ -9,10 +9,7 @@ import org.tresql.QueryParser
 
 import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
-import mojoz.metadata.Metadata
-import mojoz.metadata.ViewDefSource
-import mojoz.metadata.XsdFieldDef
-import mojoz.metadata.XsdTypeDef
+import mojoz.metadata._
 
 case class ListFilterType(Field: String, Comparison: String, Value: String) {
   def this(f: String, v: String) = this(f, "=", v)
@@ -34,8 +31,9 @@ case class ListRequestType(
     this(0, 0, filters, sorts)
 }
 
-trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
-
+trait Querease extends QuereaseIo {
+  def extendedViewDef: Map[String, ViewDef[Type]]
+  def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]): ColumnDef[Type]
   def nextId(tableName: String) =
     Query.unique[Long]("dual{seq.nextval}")
 
@@ -79,7 +77,7 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
   def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any] = null) =
     fromRows(Query.select(query, params), instanceClass)
 
-  def query[T <: AnyRef](view: XsdTypeDef, pojoClass: Class[T], params: ListRequestType,
+  def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(view, params, wherePlus)
@@ -102,7 +100,7 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
     }
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
-  def queryStringAndParams(view: XsdTypeDef, params: ListRequestType,
+  def queryStringAndParams(view: ViewDef[Type], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
     val paramsFilter =
@@ -113,7 +111,7 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
     val safeExpr = List("decode(cnt, null, 0, 1)",
       "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
       .map(expr => (expr,
-        XsdFieldDef("", "", "", "", false, null, true, true, expr,
+        FieldDef[Type]("", "", "", "", false, null, true, true, expr,
           true, false, null, null, null, null, false, "")))
       .toMap
     def fieldNameToDef(f: String) = fieldNameToDefMap.getOrElse(f,
@@ -139,21 +137,21 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
     val B = view.tableAlias
 
     val preferRu = languagePreferences(0) == "ru"
-    def isRu(f: XsdFieldDef) = preferRu && f.isI18n
-    def isI18n(f: XsdFieldDef) = f.isI18n
-    def queryColTableAlias(f: XsdFieldDef) =
+    def isRu(f: FieldDef[Type]) = preferRu && f.isI18n
+    def isI18n(f: FieldDef[Type]) = f.isI18n
+    def queryColTableAlias(f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) B else f.table)
 
-    def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
-      nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
-        sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
+    def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
+      extendedViewDef.getOrElse(fieldDef.type_.name,
+        sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
-    def queryColExpression(f: XsdFieldDef) = {
+    def queryColExpression(f: FieldDef[Type]) = {
       val qName = queryColTableAlias(f) + "." + f.name
       if (f.expression != null) f.expression
-      else if (f.isComplexType) {
+      else if (f.type_ != null && f.type_.isComplexType) {
         val childViewDef = getChildViewDef(view, f)
         val joinToParent = Option(f.joinToParent) getOrElse ""
         val sortDetails = Option(f.orderBy match {
@@ -169,11 +167,11 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
         val extendedChildViewDef = // XXX add missing TODO GET RID OF THIS BS
           if (isSortFieldIncluded) childViewDef
           else {
-            val fd = XsdFieldDef(childViewDef.table, null, sortDetailsDbName,
+            val fd = FieldDef(childViewDef.table, null, sortDetailsDbName,
               null, false, null, false, true, null, true, false,
               null, null, null, null, false, null)
             childViewDef.copy(fields = childViewDef.fields ++
-              Seq(fd.copy(xsdType = getCol(childViewDef, fd).xsdType)))
+              Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
           }
         val (tresqlQueryString, _) =
           queryStringAndParams(extendedChildViewDef,
@@ -184,14 +182,14 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
       else qName
     }
 
-    def queryColAlias(f: XsdFieldDef) =
+    def queryColAlias(f: FieldDef[Type]) =
       Option(f.alias) getOrElse {
         if (f.isExpression && f.expression != null || isI18n(f)) f.name
-        else if (f.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
+        else if (f.type_ != null && f.type_.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
         else null
       }
 
-    def queryColName(f: XsdFieldDef) =
+    def queryColName(f: FieldDef[Type]) =
       Option(f.alias).getOrElse(
         if (isI18n(f)) f.name else queryColTableAlias(f) + "." + f.name)
 
@@ -200,7 +198,7 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
       else view.fields
         .filter(f => !f.isExpression || f.expression != null)
         .filter(f => !f.isCollection ||
-          (f.xsdType.isComplexType && !countAll && !f.isExpression))
+          (f.type_.isComplexType && !countAll && !f.isExpression))
         .map(f => queryColExpression(f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
@@ -267,7 +265,7 @@ trait Querease { this: Metadata with ViewDefSource with QuereaseIo =>
       val v = f._2.Value
       // TODO describe convertion error (field, table, value, ...)
       // TODO extract filter type convertion to filter map for overrides
-      f._1 -> (fieldNameToDef(f._2.Field).xsdType.name match {
+      f._1 -> (fieldNameToDef(f._2.Field).type_.name match {
         case "string" => v
         case "int" => v.toInt
         case "long" => v.toLong

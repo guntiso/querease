@@ -11,17 +11,18 @@ import org.tresql.Result
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.DbConventions.xsdNameToDbName
-import mojoz.metadata.ViewDefSource
-import mojoz.metadata.XsdFieldDef
-import mojoz.metadata.XsdTypeDef
+import mojoz.metadata._
 
-trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
+class JaxbPojoQuerease(metadata: Metadata[Type]) extends Querease {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
-  override def getViewDef(viewClass: Class[_ <: AnyRef]): XsdTypeDef =
-    nameToExtendedViewDef.get(ViewName.get(viewClass)) getOrElse
-      (nameToExtendedViewDef.get(ViewName.get(viewClass)
+  override def extendedViewDef = metadata.extendedViewDef
+  override def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]) =
+    metadata.columnDef(viewDef, fieldDef)
+  override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[Type] =
+    metadata.extendedViewDef.get(ViewName.get(viewClass)) getOrElse
+      (metadata.extendedViewDef.get(ViewName.get(viewClass)
         .replace("-", "_")) getOrElse
         (viewClass.getSuperclass match {
           case c: Class[_] =>
@@ -219,9 +220,9 @@ trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap(instance: AnyRef, viewDef: XsdTypeDef) =
+  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
     pojoToSaveableMap(instance, viewDef)
-  def pojoToSaveableMap(pojo: AnyRef, viewDef: XsdTypeDef) = {
+  def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef[Type]) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[Map[String, _]]) =>
         (xsdNameToDbName(k), vList map toDbFormat)
@@ -233,12 +234,12 @@ trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
       case x => x
     }
 
-    def toSaveableDetails(propMap: Map[String, Any], viewDef: XsdTypeDef): Map[String, Any] = {
-      def getChildViewDef(viewDef: XsdTypeDef, fieldDef: XsdFieldDef) =
-        nameToExtendedViewDef.getOrElse(fieldDef.xsdType.name,
-          sys.error("Child viewDef not found: " + fieldDef.xsdType.name +
+    def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef[Type]): Map[String, Any] = {
+      def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
+        metadata.extendedViewDef.getOrElse(fieldDef.type_.name,
+          sys.error("Child viewDef not found: " + fieldDef.type_.name +
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
-      def isSaveable(f: XsdFieldDef) = !f.isExpression
+      def isSaveable(f: FieldDef[Type]) = !f.isExpression
       def getFieldDef(fieldName: String) =
         viewDef.fields.find(f =>
           Option(f.alias).getOrElse(f.name) == fieldName).getOrElse(sys.error(
@@ -255,7 +256,7 @@ trait JaxbPojoQuerease extends QuereaseIo { this: ViewDefSource =>
           val fieldName = key
           val fieldDef = getFieldDef(fieldName)
           if (isSaveable(fieldDef))
-            if (fieldDef.xsdType.isComplexType) {
+            if (fieldDef.type_.isComplexType) {
               val childViewDef = getChildViewDef(viewDef, fieldDef)
               childViewDef.table -> toSaveableDetails(
                 value.asInstanceOf[Map[String, Any]], childViewDef)

@@ -7,37 +7,24 @@ import com.typesafe.config.ConfigFactory
 import dto._
 import mojoz.metadata._
 import mojoz.metadata.in._
-import mojoz.metadata.in.rules._
 import mojoz.metadata.out._
 import querease._
 
-trait SampleI18nRules extends SuffixI18nRules { this: Metadata =>
-  override val i18nSuffixes = Set("_eng", "_rus")
-}
-
-object SampleMetadata
-  extends YamlTableDefLoader
-  with ResourcesMdSource
-  with SampleI18nRules
-  with TresqlJoinsParser
-  with AllExpressionsFilterable
-  with YamlViewDefLoader
-  with Metadata
-  with YamlMdWriter
-  with XsdWriter
-  with Querease
-  with ScalaDtoQuerease 
-
 object Sample {
   def main(args: Array[String]) {
-    val md = SampleMetadata
+    val yamlMd = YamlMd.fromResources()
+    val tableMd = new Metadata(new YamlTableDefLoader(yamlMd).tableDefs)
+    val viewDefs = (new YamlViewDefLoader(tableMd, yamlMd) with TresqlJoinsParser).viewDefs
+    val i18nRules = I18nRules.suffixI18n(Set("_eng", "_rus"))
+    val md = new Metadata(tableMd.tableDefs, viewDefs, i18nRules)
+    val qe = new ScalaDtoQuerease(md) with Querease
 
     println("Entities:")
-    md.entities.map(_.name) foreach println
+    md.tableDefs.map(_.name) foreach println
     println
 
     println("Views:")
-    md.typedefs.map(_.name) foreach println
+    md.viewDefs.map(_.name) foreach println
     println
 
     val conf = ConfigFactory.load
@@ -47,13 +34,13 @@ object Sample {
     val dbg = conf.getBoolean("sample.db.statement.debug")
     val conn = DriverManager.getConnection(url, usr, pwd)
     conn.setAutoCommit(false)
-    Env.metaData = new TresqlMetadata(md.entities, null)
+    Env.metaData = new TresqlMetadata(md.tableDefs, null)
     Env.conn = conn
     if (dbg) Env update { (msg, level) => println(msg) }
     else Env update { (msg, level) => () }
 
     try {
-      val banks = md.query(classOf[BankListRow], null)
+      val banks = qe.query(classOf[BankListRow], null)
       println("Bank codes:")
       banks.map(_.code) foreach println
       println

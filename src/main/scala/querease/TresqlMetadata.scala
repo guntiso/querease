@@ -9,7 +9,7 @@ import org.tresql.metadata.Table
 import mojoz.metadata.TableDef
 
 class TresqlMetadata(
-  val tableDefs: Seq[TableDef],
+  val tableDefs: Seq[TableDef[_]],
   val procedureMetadata: MetaData)
   extends MetaData {
 

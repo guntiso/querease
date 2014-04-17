@@ -8,10 +8,12 @@ import org.tresql.Column
 import org.tresql.Result
 import org.tresql.RowLike
 
-import mojoz.metadata.ViewDefSource
-import mojoz.metadata.XsdTypeDef
+import mojoz.metadata._
 
-trait ScalaDtoQuerease extends QuereaseIo { this: ViewDefSource =>
+class ScalaDtoQuerease(metadata: Metadata[Type]) extends Querease {
+  override def extendedViewDef = metadata.extendedViewDef
+  override def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]) =
+    metadata.columnDef(viewDef, fieldDef)
   override def toMap(instance: AnyRef) =
     instance.asInstanceOf[Dto].toMap
   override def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]) = {
@@ -22,10 +24,10 @@ trait ScalaDtoQuerease extends QuereaseIo { this: ViewDefSource =>
     }
     rows.map(toDto).toList
   }
-  override def toSaveableMap(instance: AnyRef, viewDef: XsdTypeDef) =
+  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
     instance.asInstanceOf[Dto].toSaveableMap
   override def getViewDef(viewClass: Class[_ <: AnyRef]) = {
-    nameToExtendedViewDef.get(ViewName.get(viewClass).replace("-", "_"))
+    metadata.extendedViewDef.get(ViewName.get(viewClass).replace("-", "_"))
       .getOrElse(sys.error(s"View definition for ${viewClass.getName} not found"))
   }
 }
