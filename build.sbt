@@ -11,7 +11,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "5.3-M13-SNAPSHOT",
+  "org.tresql" %% "tresql" % "5.3",
   "default" %% "mojoz" % "0.1-SNAPSHOT",
   // test
   "org.scalatest" % "scalatest_2.10" % "2.0.M8" % "test"
