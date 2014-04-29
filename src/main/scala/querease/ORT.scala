@@ -5,7 +5,7 @@ import sys._
 import org.tresql._
 
 /** Object Relational Transformations - ORT */
-trait ORT {
+private[querease] trait ORT {
   
   /** <object name | property name>[:<linked property name>][#(insert | update | delete)] */
   val PROP_PATTERN = """(\w+)(:(\w+))?(#(\w+))?"""r
@@ -250,4 +250,4 @@ trait ORT {
   } 
 }
 
-object ORT extends ORT
+private[querease] object ORT extends ORT
