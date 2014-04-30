@@ -13,7 +13,7 @@ import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.DbConventions.xsdNameToDbName
 import mojoz.metadata._
 
-class JaxbPojoQuerease(metadata: Metadata[Type]) extends Querease {
+private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends QuereaseIo {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 

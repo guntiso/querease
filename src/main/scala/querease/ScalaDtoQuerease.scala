@@ -10,7 +10,7 @@ import org.tresql.RowLike
 
 import mojoz.metadata._
 
-class ScalaDtoQuerease(metadata: Metadata[Type]) extends Querease {
+private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends QuereaseIo {
   override def extendedViewDef = metadata.extendedViewDef
   override def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]) =
     metadata.columnDef(viewDef, fieldDef)

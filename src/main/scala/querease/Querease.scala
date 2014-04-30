@@ -31,9 +31,8 @@ case class ListRequestType(
     this(0, 0, filters, sorts)
 }
 
-trait Querease extends QuereaseIo {
-  def extendedViewDef: Map[String, ViewDef[Type]]
-  def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]): ColumnDef[Type]
+class Querease(quereaseIo: QuereaseIo) {
+  import quereaseIo._
   def nextId(tableName: String) =
     Query.unique[Long]("dual{seq.nextval}")
 
