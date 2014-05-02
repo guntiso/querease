@@ -11,6 +11,7 @@ import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
 import mojoz.metadata._
 
+/*
 case class ListFilterType(Field: String, Comparison: String, Value: String) {
   def this(f: String, v: String) = this(f, "=", v)
 }
@@ -30,9 +31,11 @@ case class ListRequestType(
   def this(filters: Array[ListFilterType], sorts: Array[ListSortType]) =
     this(0, 0, filters, sorts)
 }
+*/
 
-class Querease(quereaseIo: QuereaseIo) {
+class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   import quereaseIo._
+  import builder._
   def nextId(tableName: String) =
     Query.unique[Long]("dual{seq.nextval}")
 
@@ -55,13 +58,14 @@ class Querease(quereaseIo: QuereaseIo) {
     id
   }
 
-  def countAll[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
+  def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
     wherePlus: (String, Map[String, Any]) = (null, Map())) = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(getViewDef(pojoClass), params, wherePlus, true)
+      queryStringAndParams(getViewDef(pojoClass), "", 0, 0, params, wherePlus, true)
     Env.log(tresqlQueryString)
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
+/*
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
     query(getViewDef(pojoClass), pojoClass, params, wherePlus)
@@ -71,11 +75,34 @@ class Querease(quereaseIo: QuereaseIo) {
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
     query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
+*/
+def list[T <: AnyRef](viewClass: Class[T], orderBy: String,
+      offset: Int, limit: Int, params: Map[String, Any],
+    wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] = {
+    val (q, p) = queryStringAndParams(getViewDef(viewClass), orderBy,
+        offset, limit, params, wherePlus)
+    list(q, viewClass, p)
   }
+
+  def get[T <: AnyRef](viewClass: Class[T], id: Long,
+    wherePlus: (String, Map[String, Any]) = (null, Map())): Option[T] = {
+    val (q, p) = queryStringAndParams(getViewDef(viewClass), "", 0, 2, Map("id" -> id))
+    // FIXME !!! ("Id", "=", id.toString))
+    val result = list(q, viewClass, p)
+    if (result.size > 1)
+      sys.error("Too many rows returned by query for get method for " +
+          viewClass.getName)
+    result.headOption
+  }
+
+  private def list[T <: AnyRef](
+    queryStringAndParams: (String, Map[String, Any]),
+    instanceClass: Class[T]): List[T] =
+    list(queryStringAndParams._1, instanceClass, queryStringAndParams._2)
 
   def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any] = null) =
     fromRows(Query.select(query, params), instanceClass)
-
+/*
   def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
@@ -83,12 +110,27 @@ class Querease(quereaseIo: QuereaseIo) {
     Env.log(tresqlQueryString)
     list(tresqlQueryString, pojoClass, paramsMap)
   }
+ */
+}
 
+trait QueryStringBuilder {
+  def queryStringAndParams(view: ViewDef[Type],
+    orderBy: String, offset: Int, limit: Int, params: Map[String, Any],
+    wherePlus: (String, Map[String, Any]) = (null, Map()),
+    countAll: Boolean = false): (String, Map[String, Any])
+}
+
+object QueryStringBuilder {
+  def default(typeNameToViewDef: (String) => Option[ViewDef[Type]]) =
+    new DefaultQueryStringBuilder(typeNameToViewDef)
+  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[Type]]) {
+    import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+  /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
     if (ComparisonOps.contains(comp)) comp
     else sys.error("Comparison operator not supported: " + comp)
-
+  // TODO languagePrefs, i18nExpr? overridable?
   def languagePreferences: List[String] = List("lv", "en", "ru")
   def getI18nColumnExpression(qName: String) = {
     val langs = languagePreferences
@@ -99,9 +141,26 @@ class Querease(quereaseIo: QuereaseIo) {
     }
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
-  def queryStringAndParams(view: ViewDef[Type], params: ListRequestType,
+  */
+  override def queryStringAndParams(view: ViewDef[Type],
+    orderBy: String, offset: Int, limit: Int, params: Map[String, Any],
     wherePlus: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
+
+    val from = this.from(view)
+    val where = this.where(view)
+    val cols = this.cols(view, countAll)
+    val groupBy = this.groupBy(view)
+    val order = this.order(view, orderBy)
+    val values = Map[String, Any]()
+
+    import language.existentials
+    val (q, limitOffsetPars) =
+      limitOffset(from + where + cols + groupBy + order, countAll, limit, offset)
+    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+  }
+
+    /*
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
@@ -125,30 +184,28 @@ class Querease(quereaseIo: QuereaseIo) {
         paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Sort => sort, Offset => offset }
     //LIMIT threshold
-    // TODO overwritable
+    // TODO support overridable maxLimit?
     val limit = math.min(100, filteredParams.Limit)
     //list of tuples (bind variable name -> ListFilterType)
     val filter = filteredParams.Filter.groupBy(_.Field).toList.flatMap(f =>
       if (f._2.size > 1) f._2.zipWithIndex.map(t => (f._1 + t._2) -> t._1) else
         f._2.toList.map(f._1 -> _)).toArray
 
-    //base table alias
-    val B = view.tableAlias
-
     val preferRu = languagePreferences(0) == "ru"
     def isRu(f: FieldDef[Type]) = preferRu && f.isI18n
+    */
     def isI18n(f: FieldDef[Type]) = f.isI18n
-    def queryColTableAlias(f: FieldDef[Type]) =
+    def queryColTableAlias(view: ViewDef[Type], f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
-        (if (f.table == view.table) B else f.table)
+        (if (f.table == view.table) view.tableAlias else f.table)
 
     def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
-      extendedViewDef.getOrElse(fieldDef.type_.name,
+      typeNameToViewDef(fieldDef.type_.name).getOrElse(
         sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
-    def queryColExpression(f: FieldDef[Type]) = {
-      val qName = queryColTableAlias(f) + "." + f.name
+    def queryColExpression(view: ViewDef[Type], f: FieldDef[Type]) = {
+      val qName = queryColTableAlias(view, f) + "." + f.name
       if (f.expression != null) f.expression
       else if (f.type_ != null && f.type_.isComplexType) {
         val childViewDef = getChildViewDef(view, f)
@@ -159,6 +216,7 @@ class Querease(quereaseIo: QuereaseIo) {
           case ord => // FIXME support multicol asc/desc order by
             ord.replace("#", "").replace("(", "").replace(")", "").trim
         }).map(DbConventions.dbNameToXsdName).orNull
+        /*
         lazy val sortDetailsDbName = DbConventions.xsdNameToDbName(sortDetails)
         val isSortFieldIncluded = sortDetails == null ||
           childViewDef.fields.map(f => Option(f.alias) getOrElse f.name).toSet
@@ -172,12 +230,11 @@ class Querease(quereaseIo: QuereaseIo) {
             childViewDef.copy(fields = childViewDef.fields ++
               Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
           }
+        */
         val (tresqlQueryString, _) =
-          queryStringAndParams(extendedChildViewDef,
-            new ListRequestType(0, 0, null,
-              Option(sortDetails).map(ListSortType(_, "asc")).toArray))
+          queryStringAndParams(childViewDef, sortDetails, 0, 0, null)
         "|" + joinToParent + tresqlQueryString
-      } else if (isI18n(f)) getI18nColumnExpression(qName)
+      } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
       else qName
     }
 
@@ -188,35 +245,39 @@ class Querease(quereaseIo: QuereaseIo) {
         else null
       }
 
-    def queryColName(f: FieldDef[Type]) =
+    def queryColName(view: ViewDef[Type], f: FieldDef[Type]) =
       Option(f.alias).getOrElse(
-        if (isI18n(f)) f.name else queryColTableAlias(f) + "." + f.name)
+        if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
-    val cols =
+    def cols(view: ViewDef[Type], countAll: Boolean) =
       if (countAll) " {count(*)}"
       else view.fields
         .filter(f => !f.isExpression || f.expression != null)
         .filter(f => !f.isCollection ||
           (f.type_.isComplexType && !countAll && !f.isExpression))
-        .map(f => queryColExpression(f)
+        .map(f => queryColExpression(view, f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
 
     def ast(queryString: String) =
       QueryParser.parseExp(queryString).asInstanceOf[QueryParser.Query]
-    def fromAndWhere(queryString: String) = ast(queryString)
+    private def fromAndWhere(queryString: String) = ast(queryString)
       .copy(cols = null, group = null, order = null, offset = null, limit = null)
       .tresql
-    val groupBy = Option(view.joins).map(ast).map(_.group)
+    def groupBy(view: ViewDef[Type]) = view.groupBy
+    /*
+                = Option(view.joins).map(ast).map(_.group)
       .filter(_ != null).map(_.tresql) getOrElse ""
+    */
     //DELEME when next todo done
-    val from = if (view.joins != null) fromAndWhere(view.joins) else {
+    def from(view: ViewDef[Type]) = if (view.joins != null) fromAndWhere(view.joins) else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
-        // B is base table alias, ? is outer join
-        tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
-      } else view.table + " " + B
+        // ? is outer join
+        tables.map(view.tableAlias + "/" + _ + "?")
+          .mkString(view.table + " ", "; ", "")
+      } else view.table + " " + view.tableAlias
     }
     /* TODO merge joins, outer join intelligently (according to metadata)
     val from = {
@@ -232,13 +293,18 @@ class Querease(quereaseIo: QuereaseIo) {
         else 
       List(view.joins, autoJoins, view.joins).filter(_ != null).mkString("; ")
     }
-    */
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
         " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
+    */
+    // FIXME where is wherePlus/extraFilter?
+    def where(view: ViewDef[Type]) = view.filter
 
-    val order =
+    def order(view: ViewDef[Type], orderBy: String) =
+      Option(orderBy).orElse(Option(view.orderBy)) getOrElse ""
+
+    /* FIXME
       if (countAll || sort == null || sort.size == 0) ""
       else sort.map(s => (if (s.Order == "desc" || s.Order == "desc null") "~" else "") +
         (fieldNameToDef(s.Field) match {
@@ -248,18 +314,21 @@ class Querease(quereaseIo: QuereaseIo) {
             "NLSSORT(" + queryColName(f) + ", 'NLS_SORT = RUSSIAN')"
           case f => queryColName(f)
         }) + (if (Option(s.Order).getOrElse("") endsWith " null") " null" else "")).mkString("#(", ", ", ")")
+    */
 
-    def limitOffset(query: String) = (if (countAll) (0, 0) else (limit, offset)) match {
+    def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int
+        ) = (if (countAll) (0, 0) else (limit, offset)) match {
       case (0, 0) => (query, Array())
       case (limit, 0) =>
         (query + "@(?)", Array(limit))
       case (0, offset) =>
         (query + "@(?,)", Array(offset))
       case (limit, offset) =>
+        // TODO ora specific!
         // use limit + offset instead of limit because ora dialect not ready
         (query + "@(? ?)", Array(offset, limit + offset))
     }
-
+/*
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
       val v = f._2.Value
       // TODO describe convertion error (field, table, value, ...)
@@ -283,9 +352,6 @@ class Querease(quereaseIo: QuereaseIo) {
         case x => sys.error("Filter value type not supported: " + x)
       })
     }).toMap
-
-    import language.existentials
-    val (q, limitOffsetPars) = limitOffset(from + where + cols + groupBy + order)
-    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+*/
   }
 }
