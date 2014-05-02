@@ -39,17 +39,19 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   def nextId(tableName: String) =
     Query.unique[Long]("dual{seq.nextval}")
 
-  // addParams allows to specify additional columns to be saved that are not present in pojo.
-  def save(pojo: AnyRef, addParams: Map[String, Any] = null,
+  // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
+  def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long =
-    saveTo(getViewDef(pojo.getClass).table, pojo, addParams, transform, forceInsert)
+    saveTo(getViewDef(pojo.getClass).table, pojo, extraPropsToSave, transform, forceInsert)
 
-  def saveTo(tableName: String, pojo: AnyRef, addParams: Map[String, Any] = null,
+  def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
-    val propMap = if (addParams != null) pojoPropMap ++ addParams else pojoPropMap
+    val propMap =
+      if (extraPropsToSave != null) pojoPropMap ++ extraPropsToSave
+      else pojoPropMap
     val transf = if (transform != null) transform else (m: Map[String, Any]) => m
     val (id, isNew) = propMap.get("id").filter(_ != null).map(
       _.toString.toLong -> forceInsert) getOrElse (nextId(tableName), true)
@@ -194,12 +196,12 @@ object QueryStringBuilder {
     val preferRu = languagePreferences(0) == "ru"
     def isRu(f: FieldDef[Type]) = preferRu && f.isI18n
     */
-    def isI18n(f: FieldDef[Type]) = f.isI18n
+    private def isI18n(f: FieldDef[Type]) = f.isI18n
     def queryColTableAlias(view: ViewDef[Type], f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) view.tableAlias else f.table)
 
-    def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
+    private def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
       typeNameToViewDef(fieldDef.type_.name).getOrElse(
         sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
@@ -259,7 +261,7 @@ object QueryStringBuilder {
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
 
-    def ast(queryString: String) =
+    private def ast(queryString: String) =
       QueryParser.parseExp(queryString).asInstanceOf[QueryParser.Query]
     private def fromAndWhere(queryString: String) = ast(queryString)
       .copy(cols = null, group = null, order = null, offset = null, limit = null)
