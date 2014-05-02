@@ -17,9 +17,6 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
-  override def extendedViewDef = metadata.extendedViewDef
-  override def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]) =
-    metadata.columnDef(viewDef, fieldDef)
   override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[Type] =
     metadata.extendedViewDef.get(ViewName.get(viewClass)) getOrElse
       (metadata.extendedViewDef.get(ViewName.get(viewClass)
@@ -33,8 +30,6 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
           case x => throw new RuntimeException(
             "Failed to get view definition for " + viewClass.getName)
         }))
-
-  override def toMap(instance: AnyRef): Map[String, _] = pojoToMap(instance)
   def pojoToMap(pojo: Any): Map[String, _] = {
     def propName(m: java.lang.reflect.Method) = {
       val mName = m.getName

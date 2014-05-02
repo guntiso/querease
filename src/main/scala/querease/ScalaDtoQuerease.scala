@@ -11,11 +11,6 @@ import org.tresql.RowLike
 import mojoz.metadata._
 
 private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends QuereaseIo {
-  override def extendedViewDef = metadata.extendedViewDef
-  override def columnDef(viewDef: ViewDef[_], fieldDef: FieldDef[_]) =
-    metadata.columnDef(viewDef, fieldDef)
-  override def toMap(instance: AnyRef) =
-    instance.asInstanceOf[Dto].toMap
   override def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]) = {
     def toDto(r: RowLike) = {
       val t = clazz.newInstance
