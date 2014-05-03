@@ -17,8 +17,9 @@ libraryDependencies ++= Seq(
   "org.scalatest" % "scalatest_2.10" % "2.0.M8" % "test"
 )
 
+scalaSource in Compile <<= baseDirectory(_ / "src")
+
 unmanagedResourceDirectories in Compile <<= baseDirectory(b => Seq(
-  b / "src" / "main" / "resources",
   b / "conf",
   b / "md"
 ))
