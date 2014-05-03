@@ -1,6 +1,9 @@
 package querease
 
 import scala.collection.JavaConversions._
+import scala.language.existentials
+import scala.language.implicitConversions
+import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
 

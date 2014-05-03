@@ -1,6 +1,7 @@
 package querease
 
 import scala.collection.immutable.ListMap
+import scala.language.postfixOps
 import sys._
 import org.tresql._
 
