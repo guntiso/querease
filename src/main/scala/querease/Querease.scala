@@ -36,8 +36,6 @@ case class ListRequestType(
 class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   import quereaseIo._
   import builder._
-  def nextId(tableName: String) =
-    Query.unique[Long]("dual{seq.nextval}")
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
@@ -53,11 +51,15 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
       if (extraPropsToSave != null) pojoPropMap ++ extraPropsToSave
       else pojoPropMap
     val transf = if (transform != null) transform else (m: Map[String, Any]) => m
-    val (id, isNew) = propMap.get("id").filter(_ != null).map(
-      _.toString.toLong -> forceInsert) getOrElse (nextId(tableName), true)
-    if (isNew) ORT.insert(tableName, transf(propMap + ("id" -> id)))
-    else ORT.update(tableName, transf(propMap))
-    id
+    val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
+      (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
+    if (isNew) {
+      val (_, id) = ORT.insert(tableName, transf(propMap))
+      id.asInstanceOf[Long]
+    } else {
+      ORT.update(tableName, transf(propMap))
+      id.get
+    }
   }
 
   def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
@@ -103,7 +105,7 @@ def list[T <: AnyRef](viewClass: Class[T], orderBy: String,
     list(queryStringAndParams._1, instanceClass, queryStringAndParams._2)
 
   def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any] = null) =
-    fromRows(Query.select(query, params), instanceClass)
+    fromRows(Query(query, params), instanceClass)
 /*
   def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
     wherePlus: (String, Map[String, Any])) = {
@@ -125,7 +127,8 @@ trait QueryStringBuilder {
 object QueryStringBuilder {
   def default(typeNameToViewDef: (String) => Option[ViewDef[Type]]) =
     new DefaultQueryStringBuilder(typeNameToViewDef)
-  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[Type]]) {
+  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[Type]])
+    extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
