@@ -58,7 +58,7 @@ object Sample {
   def main(args: Array[String]) {
     setEnv()
     try {
-      val banks = qe.list(classOf[BankListRow], null, 0, 10, null)
+      val banks = qe.list(classOf[BankListRow], null, 0, 10)
       println("Bank codes:")
       banks.map(_.code) foreach println
       println

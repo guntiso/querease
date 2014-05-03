@@ -63,35 +63,34 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   }
 
   def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
-    wherePlus: (String, Map[String, Any]) = (null, Map())) = {
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(getViewDef(pojoClass), "", 0, 0, params, wherePlus, true)
+      queryStringAndParams(getViewDef(pojoClass), params, 0, 0, "", extraFilterAndParams, true)
     Env.log(tresqlQueryString)
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
 /*
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
-    wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] =
-    query(getViewDef(pojoClass), pojoClass, params, wherePlus)
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] =
+    query(getViewDef(pojoClass), pojoClass, params, extraFilterAndParams)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
-    wherePlus: (String, Map[String, Any])): T = {
+    extraFilterAndParams: (String, Map[String, Any])): T = {
     val filterDef = Array(new ListFilterType("Id", "=", id.toString))
     val sortDef = Array[ListSortType]()
     val req = ListRequestType(1, 0, filterDef, sortDef)
-    query(viewClass, req, wherePlus).headOption getOrElse null.asInstanceOf[T]
+    query(viewClass, req, extraFilterAndParams).headOption getOrElse null.asInstanceOf[T]
 */
-def list[T <: AnyRef](viewClass: Class[T], orderBy: String,
-      offset: Int, limit: Int, params: Map[String, Any],
-    wherePlus: (String, Map[String, Any]) = (null, Map())): List[T] = {
-    val (q, p) = queryStringAndParams(getViewDef(viewClass), orderBy,
-        offset, limit, params, wherePlus)
+def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
+      offset: Int = 0, limit: Int = 0, orderBy: String = null,
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] = {
+    val (q, p) = queryStringAndParams(getViewDef(viewClass), params,
+        offset, limit, orderBy, extraFilterAndParams)
     list(q, viewClass, p)
   }
 
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
-    wherePlus: (String, Map[String, Any]) = (null, Map())): Option[T] = {
-    val (q, p) = queryStringAndParams(getViewDef(viewClass), "", 0, 2, Map("id" -> id))
-    // FIXME !!! ("Id", "=", id.toString))
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Option[T] = {
+    val (q, p) = queryStringAndParams(getViewDef(viewClass), Map("id" -> id), 0, 2, "", extraFilterAndParams)
     val result = list(q, viewClass, p)
     if (result.size > 1)
       sys.error("Too many rows returned by query for get method for " +
@@ -104,13 +103,13 @@ def list[T <: AnyRef](viewClass: Class[T], orderBy: String,
     instanceClass: Class[T]): List[T] =
     list(queryStringAndParams._1, instanceClass, queryStringAndParams._2)
 
-  def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any] = null) =
+  def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any]) =
     fromRows(Query(query, params), instanceClass)
 /*
   def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
-    wherePlus: (String, Map[String, Any])) = {
+    extraFilterAndParams: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(view, params, wherePlus)
+      queryStringAndParams(view, params, extraFilterAndParams)
     Env.log(tresqlQueryString)
     list(tresqlQueryString, pojoClass, paramsMap)
   }
@@ -118,9 +117,9 @@ def list[T <: AnyRef](viewClass: Class[T], orderBy: String,
 }
 
 trait QueryStringBuilder {
-  def queryStringAndParams(view: ViewDef[Type],
-    orderBy: String, offset: Int, limit: Int, params: Map[String, Any],
-    wherePlus: (String, Map[String, Any]) = (null, Map()),
+  def queryStringAndParams(view: ViewDef[Type], params: Map[String, Any],
+    offset: Int = 0, limit: Int = 0, orderBy: String = null,
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any])
 }
 
@@ -147,9 +146,9 @@ object QueryStringBuilder {
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
-  override def queryStringAndParams(view: ViewDef[Type],
-    orderBy: String, offset: Int, limit: Int, params: Map[String, Any],
-    wherePlus: (String, Map[String, Any]) = (null, Map()),
+  override def queryStringAndParams(view: ViewDef[Type], params: Map[String, Any],
+    offset: Int = 0, limit: Int = 0, orderBy: String = null,
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
 
     val from = this.from(view)
@@ -162,7 +161,7 @@ object QueryStringBuilder {
     import language.existentials
     val (q, limitOffsetPars) =
       limitOffset(from + where + cols + groupBy + order, countAll, limit, offset)
-    (q, values ++ wherePlus._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+    (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
 
     /*
@@ -186,7 +185,7 @@ object QueryStringBuilder {
       else true
     val filteredParams = Option(params).getOrElse(
       new ListRequestType(0, 0, Array(), Array())).copy(Filter =
-        paramsFilter.filter(f => !wherePlus._2.contains(f.Field)).filter(isFilterable).toArray)
+        paramsFilter.filter(f => !extraFilterAndParams._2.contains(f.Field)).filter(isFilterable).toArray)
     import filteredParams.{ Sort => sort, Offset => offset }
     //LIMIT threshold
     // TODO support overridable maxLimit?
@@ -237,7 +236,7 @@ object QueryStringBuilder {
           }
         */
         val (tresqlQueryString, _) =
-          queryStringAndParams(childViewDef, sortDetails, 0, 0, null)
+          queryStringAndParams(childViewDef, null, 0, 0, sortDetails)
         "|" + joinToParent + tresqlQueryString
       } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
       else qName
@@ -301,10 +300,10 @@ object QueryStringBuilder {
     }
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
-        " :" + f._1) ++ Option(wherePlus._1).filter(_ != ""))
+        " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
     */
-    // FIXME where is wherePlus/extraFilter?
+    // FIXME where is extraFilter?
     def where(view: ViewDef[Type]) = Option(view.filter) getOrElse ""
 
     def order(view: ViewDef[Type], orderBy: String) =
