@@ -266,10 +266,11 @@ object QueryStringBuilder {
 
     private def ast(queryString: String) =
       QueryParser.parseExp(queryString).asInstanceOf[QueryParser.Query]
+    // TODO remove this method
     private def fromAndWhere(queryString: String) = ast(queryString)
       .copy(cols = null, group = null, order = null, offset = null, limit = null)
       .tresql
-    def groupBy(view: ViewDef[Type]) = view.groupBy
+    def groupBy(view: ViewDef[Type]) = Option(view.groupBy) getOrElse ""
     /*
                 = Option(view.joins).map(ast).map(_.group)
       .filter(_ != null).map(_.tresql) getOrElse ""
@@ -304,7 +305,7 @@ object QueryStringBuilder {
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
     */
     // FIXME where is wherePlus/extraFilter?
-    def where(view: ViewDef[Type]) = view.filter
+    def where(view: ViewDef[Type]) = Option(view.filter) getOrElse ""
 
     def order(view: ViewDef[Type], orderBy: String) =
       Option(orderBy).orElse(Option(view.orderBy)) getOrElse ""
