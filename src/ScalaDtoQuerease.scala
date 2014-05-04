@@ -111,7 +111,8 @@ private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends Que
         //child objects from different lists can be put into one table
       }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
         case ("s", l: Seq[(_, Seq[_])]) =>
-          l groupBy (_._1) map (t => t._1 -> (t._2 flatMap (_._2))) case ("v", x) => x
+          l groupBy (_._1) map (t => t._1 -> (t._2.asInstanceOf[Seq[(_, Seq[_])]] flatMap (_._2)))
+        case ("v", x) => x
       }
   }
 

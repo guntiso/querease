@@ -1,6 +1,6 @@
 name := "querease"
 
-scalaVersion := "2.10.3"
+scalaVersion := "2.11.0"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
@@ -12,7 +12,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % "6.0-M2-SNAPSHOT",
-  "default" %% "mojoz" % "0.1-SNAPSHOT",
+  "mojoz" %% "mojoz" % "0.1-SNAPSHOT",
   // test
   "org.scalatest" % "scalatest_2.10" % "2.0.M8" % "test"
 )
