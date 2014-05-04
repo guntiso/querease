@@ -18,3 +18,9 @@ libraryDependencies ++= Seq(
 )
 
 scalaSource in Compile <<= baseDirectory(_ / "src")
+
+scalacOptions in (Compile, doc) <++= (baseDirectory in
+ LocalProject("querease")).map {
+   bd => Seq("-sourcepath", bd.getAbsolutePath,
+             "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
+ }
