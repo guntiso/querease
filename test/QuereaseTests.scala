@@ -8,6 +8,7 @@ import org.tresql.dialects.HSQLDialect
 
 import dto.BankListRow
 import dto.BankListRowWithFilter
+import dto.BankListRowWithGroup
 import mojoz.metadata.Metadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
@@ -76,6 +77,10 @@ class QuereaseTests extends FlatSpec with Matchers {
       b2.name = name2
       qe.save(b2)
       qe.get(classOf[BankListRow], 10001).get.name should be(name2)
+      qe.save(bank)
+      qe.save(bank)
+      qe.list(classOf[BankListRow], null).size should be(3)
+      qe.list(classOf[BankListRowWithGroup], null).size should be(2)
     } finally clearEnv
   }
   def getConnection = DriverManager.getConnection(url, user, password)

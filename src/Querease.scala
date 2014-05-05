@@ -285,7 +285,8 @@ object QueryStringBuilder {
     private def fromAndWhere(queryString: String) = ast(queryString)
       .copy(cols = null, group = null, order = null, offset = null, limit = null)
       .tresql
-    def groupBy(view: ViewDef[Type]) = Option(view.groupBy) getOrElse ""
+    def groupBy(view: ViewDef[Type]) = Option(view.groupBy)
+      .filter(_ != "").map(g => s"($g)") getOrElse ""
     /*
                 = Option(view.joins).map(ast).map(_.group)
       .filter(_ != null).map(_.tresql) getOrElse ""

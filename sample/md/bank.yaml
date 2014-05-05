@@ -15,3 +15,9 @@ fields:
  - code
  - name
 filter: code != "b2"
+
+name: bank_list_row_with_group
+table: bank
+fields:
+ - name
+group: name
