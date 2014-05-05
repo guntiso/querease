@@ -69,6 +69,10 @@ class QuereaseTests extends FlatSpec with Matchers {
       qe.delete(b1)
       val banksAfter = qe.list(classOf[BankListRow], null)
       banksAfter.size should be(1)
+      val name2 = "Bank 2 updated name"
+      b2.name = name2
+      qe.save(b2)
+      qe.get(classOf[BankListRow], 10001).get.name should be(name2)
     } finally clearEnv
   }
   def getConnection = DriverManager.getConnection(url, user, password)
