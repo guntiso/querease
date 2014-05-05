@@ -54,6 +54,9 @@ class QuereaseTests extends FlatSpec with Matchers {
       bank.code = "b2"
       bank.name = "Bank 2"
       qe.save(bank)
+      qe.countAll(classOf[BankListRow], null) should be(2)
+      qe.get(classOf[BankListRow], 10000).get.name should be("Bank 1")
+      qe.get(classOf[BankListRow], 10001).get.name should be("Bank 2")
       qe.list(classOf[BankListRow], null)
     } finally clearEnv
     banks.map(b => (b.id, b.code, b.name)) foreach println

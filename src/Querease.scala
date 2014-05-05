@@ -89,12 +89,21 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
   }
 
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Option[T] = {
-    val (q, p) = queryStringAndParams(getViewDef(viewClass), Map("id" -> id), 0, 2, "", extraFilterAndParams)
+    extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
+    val extraQ = extraFilterAndParams match {
+      case null | ("", _) => "id = :id"
+      case (x, _) => s"[$x] & [id = :id]"
+    }
+    val extraP = extraFilterAndParams match {
+      case null | (_, null) => Map[String, Any]()
+      case (_, m) => m
+    }
+    val (q, p) = queryStringAndParams(getViewDef(viewClass),
+      Map("id" -> id), 0, 2, "", (extraQ, extraP))
     val result = list(q, viewClass, p)
     if (result.size > 1)
       sys.error("Too many rows returned by query for get method for " +
-          viewClass.getName)
+        viewClass.getName)
     result.headOption
   }
 
@@ -152,11 +161,11 @@ object QueryStringBuilder {
     countAll: Boolean = false): (String, Map[String, Any]) = {
 
     val from = this.from(view)
-    val where = this.where(view)
+    val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull)
     val cols = this.cols(view, countAll)
     val groupBy = this.groupBy(view)
     val order = this.order(view, orderBy)
-    val values = Map[String, Any]()
+    val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
 
     import language.existentials
     val (q, limitOffsetPars) =
@@ -303,8 +312,10 @@ object QueryStringBuilder {
         " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
     */
-    // FIXME where is extraFilter?
-    def where(view: ViewDef[Type]) = Option(view.filter) getOrElse ""
+    def where(view: ViewDef[Type], extraFilter: String) =
+      List(view.filter, extraFilter)
+        .filter(_ != null).filter(_ != "")
+        .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     def order(view: ViewDef[Type], orderBy: String) =
       Option(orderBy).orElse(Option(view.orderBy)) getOrElse ""
