@@ -114,6 +114,12 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
 
   def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any]) =
     fromRows(Query(query, params), instanceClass)
+
+  def delete(instance: AnyRef) = {
+    val view = getViewDef(instance.getClass)
+    val keyMap = getKeyMap(instance, view)
+    Query(builder.deleteStatementString(view, keyMap), keyMap)
+  }
 /*
   def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
     extraFilterAndParams: (String, Map[String, Any])) = {
@@ -130,6 +136,7 @@ trait QueryStringBuilder {
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any])
+  def deleteStatementString(view: ViewDef[Type], keyMap: Map[String, Any]): String
 }
 
 object QueryStringBuilder {
@@ -344,6 +351,11 @@ object QueryStringBuilder {
         // use limit + offset instead of limit because ora dialect not ready
         (query + "@(? ?)", Array(offset, limit + offset))
     }
+
+    def deleteStatementString(view: ViewDef[Type], keyMap: Map[String, Any]) =
+      "-" + view.table +
+        keyMap.map(_._1).map(c => s"$c = :$c").mkString("[", " & ", "]")
+
 /*
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
       val v = f._2.Value

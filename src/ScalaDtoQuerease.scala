@@ -24,6 +24,11 @@ private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends Que
   }
   override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
     instance.asInstanceOf[Dto].toSaveableMap
+  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+    if (instance.isInstanceOf[DtoWithId])
+      Map("id" -> instance.asInstanceOf[DtoWithId].id)
+    else sys.error( // TODO use viewDef to get key-values if defined
+      s"getting key map for ${instance.getClass.getName} not supported yet")
   override def getViewDef(viewClass: Class[_ <: AnyRef]) = {
     metadata.extendedViewDef.get(ViewName.get(viewClass).replace("-", "_"))
       .getOrElse(sys.error(s"View definition for ${viewClass.getName} not found"))

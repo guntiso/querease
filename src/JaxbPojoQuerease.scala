@@ -217,6 +217,9 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
 
   override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
     pojoToSaveableMap(instance, viewDef)
+  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+    // FIXME when key != id, use viewDef to get key-values if defined
+    Map("id" -> getId(instance))
   def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef[Type]) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[Map[String, _]]) =>
@@ -262,5 +265,10 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
     toSaveableDetails(propMap, viewDef)
       .filter(e => !(e._1 startsWith "!"))
       .map(e => (e._1, trim(e._2)))
+  }
+  private val NoArgs = Array[Class[_]]()
+  private def getId(pojo: AnyRef): java.lang.Long = {
+    val getter = pojo.getClass().getMethod("getId", NoArgs: _*)
+    getter.invoke(pojo).asInstanceOf[java.lang.Long]
   }
 }

@@ -11,6 +11,7 @@ import mojoz.metadata.Metadata
 trait QuereaseIo {
   def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]): List[T]
   def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]): Map[String, _]
+  def getKeyMap(instance: AnyRef, viewDef: ViewDef[Type]): Map[String, _]
   def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[Type] // TODO not class
 }
 

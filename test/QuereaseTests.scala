@@ -46,7 +46,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     executeStatements("CREATE SEQUENCE seq START WITH 10000")
     println
     setEnv()
-    val banks = try {
+    try {
       val bank = new BankListRow
       bank.code = "b1"
       bank.name = "Bank 1"
@@ -55,16 +55,21 @@ class QuereaseTests extends FlatSpec with Matchers {
       bank.name = "Bank 2"
       qe.save(bank)
       qe.countAll(classOf[BankListRow], null) should be(2)
-      qe.get(classOf[BankListRow], 10000).get.name should be("Bank 1")
-      qe.get(classOf[BankListRow], 10001).get.name should be("Bank 2")
-      qe.list(classOf[BankListRow], null)
+      val b1 = qe.get(classOf[BankListRow], 10000).get
+      b1.name should be("Bank 1")
+      val b2 = qe.get(classOf[BankListRow], 10001).get
+      b2.name should be("Bank 2")
+      val banks = qe.list(classOf[BankListRow], null)
+      banks.map(b => (b.id, b.code, b.name)) foreach println
+      banks(0).id should be(10000)
+      banks(0).name should be("Bank 1")
+      banks(1).id should be(10001)
+      banks(1).code should be("b2")
+      banks.size should be(2)
+      qe.delete(b1)
+      val banksAfter = qe.list(classOf[BankListRow], null)
+      banksAfter.size should be(1)
     } finally clearEnv
-    banks.map(b => (b.id, b.code, b.name)) foreach println
-    banks(0).id should be(10000)
-    banks(0).name should be("Bank 1")
-    banks(1).id should be(10001)
-    banks(1).code should be("b2")
-    banks.size should be(2)
   }
   def getConnection = DriverManager.getConnection(url, user, password)
   def setEnv(conn: Connection = getConnection) = {
