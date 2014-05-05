@@ -7,6 +7,7 @@ import org.tresql.Env
 import org.tresql.dialects.HSQLDialect
 
 import dto.BankListRow
+import dto.BankListRowWithFilter
 import mojoz.metadata.Metadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
@@ -67,6 +68,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       banks(1).id should be(10001)
       banks(1).code should be("b2")
       banks.size should be(2)
+      qe.list(classOf[BankListRowWithFilter], null).size should be(1)
       qe.delete(b1)
       val banksAfter = qe.list(classOf[BankListRow], null)
       banksAfter.size should be(1)

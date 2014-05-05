@@ -7,3 +7,11 @@ fields:
  - country.name
  - name
 order: ~id
+
+name: bank_list_row_with_filter
+table: bank
+fields:
+ - id
+ - code
+ - name
+filter: code != "b2"
