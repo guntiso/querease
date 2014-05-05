@@ -14,7 +14,8 @@ libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % "6.0-M2-SNAPSHOT",
   "mojoz" %% "mojoz" % "0.1-SNAPSHOT",
   // test
-  "org.scalatest" % "scalatest_2.10" % "2.0.M8" % "test"
+  "org.hsqldb" % "hsqldb" % "2.3.2" % "test",
+  "org.scalatest" %% "scalatest" % "2.1.5" % "test"
 )
 
 scalaSource in Compile <<= baseDirectory(_ / "src")
@@ -24,3 +25,33 @@ scalacOptions in (Compile, doc) <++= (baseDirectory in
    bd => Seq("-sourcepath", bd.getAbsolutePath,
              "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
  }
+
+unmanagedResourceDirectories in Test <<= baseDirectory(b => Seq(b / "sample" / "md"))
+
+scalaSource in Test <<= baseDirectory(_ / "test")
+
+sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Test, sourceManaged in Test) map {
+      (cache: File, resDirs: Seq[File], outDir: File) => {
+    import querease._
+    import mojoz.metadata._
+    import mojoz.metadata.in._
+    import mojoz.metadata.out._
+    val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toSeq
+    val tableMd = new Metadata(new YamlTableDefLoader(yamlMd).tableDefs)
+    val viewDefs = (new YamlViewDefLoader(tableMd, yamlMd) with TresqlJoinsParser).viewDefs
+    val i18nRules = I18nRules.suffixI18n(Set("_eng", "_rus"))
+    val metadata = new Metadata(tableMd.tableDefs, viewDefs, i18nRules)
+    object ScalaBuilder extends ScalaClassWriter {
+      override def scalaClassTraits(viewDef: ViewDef[Type]) =
+        if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))
+          List("DtoWithId")
+        else List("Dto")
+    }
+    val file = outDir / "dto" / "Dtos.scala"
+    val contents = ScalaBuilder.createScalaClassesString(
+      List("package dto", "",
+        "import querease._", ""), metadata.viewDefs, Nil)
+    IO.write(file, contents)
+    Seq(file) // FIXME where's my cache?
+  }
+}
