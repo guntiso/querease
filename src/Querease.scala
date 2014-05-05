@@ -325,7 +325,8 @@ object QueryStringBuilder {
         .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     def order(view: ViewDef[Type], orderBy: String) =
-      Option(orderBy).orElse(Option(view.orderBy)) getOrElse ""
+      Option(orderBy).orElse(Option(view.orderBy))
+      .filter(_ != "").map(o => s"#($o)") getOrElse ""
 
     /* FIXME
       if (countAll || sort == null || sort.size == 0) ""

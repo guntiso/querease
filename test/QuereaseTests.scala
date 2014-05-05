@@ -59,7 +59,8 @@ class QuereaseTests extends FlatSpec with Matchers {
       b1.name should be("Bank 1")
       val b2 = qe.get(classOf[BankListRow], 10001).get
       b2.name should be("Bank 2")
-      val banks = qe.list(classOf[BankListRow], null)
+      qe.list(classOf[BankListRow], null)(0).id should be(10001)
+      val banks = qe.list(classOf[BankListRow], null, orderBy = "id")
       banks.map(b => (b.id, b.code, b.name)) foreach println
       banks(0).id should be(10000)
       banks(0).name should be("Bank 1")
