@@ -21,3 +21,11 @@ table: bank
 fields:
  - name
 group: name
+
+name: bank_list_row_with_having
+table: bank
+fields:
+ - name
+ - total int = count(*)
+group: name
+having: count(*) > 1

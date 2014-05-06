@@ -171,12 +171,13 @@ object QueryStringBuilder {
     val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull)
     val cols = this.cols(view, countAll)
     val groupBy = this.groupBy(view)
+    val having = this.having(view)
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
 
     import language.existentials
     val (q, limitOffsetPars) =
-      limitOffset(from + where + cols + groupBy + order, countAll, limit, offset)
+      limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
 
@@ -291,6 +292,8 @@ object QueryStringBuilder {
                 = Option(view.joins).map(ast).map(_.group)
       .filter(_ != null).map(_.tresql) getOrElse ""
     */
+    def having(view: ViewDef[Type]) = Option(view.having)
+      .filter(_ != "").map(g => s"^($g)") getOrElse ""
     //DELEME when next todo done
     def from(view: ViewDef[Type]) = if (view.joins != null) fromAndWhere(view.joins) else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
