@@ -1,5 +1,7 @@
 name := "querease"
 
+organization := "org.mojoz"
+
 scalaVersion := "2.11.1"
 
 crossScalaVersions := Seq(
@@ -60,3 +62,44 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
     Seq(file) // FIXME where's my cache?
   }
 }
+
+publishTo <<= version { v: String =>
+  val nexus = "https://oss.sonatype.org/"
+  if (v.trim.endsWith("SNAPSHOT"))
+    Some("snapshots" at nexus + "content/repositories/snapshots")
+  else
+    Some("releases" at nexus + "service/local/staging/deploy/maven2")
+}
+
+publishMavenStyle := true
+
+publishArtifact in Test := false
+
+pomIncludeRepository := { _ => false }
+
+pomExtra := (
+  <url>https://github.com/guntiso/querease</url>
+  <licenses>
+    <license>
+      <name>MIT</name>
+      <url>http://www.opensource.org/licenses/MIT</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+  <scm>
+    <url>git@github.com:guntiso/querease.git</url>
+    <connection>scm:git:git@github.com:guntiso/querease.git</connection>
+  </scm>
+  <developers>
+    <developer>
+      <id>guntiso</id>
+      <name>Guntis Ozols</name>
+      <url>https://github.com/guntiso/</url>
+    </developer>
+    <developer>
+      <id>mrumkovskis</id>
+      <name>Martins Rumkovskis</name>
+      <url>https://github.com/mrumkovskis/</url>
+    </developer>
+  </developers>
+)
