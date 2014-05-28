@@ -1,6 +1,11 @@
 name := "querease"
 
-scalaVersion := "2.11.0"
+scalaVersion := "2.11.1"
+
+crossScalaVersions := Seq(
+  "2.11.1",
+  "2.10.4"
+)
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 

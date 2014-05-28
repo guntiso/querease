@@ -36,6 +36,7 @@ class QuereaseTests extends FlatSpec with Matchers {
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
 
   "querease" should "do something" in {
+    Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
     def executeStatements(statements: String*) {
       val conn = getConnection
       try {
