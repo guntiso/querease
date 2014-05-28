@@ -43,7 +43,7 @@ class QuereaseTests extends FlatSpec with Matchers {
         try statements foreach { statement.execute } finally statement.close()
       } finally conn.close()
     }
-    val statements = SqlWriter.hsqldb().createStatements(tableDefs)
+    val statements = SqlWriter.hsqldb().schema(tableDefs)
       .split(";").toList.map(_.trim).filter(_ != "")
     executeStatements(statements: _*)
     executeStatements("CREATE SEQUENCE seq START WITH 10000")
