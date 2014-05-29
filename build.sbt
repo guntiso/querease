@@ -77,15 +77,10 @@ publishArtifact in Test := false
 
 pomIncludeRepository := { _ => false }
 
+licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/MIT"))
+
 pomExtra := (
   <url>https://github.com/guntiso/querease</url>
-  <licenses>
-    <license>
-      <name>MIT</name>
-      <url>http://www.opensource.org/licenses/MIT</url>
-      <distribution>repo</distribution>
-    </license>
-  </licenses>
   <scm>
     <url>git@github.com:guntiso/querease.git</url>
     <connection>scm:git:git@github.com:guntiso/querease.git</connection>
