@@ -11,7 +11,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "default" %% "querease" % "0.1-SNAPSHOT",
+  "org.mojoz" %% "querease" % "0.1-SNAPSHOT",
   "com.typesafe" % "config" % "1.2.0",
   // test
   "org.scalatest" % "scalatest_2.10" % "2.0.M8" % "test"

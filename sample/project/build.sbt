@@ -3,5 +3,5 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "default" %% "querease" % "0.1-SNAPSHOT"
+  "org.mojoz" %% "querease" % "0.1-SNAPSHOT"
 )
