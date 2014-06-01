@@ -90,9 +90,11 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
 
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
     extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
+    // TODO do not use id and long, get key from tableDef
+    val tableAlias = getViewDef(viewClass).tableAlias
     val extraQ = extraFilterAndParams match {
-      case null | ("", _) => "id = :id"
-      case (x, _) => s"[$x] & [id = :id]"
+      case null | ("", _) => s"$tableAlias.id = :id"
+      case (x, _) => s"[$x] & [$tableAlias.id = :id]"
     }
     val extraP = extraFilterAndParams match {
       case null | (_, null) => Map[String, Any]()
