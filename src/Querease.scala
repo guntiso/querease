@@ -326,8 +326,9 @@ object QueryStringBuilder {
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
     */
     def where(view: ViewDef[Type], extraFilter: String) =
-      List(view.filter, extraFilter)
+      (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
         .filter(_ != null).filter(_ != "")
+        .map(FilterResolver.resolve)
         .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     def order(view: ViewDef[Type], orderBy: String) =
