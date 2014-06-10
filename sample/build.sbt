@@ -50,7 +50,7 @@ sourceGenerators in Compile <+= (cacheDirectory, unmanagedResourceDirectories in
     val i18nRules = I18nRules.suffixI18n(Set("_eng", "_rus"))
     val metadata = new Metadata(tableMd.tableDefs, viewDefs, i18nRules)
     object ScalaBuilder extends ScalaClassWriter {
-      override def scalaClassTraits(viewDef: ViewDef[Type]) =
+      override def scalaClassTraits(viewDef: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]]) =
         if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))
           List("DtoWithId")
         else List("Dto")
