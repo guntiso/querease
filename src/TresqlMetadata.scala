@@ -6,10 +6,11 @@ import org.tresql.metadata.Key
 import org.tresql.metadata.{ Ref => TresqlRef }
 import org.tresql.metadata.Table
 
-import mojoz.metadata.TableDef
+import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
+import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
 class TresqlMetadata(
-  val tableDefs: Seq[TableDef[_]],
+  val tableDefs: Seq[TableDef[ColumnDef[_]]],
   val procedureMetadata: MetaData)
   extends MetaData {
 

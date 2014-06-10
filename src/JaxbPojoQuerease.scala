@@ -8,6 +8,9 @@ import scala.language.postfixOps
 
 import org.tresql.Result
 
+import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
+import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
+
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.DbConventions.xsdNameToDbName
@@ -17,7 +20,7 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
-  override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[Type] =
+  override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] =
     metadata.extendedViewDef.get(ViewName.get(viewClass)) getOrElse
       (metadata.extendedViewDef.get(ViewName.get(viewClass)
         .replace("-", "_")) getOrElse
@@ -215,12 +218,12 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]) =
     pojoToSaveableMap(instance, viewDef)
-  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]) =
     // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
-  def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef[Type]) = {
+  def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef[FieldDef[Type]]) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[Map[String, _]]) =>
         (xsdNameToDbName(k), vList map toDbFormat)
@@ -232,8 +235,8 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
       case x => x
     }
 
-    def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef[Type]): Map[String, Any] = {
-      def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
+    def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef[FieldDef[Type]]): Map[String, Any] = {
+      def getChildViewDef(viewDef: ViewDef[_], fieldDef: FieldDef[Type]) =
         metadata.extendedViewDef.getOrElse(fieldDef.type_.name,
           sys.error("Child viewDef not found: " + fieldDef.type_.name +
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))

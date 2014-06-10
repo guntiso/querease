@@ -12,6 +12,8 @@ import org.tresql.Result
 import org.tresql.RowLike
 
 import mojoz.metadata._
+import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
+import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 
 private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends QuereaseIo {
   override def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]) = {
@@ -22,9 +24,9 @@ private[querease] class ScalaDtoQuereaseIo(metadata: Metadata[Type]) extends Que
     }
     rows.map(toDto).toList
   }
-  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]) =
     instance.asInstanceOf[Dto].toSaveableMap
-  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[Type]) =
+  override def getKeyMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]) =
     if (instance.isInstanceOf[DtoWithId])
       Map("id" -> instance.asInstanceOf[DtoWithId].id)
     else sys.error( // TODO use viewDef to get key-values if defined

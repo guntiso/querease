@@ -9,6 +9,8 @@ import org.tresql.QueryParser
 
 import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
+import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 import mojoz.metadata._
 
 /*
@@ -123,7 +125,7 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
     Query(builder.deleteStatementString(view, keyMap), keyMap)
   }
 /*
-  def query[T <: AnyRef](view: ViewDef[Type], pojoClass: Class[T], params: ListRequestType,
+  def query[T <: AnyRef](view: ViewDef[FieldDef[Type]], pojoClass: Class[T], params: ListRequestType,
     extraFilterAndParams: (String, Map[String, Any])) = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(view, params, extraFilterAndParams)
@@ -134,17 +136,17 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
 }
 
 trait QueryStringBuilder {
-  def queryStringAndParams(view: ViewDef[Type], params: Map[String, Any],
+  def queryStringAndParams(view: ViewDef[FieldDef[Type]], params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any])
-  def deleteStatementString(view: ViewDef[Type], keyMap: Map[String, Any]): String
+  def deleteStatementString(view: ViewDef[FieldDef[Type]], keyMap: Map[String, Any]): String
 }
 
 object QueryStringBuilder {
-  def default(typeNameToViewDef: (String) => Option[ViewDef[Type]]) =
+  def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]]) =
     new DefaultQueryStringBuilder(typeNameToViewDef)
-  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[Type]])
+  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]])
     extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
   /*
@@ -164,7 +166,7 @@ object QueryStringBuilder {
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
-  override def queryStringAndParams(view: ViewDef[Type], params: Map[String, Any],
+  override def queryStringAndParams(view: ViewDef[FieldDef[Type]], params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
@@ -218,16 +220,16 @@ object QueryStringBuilder {
     def isRu(f: FieldDef[Type]) = preferRu && f.isI18n
     */
     private def isI18n(f: FieldDef[Type]) = f.isI18n
-    def queryColTableAlias(view: ViewDef[Type], f: FieldDef[Type]) =
+    def queryColTableAlias(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) view.tableAlias else f.table)
 
-    private def getChildViewDef(viewDef: ViewDef[Type], fieldDef: FieldDef[Type]) =
+    private def getChildViewDef(viewDef: ViewDef[FieldDef[Type]], fieldDef: FieldDef[Type]) =
       typeNameToViewDef(fieldDef.type_.name).getOrElse(
         sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
-    def queryColExpression(view: ViewDef[Type], f: FieldDef[Type]) = {
+    def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) = {
       val qName = queryColTableAlias(view, f) + "." + f.name
       if (f.expression != null) f.expression
       else if (f.type_ != null && f.type_.isComplexType) {
@@ -268,11 +270,11 @@ object QueryStringBuilder {
         else null
       }
 
-    def queryColName(view: ViewDef[Type], f: FieldDef[Type]) =
+    def queryColName(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) =
       Option(f.alias).getOrElse(
         if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
-    def cols(view: ViewDef[Type], countAll: Boolean) =
+    def cols(view: ViewDef[FieldDef[Type]], countAll: Boolean) =
       if (countAll) " {count(*)}"
       else view.fields
         .filter(f => !f.isExpression || f.expression != null)
@@ -288,16 +290,16 @@ object QueryStringBuilder {
     private def fromAndWhere(queryString: String) = ast(queryString)
       .copy(cols = null, group = null, order = null, offset = null, limit = null)
       .tresql
-    def groupBy(view: ViewDef[Type]) = Option(view.groupBy)
+    def groupBy(view: ViewDef[FieldDef[Type]]) = Option(view.groupBy)
       .filter(_ != "").map(g => s"($g)") getOrElse ""
     /*
                 = Option(view.joins).map(ast).map(_.group)
       .filter(_ != null).map(_.tresql) getOrElse ""
     */
-    def having(view: ViewDef[Type]) = Option(view.having)
+    def having(view: ViewDef[FieldDef[Type]]) = Option(view.having)
       .filter(_ != "").map(g => s"^($g)") getOrElse ""
     //DELEME when next todo done
-    def from(view: ViewDef[Type]) = if (view.joins != null) fromAndWhere(view.joins) else {
+    def from(view: ViewDef[FieldDef[Type]]) = if (view.joins != null) fromAndWhere(view.joins) else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
@@ -325,13 +327,13 @@ object QueryStringBuilder {
         " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
       .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
     */
-    def where(view: ViewDef[Type], extraFilter: String) =
+    def where(view: ViewDef[FieldDef[Type]], extraFilter: String) =
       (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
         .filter(_ != null).filter(_ != "")
         .map(FilterResolver.resolve(_, view.tableAlias))
         .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
-    def order(view: ViewDef[Type], orderBy: String) =
+    def order(view: ViewDef[FieldDef[Type]], orderBy: String) =
       Option(orderBy).orElse(Option(view.orderBy))
       .filter(_ != "").map(o => s"#($o)") getOrElse ""
 
@@ -360,7 +362,7 @@ object QueryStringBuilder {
         (query + "@(? ?)", Array(offset, limit + offset))
     }
 
-    def deleteStatementString(view: ViewDef[Type], keyMap: Map[String, Any]) =
+    def deleteStatementString(view: ViewDef[FieldDef[Type]], keyMap: Map[String, Any]) =
       "-" + view.table +
         keyMap.map(_._1).map(c => s"$c = :$c").mkString("[", " & ", "]")
 
