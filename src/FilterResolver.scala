@@ -21,16 +21,23 @@ object FilterResolver {
     qualifiedIdent, IntervalOps.mkString("|"), Rq)
   private def opt(req: String) = if (req == "!") "" else "?"
   // TODO configure naming
+  private def colName(name: String, baseTableAlias: String) =
+    if (baseTableAlias == null || name.indexOf(".") > 0) name
+    else s"$baseTableAlias.$name"
   private def parName(name: String) = name.replace(".", "_")
-  def resolve(filter: String) = filter match {
-    case IdentFilterDef(name, _, req) =>
-      s"$name = :${parName(name)}" + opt(req)
-    case ComparisonFilterDef(name, _, op, req) =>
-      s"$name $op :${parName(name)}" + opt(req)
-    case IntervalFilterDef(reqFrom, opFrom, name, _, opTo, reqTo) =>
-      val nameFrom = parName(name + "_from") // TODO configure naming
-      val nameTo = parName(name + "_to") // TODO configure naming
-      s":$nameFrom${opt(reqFrom)} $opFrom $name $opTo :$nameTo${opt(reqTo)}"
-    case x => x
+  def resolve(filter: String, baseTableAlias: String) = {
+    def par(name: String) = parName(name)
+    def col(name: String) = colName(name, baseTableAlias)
+    filter match {
+      case IdentFilterDef(name, _, req) =>
+        s"${col(name)} = :${par(name)}" + opt(req)
+      case ComparisonFilterDef(name, _, op, req) =>
+        s"${col(name)} $op :${par(name)}" + opt(req)
+      case IntervalFilterDef(reqFrom, opFrom, name, _, opTo, reqTo) =>
+        val nameFrom = par(name + "_from") // TODO configure naming
+        val nameTo = par(name + "_to") // TODO configure naming
+        s":$nameFrom${opt(reqFrom)} $opFrom ${col(name)} $opTo :$nameTo${opt(reqTo)}"
+      case x => x
+    }
   }
 }
