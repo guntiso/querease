@@ -31,7 +31,9 @@ object FilterResolver {
   private def colName(name: String, baseTableAlias: String) =
     if (baseTableAlias == null || name.indexOf(".") > 0) name
     else s"$baseTableAlias.$name"
-  private def parName(name: String) = name.replace(".", "_")
+  private def parName(name: String) =
+    (if (name.contains("_.")) name.substring(name.lastIndexOf("_.") + 2) else name)
+      .replace(".", "_")
   def resolve(filter: String, baseTableAlias: String) = {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)

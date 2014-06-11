@@ -24,6 +24,16 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 
+  "filter sugar syntax" should "handle naming correctly" in {
+    resolve(s"blah <") should be(s"blah < :blah?")
+    resolve(s"blah < !") should be(s"blah < :blah")
+    resolve(s"a.blah <") should be(s"a.blah < :a_blah?")
+    resolve(s"x_.blah <=") should be(s"x_.blah <= :blah?")
+    resolve(s"x_.blah <=", "c") should be(s"x_.blah <= :blah?")
+    resolve(s"blah <=", "c") should be(s"c.blah <= :blah?")
+    resolve(s"blah <=", null) should be(s"blah <= :blah?")
+  }
+
   "filter sugar syntax" should "work properly for comparisons" in {
     Identifiers foreach { ident =>
       ComparisonOps foreach { comp =>
