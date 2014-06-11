@@ -146,6 +146,8 @@ trait QueryStringBuilder {
 object QueryStringBuilder {
   def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]]) =
     new DefaultQueryStringBuilder(typeNameToViewDef)
+  def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]]) =
+    new OracleQueryStringBuilder(typeNameToViewDef)
   class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]])
     extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
@@ -357,9 +359,7 @@ object QueryStringBuilder {
       case (0, offset) =>
         (query + "@(?,)", Array(offset))
       case (limit, offset) =>
-        // TODO ora specific!
-        // use limit + offset instead of limit because ora dialect not ready
-        (query + "@(? ?)", Array(offset, limit + offset))
+        (query + "@(? ?)", Array(offset, limit))
     }
 
     def deleteStatementString(view: ViewDef[FieldDef[Type]], keyMap: Map[String, Any]) =
@@ -391,5 +391,15 @@ object QueryStringBuilder {
       })
     }).toMap
 */
+  }
+
+  class OracleQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]])
+    extends DefaultQueryStringBuilder(typeNameToViewDef) {
+    override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
+      if (countAll || limit == 0 || offset == 0)
+        super.limitOffset(query, countAll, limit, offset)
+      else // ora specific!
+        // use limit + offset instead of limit because ora dialect not ready
+        (query + "@(? ?)", Array(offset, limit + offset))
   }
 }
