@@ -68,7 +68,6 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(getViewDef(pojoClass), params, 0, 0, "", extraFilterAndParams, true)
-    Env.log(tresqlQueryString)
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
 /*
@@ -184,6 +183,7 @@ object QueryStringBuilder {
     import language.existentials
     val (q, limitOffsetPars) =
       limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
+    Env log q
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
 
