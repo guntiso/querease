@@ -8,7 +8,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val IntervalOps = "< <=".split("\\s+").toSet
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d", "a<<")
-  
+
   def resolve(f: String, b: String = null) = FilterResolver.resolve(f, b)
   private val b = "base"
 
@@ -32,6 +32,55 @@ class FilterResolverTests extends FlatSpec with Matchers {
         //
         resolve(s"$ident $comp", b) should be(s"base.$ident $comp :$ident?")
         resolve(s"$ident $comp !", b) should be(s"base.$ident $comp :$ident")
+      }
+    }
+  }
+
+  "filter sugar syntax" should "work properly for wildcard comparisons" in {
+    // %~ %~% %~~ %~~% ~% ~~% !%~ !%~% !%~~ !%~~% !~% !~~%
+    Identifiers foreach { ident =>
+      List("~", "~~") foreach { op =>
+        List("", "!") foreach { not =>
+          resolve(s"$ident $not%$op") should be(s"$ident $not$op '%' || :$ident?")
+          resolve(s"$ident $not%$op !") should be(s"$ident $not$op '%' || :$ident")
+          resolve(s"$ident $not$op%") should be(s"$ident $not$op :$ident? || '%'")
+          resolve(s"$ident $not$op% !") should be(s"$ident $not$op :$ident || '%'")
+          resolve(s"$ident $not%$op%") should be(s"$ident $not$op '%' || :$ident? || '%'")
+          resolve(s"$ident $not%$op% !") should be(s"$ident $not$op '%' || :$ident || '%'")
+          //
+          resolve(s"$ident $not%$op", b) should be(s"base.$ident $not$op '%' || :$ident?")
+          resolve(s"$ident $not%$op !", b) should be(s"base.$ident $not$op '%' || :$ident")
+          resolve(s"$ident $not$op%", b) should be(s"base.$ident $not$op :$ident? || '%'")
+          resolve(s"$ident $not$op% !", b) should be(s"base.$ident $not$op :$ident || '%'")
+          resolve(s"$ident $not%$op%", b) should be(s"base.$ident $not$op '%' || :$ident? || '%'")
+          resolve(s"$ident $not%$op% !", b) should be(s"base.$ident $not$op '%' || :$ident || '%'")
+        }
+      }
+    }
+  }
+
+  "filter sugar syntax" should "work properly for insensitive wildcard comparisons" in {
+    // ~~~ !~~~ %~~~ %~~~% ~~~% !%~~~ !%~~~% !~~~%
+    val op = "~~~"
+    Identifiers foreach { ident =>
+      List("", "!") foreach { not =>
+        resolve(s"$ident $not$op") should be(s"${not}cmp_i_exact($ident, :$ident?)")
+        resolve(s"$ident $not$op !") should be(s"${not}cmp_i_exact($ident, :$ident)")
+        resolve(s"$ident $not%$op") should be(s"${not}cmp_i_end($ident, :$ident?)")
+        resolve(s"$ident $not%$op !") should be(s"${not}cmp_i_end($ident, :$ident)")
+        resolve(s"$ident $not$op%") should be(s"${not}cmp_i_start($ident, :$ident?)")
+        resolve(s"$ident $not$op% !") should be(s"${not}cmp_i_start($ident, :$ident)")
+        resolve(s"$ident $not%$op%") should be(s"${not}cmp_i($ident, :$ident?)")
+        resolve(s"$ident $not%$op% !") should be(s"${not}cmp_i($ident, :$ident)")
+        //
+        resolve(s"$ident $not$op", b) should be(s"${not}cmp_i_exact(base.$ident, :$ident?)")
+        resolve(s"$ident $not$op !", b) should be(s"${not}cmp_i_exact(base.$ident, :$ident)")
+        resolve(s"$ident $not%$op", b) should be(s"${not}cmp_i_end(base.$ident, :$ident?)")
+        resolve(s"$ident $not%$op !", b) should be(s"${not}cmp_i_end(base.$ident, :$ident)")
+        resolve(s"$ident $not$op%", b) should be(s"${not}cmp_i_start(base.$ident, :$ident?)")
+        resolve(s"$ident $not$op% !", b) should be(s"${not}cmp_i_start(base.$ident, :$ident)")
+        resolve(s"$ident $not%$op%", b) should be(s"${not}cmp_i(base.$ident, :$ident?)")
+        resolve(s"$ident $not%$op% !", b) should be(s"${not}cmp_i(base.$ident, :$ident)")
       }
     }
   }
