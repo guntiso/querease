@@ -16,13 +16,14 @@ import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.DbConventions.xsdNameToDbName
 import mojoz.metadata._
 
-private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends QuereaseIo {
+private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]) extends QuereaseIo {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
   override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] =
-    metadata.extendedViewDef.get(ViewName.get(viewClass)) getOrElse
-      (metadata.extendedViewDef.get(ViewName.get(viewClass)
+    // FIXME apply naming properly
+    nameToExtendedViewDef.get(ViewName.get(viewClass)) getOrElse
+      (nameToExtendedViewDef.get(ViewName.get(viewClass)
         .replace("-", "_")) getOrElse
         (viewClass.getSuperclass match {
           case c: Class[_] =>
@@ -237,7 +238,7 @@ private[querease] class JaxbPojoQuereaseIo(metadata: Metadata[Type]) extends Que
 
     def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef[FieldDef[Type]]): Map[String, Any] = {
       def getChildViewDef(viewDef: ViewDef[_], fieldDef: FieldDef[Type]) =
-        metadata.extendedViewDef.getOrElse(fieldDef.type_.name,
+        nameToExtendedViewDef.getOrElse(fieldDef.type_.name,
           sys.error("Child viewDef not found: " + fieldDef.type_.name +
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
       def isSaveable(f: FieldDef[Type]) = !f.isExpression

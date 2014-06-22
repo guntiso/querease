@@ -10,7 +10,7 @@ import dto.BankListRow
 import dto.BankListRowWithFilter
 import dto.BankListRowWithGroup
 import dto.BankListRowWithHaving
-import mojoz.metadata.Metadata
+import mojoz.metadata.TableMetadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
 import mojoz.metadata.in.YamlTableDefLoader
@@ -26,12 +26,12 @@ class QuereaseTests extends FlatSpec with Matchers {
   val path = "sample/md"
   val mdDefs = YamlMd.fromFiles(path = path)
   val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
-  val tableMd = new Metadata(tableDefs)
-  val viewDefs = (new YamlViewDefLoader(tableMd, mdDefs) with TresqlJoinsParser).viewDefs
-  val i18nRules = I18nRules.suffixI18n(Set("_eng", "_rus"))
-  val md = new Metadata(tableMd.tableDefs, viewDefs, i18nRules)
-  val qio = QuereaseIo.scalaDto(md)
-  val builder = QueryStringBuilder.default(md.extendedViewDef.get)
+  val tableMd = new TableMetadata(tableDefs)
+  val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
+  val viewDefs = (new YamlViewDefLoader(tableMd, mdDefs,
+      extendedViewDefTransformer = i18nRules.setI18n) with TresqlJoinsParser)
+  val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
+  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get)
   val qe = new Querease(qio, builder)
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
 
@@ -93,7 +93,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
     Env update { (msg, level) => println(msg) }
-    Env.metaData = new TresqlMetadata(md.tableDefs, null)
+    Env.metaData = new TresqlMetadata(tableDefs, null)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
   }

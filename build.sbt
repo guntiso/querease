@@ -44,10 +44,8 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
     import mojoz.metadata.in._
     import mojoz.metadata.out._
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toSeq
-    val tableMd = new Metadata(new YamlTableDefLoader(yamlMd).tableDefs)
+    val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
     val viewDefs = (new YamlViewDefLoader(tableMd, yamlMd) with TresqlJoinsParser).viewDefs
-    val i18nRules = I18nRules.suffixI18n(Set("_eng", "_rus"))
-    val metadata = new Metadata(tableMd.tableDefs, viewDefs, i18nRules)
     object ScalaBuilder extends ScalaClassWriter {
       override def scalaClassTraits(viewDef: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]]) =
         if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))
@@ -57,7 +55,7 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
     val file = outDir / "dto" / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
       List("package dto", "",
-        "import querease._", ""), metadata.viewDefs, Nil)
+        "import querease._", ""), viewDefs, Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
   }

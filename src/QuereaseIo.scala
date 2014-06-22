@@ -6,7 +6,6 @@ import mojoz.metadata.Type
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 import mojoz.metadata.ColumnDef
-import mojoz.metadata.Metadata
 
 trait QuereaseIo {
   def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]): List[T]
@@ -16,10 +15,10 @@ trait QuereaseIo {
 }
 
 object QuereaseIo {
-  def scalaDto(metadata: Metadata[Type]): QuereaseIo =
-    new ScalaDtoQuereaseIo(metadata)
-  def jaxbPojo(metadata: Metadata[Type]): QuereaseIo =
-    new JaxbPojoQuereaseIo(metadata)
+  def scalaDto(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]): QuereaseIo =
+    new ScalaDtoQuereaseIo(nameToExtendedViewDef)
+  def jaxbPojo(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]): QuereaseIo =
+    new JaxbPojoQuereaseIo(nameToExtendedViewDef)
 }
 
 object ViewName {
