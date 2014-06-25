@@ -221,7 +221,7 @@ object QueryStringBuilder {
     val preferRu = languagePreferences(0) == "ru"
     def isRu(f: FieldDef[Type]) = preferRu && f.isI18n
     */
-    private def isI18n(f: FieldDef[Type]) = f.isI18n
+    private def isI18n(f: FieldDef[Type]) = false // f.isI18n
     def queryColTableAlias(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
         (if (f.table == view.table) view.tableAlias else f.table)
