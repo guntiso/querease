@@ -45,7 +45,7 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
     import mojoz.metadata.out._
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toSeq
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
-    val viewDefs = (new YamlViewDefLoader(tableMd, yamlMd) with TresqlJoinsParser).viewDefs
+    val viewDefs = YamlViewDefLoader(tableMd, yamlMd, TresqlJoinsParser).viewDefs
     object ScalaBuilder extends ScalaClassWriter {
       override def scalaClassTraits(viewDef: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]]) =
         if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))

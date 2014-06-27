@@ -3,11 +3,11 @@ package querease
 import org.tresql.QueryParser._
 import org.tresql.QueryParser.{ Join => QPJoin }
 
+import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
-import mojoz.metadata.in.JoinsParser.Join
 
-trait TresqlJoinsParser extends JoinsParser {
-  override def parseJoins(baseTable: String, joins: String) = if (joins == null) List() else {
+object TresqlJoinsParser extends JoinsParser {
+  def apply(baseTable: String, joins: String) = if (joins == null) List() else {
     var currentJoin: Join = null
     var joinMap: Map[String, Join] = Map()
     def fillJoinMap(join: Join) {

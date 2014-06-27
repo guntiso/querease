@@ -28,8 +28,8 @@ class QuereaseTests extends FlatSpec with Matchers {
   val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
   val tableMd = new TableMetadata(tableDefs)
   val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
-  val viewDefs = (new YamlViewDefLoader(tableMd, mdDefs,
-      extendedViewDefTransformer = i18nRules.setI18n) with TresqlJoinsParser)
+  val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
+      extendedViewDefTransformer = i18nRules.setI18n)
   val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
   val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get)
   val qe = new Querease(qio, builder)
