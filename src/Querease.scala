@@ -285,23 +285,12 @@ object QueryStringBuilder {
         .map(f => queryColExpression(view, f)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
-
-    private def ast(queryString: String) =
-      QueryParser.parseExp(queryString).asInstanceOf[QueryParser.Query]
-    // TODO remove this method
-    private def fromAndWhere(queryString: String) = ast(queryString)
-      .copy(cols = null, group = null, order = null, offset = null, limit = null)
-      .tresql
     def groupBy(view: ViewDef[FieldDef[Type]]) = Option(view.groupBy)
       .filter(_ != "").map(g => s"($g)") getOrElse ""
-    /*
-                = Option(view.joins).map(ast).map(_.group)
-      .filter(_ != null).map(_.tresql) getOrElse ""
-    */
     def having(view: ViewDef[FieldDef[Type]]) = Option(view.having)
       .filter(_ != "").map(g => s"^($g)") getOrElse ""
     //DELEME when next todo done
-    def from(view: ViewDef[FieldDef[Type]]) = if (view.joins != null) fromAndWhere(view.joins) else {
+    def from(view: ViewDef[FieldDef[Type]]) = if (view.joins != null) view.joins else {
       val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
       if (tables.size > 1) {
         tables -= view.table
