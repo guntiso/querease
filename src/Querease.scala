@@ -6,11 +6,13 @@ import scala.language.postfixOps
 import org.tresql.Env
 import org.tresql.Query
 import org.tresql.QueryParser
+import org.tresql.QueryParser.Ident
 
 import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
+import mojoz.metadata.TableDef.Ref
 import mojoz.metadata._
 
 /*
@@ -143,11 +145,14 @@ trait QueryStringBuilder {
 }
 
 object QueryStringBuilder {
-  def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]]) =
-    new DefaultQueryStringBuilder(typeNameToViewDef)
-  def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]]) =
-    new OracleQueryStringBuilder(typeNameToViewDef)
-  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]])
+  def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
+      refTableAliasToRef: (String, String) => Option[Ref]) =
+    new DefaultQueryStringBuilder(typeNameToViewDef, refTableAliasToRef)
+  def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
+      refTableAliasToRef: (String, String) => Option[Ref]) =
+    new OracleQueryStringBuilder(typeNameToViewDef, refTableAliasToRef)
+  class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
+      refTableAliasToRef: (String, String) => Option[Ref])
     extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
   /*
@@ -289,30 +294,42 @@ object QueryStringBuilder {
       .filter(_ != "").map(g => s"($g)") getOrElse ""
     def having(view: ViewDef[FieldDef[Type]]) = Option(view.having)
       .filter(_ != "").map(g => s"^($g)") getOrElse ""
-    //DELEME when next todo done
-    def from(view: ViewDef[FieldDef[Type]]) = if (view.joins != null) view.joins else {
-      val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table)
-      if (tables.size > 1) {
-        tables -= view.table
-        // ? is outer join
-        tables.map(view.tableAlias + "/" + _ + "?")
-          .mkString(view.table + " ", "; ", "")
-      } else view.table + " " + view.tableAlias
+    def from(view: ViewDef[FieldDef[Type]]) = {
+      // TODO prepare (pre-compile) views, use pre-compiled as source!
+      val joined =
+        Option(view.joins).map(TresqlJoinsParser(view.table, _))
+          .map(_.map(j => Option(j.alias) getOrElse j.table).toSet)
+          .getOrElse(Set())
+      val usedInFields = view.fields
+        .filterNot(_.isExpression)
+        .map(f => Option(f.tableAlias) getOrElse f.table)
+        .toSet
+      val usedInExpr = view.fields
+        .filter(_.isExpression)
+        .map(_.expression)
+        .filter(_ != null)
+        .filter(_.trim != "")
+        .map(QueryParser.extract(_, { case i: Ident => i.ident }))
+        .flatMap(x => x)
+        .map(_(0)) // FIXME support longer paths!
+        .toSet
+      val used = usedInFields ++ usedInExpr
+      val missing = used -- joined
+      val baseTableOrAlias = Option(view.tableAlias) getOrElse view.table
+      val autoBase =
+        if (joined contains baseTableOrAlias) null
+        else List(view.table, view.tableAlias).filter(_ != null) mkString " "
+      val autoJoins = (missing - view.table).map(tableOrAlias =>
+        refTableAliasToRef(view.table, tableOrAlias) match {
+          // FIXME support multi-col refs
+          case Some(ref) =>
+            s"$baseTableOrAlias[${ref.cols(0)} $tableOrAlias] ${ref.refTable}?"
+          case None => baseTableOrAlias + "/" + tableOrAlias
+        }).mkString("; ")
+      List(autoBase, view.joins, autoJoins)
+        .filter(_ != null).filter(_ != "").mkString("; ")
     }
-    /* TODO merge joins, outer join intelligently (according to metadata)
-    val from = {
-      val jtables = Option(view.joins).map(JoinsParser(view.table, _).map(_.table).toSet) getOrElse Set()
-      val tables = view.fields.foldLeft(scala.collection.mutable.Set[String]())(_ += _.table) -- jtables
-      val autoBase = if (!jtables.contains(view.table)) view.table + " " + B else null 
-      val autoJoins =
-        if (tables.size > 1) {
-          tables -= view.table
-          // B is base table alias, ? is outer join
-          tables.map(B + "/" + _ + "?").mkString(view.table + " ", "; ", "")
-        } else 
-        else 
-      List(view.joins, autoJoins, view.joins).filter(_ != null).mkString("; ")
-    }
+    /*
     val where = (filter.map(f =>
       queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
         " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
@@ -382,8 +399,9 @@ object QueryStringBuilder {
 */
   }
 
-  class OracleQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]])
-    extends DefaultQueryStringBuilder(typeNameToViewDef) {
+  class OracleQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
+      refTableAliasToRef: (String, String) => Option[Ref])
+    extends DefaultQueryStringBuilder(typeNameToViewDef, refTableAliasToRef) {
     override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
       if (countAll || limit == 0 || offset == 0)
         super.limitOffset(query, countAll, limit, offset)

@@ -31,7 +31,7 @@ class QuereaseTests extends FlatSpec with Matchers {
   val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
       extendedViewDefTransformer = i18nRules.setI18n)
   val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
-  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get)
+  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get, tableMd.ref)
   val qe = new Querease(qio, builder)
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
 
