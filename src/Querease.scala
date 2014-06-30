@@ -1,7 +1,9 @@
 package querease
 
+import scala.annotation.tailrec
 import scala.language.existentials
 import scala.language.postfixOps
+import scala.collection.mutable
 
 import org.tresql.Env
 import org.tresql.Query
@@ -177,9 +179,9 @@ object QueryStringBuilder {
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
 
-    val from = this.from(view)
+    val (from, pathToAlias) = this.fromAndPathToAlias(view)
     val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull)
-    val cols = this.cols(view, countAll)
+    val cols = this.cols(view, countAll, pathToAlias)
     val groupBy = this.groupBy(view)
     val having = this.having(view)
     val order = this.order(view, orderBy)
@@ -236,9 +238,15 @@ object QueryStringBuilder {
         sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
-    def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) = {
+    def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type],
+        pathToAlias: Map[List[String], String]) = {
       val qName = queryColTableAlias(view, f) + "." + f.name
-      if (f.expression != null) f.expression
+      if (f.expression != null) QueryParser.transformTresql(f.expression, {
+        case Ident(i) =>
+          if (i.size == 1)
+            Ident((Option(view.tableAlias) getOrElse view.table) :: i)
+          else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
+      })
       else if (f.type_ != null && f.type_.isComplexType) {
         val childViewDef = getChildViewDef(view, f)
         val joinToParent = Option(f.joinToParent) getOrElse ""
@@ -281,28 +289,33 @@ object QueryStringBuilder {
       Option(f.alias).getOrElse(
         if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
-    def cols(view: ViewDef[FieldDef[Type]], countAll: Boolean) =
+    def cols(view: ViewDef[FieldDef[Type]], countAll: Boolean,
+      pathToAlias: Map[List[String], String]) =
       if (countAll) " {count(*)}"
       else view.fields
         .filter(f => !f.isExpression || f.expression != null)
         .filter(f => !f.isCollection ||
           (f.type_.isComplexType && !countAll && !f.isExpression))
-        .map(f => queryColExpression(view, f)
+        .map(f => queryColExpression(view, f, pathToAlias)
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
     def groupBy(view: ViewDef[FieldDef[Type]]) = Option(view.groupBy)
       .filter(_ != "").map(g => s"($g)") getOrElse ""
     def having(view: ViewDef[FieldDef[Type]]) = Option(view.having)
       .filter(_ != "").map(g => s"^($g)") getOrElse ""
-    def from(view: ViewDef[FieldDef[Type]]) = {
+    def fromAndPathToAlias(view: ViewDef[FieldDef[Type]]): (String, Map[List[String], String]) = {
       // TODO prepare (pre-compile) views, use pre-compiled as source!
-      val joined =
+      // TODO complain if bad paths (no refs or ambiguous refs) etc.
+      val parsedJoins =
         Option(view.joins).map(TresqlJoinsParser(view.table, _))
-          .map(_.map(j => Option(j.alias) getOrElse j.table).toSet)
-          .getOrElse(Set())
+          .getOrElse(Nil)
+      val joinAliasToTable =
+        parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
+      val joined = joinAliasToTable.keySet
       val usedInFields = view.fields
         .filterNot(_.isExpression)
         .map(f => Option(f.tableAlias) getOrElse f.table)
+        .map(t => List(t)) // FIXME support longer paths in fields
         .toSet
       val usedInExpr = view.fields
         .filter(_.isExpression)
@@ -310,24 +323,63 @@ object QueryStringBuilder {
         .filter(_ != null)
         .filter(_.trim != "")
         .map(QueryParser.extract(_, { case i: Ident => i.ident }))
-        .flatMap(x => x)
-        .map(_(0)) // FIXME support longer paths!
+        .flatten
+        .filter(_.size > 1)
+        .map(_ dropRight 1)
         .toSet
       val used = usedInFields ++ usedInExpr
-      val missing = used -- joined
+      def tailists[T](l: List[T]): List[List[T]] =
+        if (l.size == 0) Nil else l :: tailists(l.tail)
+      val usedAndPrepaths =
+        used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten
+      val missing =
+        (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
+          .toList.sortBy(_.mkString("."))
       val baseTableOrAlias = Option(view.tableAlias) getOrElse view.table
       val autoBase =
         if (joined contains baseTableOrAlias) null
         else List(view.table, view.tableAlias).filter(_ != null) mkString " "
-      val autoJoins = (missing - view.table).map(tableOrAlias =>
-        refTableAliasToRef(view.table, tableOrAlias) match {
+      val pathToAlias = mutable.Map[List[String], String]()
+      pathToAlias ++= joined.map(j => List(j) -> j).toMap
+      val usedNames = mutable.Set[String]()
+      usedNames ++= joined
+      val aliasToTable = mutable.Map[String, String]()
+      aliasToTable ++= joinAliasToTable
+      @tailrec
+      def unusedName(name: String, index: Int): String =
+        // FIXME ensure max identifier length for db is not exceeded!
+        if (!(usedNames contains (name + "_" + index))) name + "_" + index
+        else unusedName(name, index + 1)
+      missing foreach { path =>
+        val name = (path takeRight 1).head
+        val alias = if (usedNames contains name) unusedName(name, 2) else name
+        pathToAlias += path -> alias
+        usedNames += alias
+      }
+      val autoJoins = missing.map { path =>
+        val (contextTable, contextTableOrAlias) =
+          if (path.size == 1) (view.table, baseTableOrAlias)
+          else {
+            val contextTableOrAlias = pathToAlias(path dropRight 1)
+            val contextTable = aliasToTable(contextTableOrAlias)
+            (contextTable, contextTableOrAlias)
+          }
+        val tableOrAlias = (path takeRight 1).head
+        val alias = pathToAlias(path)
+        refTableAliasToRef(contextTable, tableOrAlias) match {
           // FIXME support multi-col refs
           case Some(ref) =>
-            s"$baseTableOrAlias[${ref.cols(0)} $tableOrAlias] ${ref.refTable}?"
-          case None => baseTableOrAlias + "/" + tableOrAlias
-        }).mkString("; ")
-      List(autoBase, view.joins, autoJoins)
-        .filter(_ != null).filter(_ != "").mkString("; ")
+            aliasToTable += alias -> ref.refTable
+            s"$contextTableOrAlias[${ref.cols(0)} $alias] ${ref.refTable}?"
+          case None =>
+            aliasToTable += alias -> tableOrAlias
+            contextTableOrAlias + "/" + tableOrAlias +
+              (if (tableOrAlias == alias) "" else " " + alias)
+        }
+      }.mkString("; ")
+      (List(autoBase, view.joins, autoJoins)
+        .filter(_ != null).filter(_ != "").mkString("; "),
+        pathToAlias.toMap)
     }
     /*
     val where = (filter.map(f =>
