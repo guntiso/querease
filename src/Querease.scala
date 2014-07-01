@@ -14,6 +14,8 @@ import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
+import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
+import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 import mojoz.metadata.TableDef.Ref
 import mojoz.metadata._
 
@@ -148,13 +150,13 @@ trait QueryStringBuilder {
 
 object QueryStringBuilder {
   def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      refTableAliasToRef: (String, String) => Option[Ref]) =
-    new DefaultQueryStringBuilder(typeNameToViewDef, refTableAliasToRef)
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]) =
+    new DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata)
   def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      refTableAliasToRef: (String, String) => Option[Ref]) =
-    new OracleQueryStringBuilder(typeNameToViewDef, refTableAliasToRef)
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]) =
+    new OracleQueryStringBuilder(typeNameToViewDef, tableMetadata)
   class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      refTableAliasToRef: (String, String) => Option[Ref])
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]])
     extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
   /*
@@ -251,11 +253,19 @@ object QueryStringBuilder {
         val childViewDef = getChildViewDef(view, f)
         val joinToParent = Option(f.joinToParent) getOrElse ""
         val sortDetails = Option(f.orderBy match {
-          case null => "Id" // preserve detail ordering
+          case null => childViewDef.orderBy match {
+            case null =>
+              val chAlias =
+                Option(childViewDef.tableAlias) getOrElse childViewDef.table
+              // preserve detail ordering
+              tableMetadata.tableDef(childViewDef).pk
+                .map(_.cols.map(chAlias + "." + _).mkString(", ")).orNull
+            case ord => ord
+          }
           case "#" => null
           case ord => // FIXME support multicol asc/desc order by
             ord.replace("#", "").replace("(", "").replace(")", "").trim
-        }).map(DbConventions.dbNameToXsdName).orNull
+        }) /* TODO ? .map(DbConventions.dbNameToXsdName) */ .orNull
         /*
         lazy val sortDetailsDbName = DbConventions.xsdNameToDbName(sortDetails)
         val isSortFieldIncluded = sortDetails == null ||
@@ -366,7 +376,7 @@ object QueryStringBuilder {
           }
         val tableOrAlias = (path takeRight 1).head
         val alias = pathToAlias(path)
-        refTableAliasToRef(contextTable, tableOrAlias) match {
+        tableMetadata.ref(contextTable, tableOrAlias) match {
           // FIXME support multi-col refs
           case Some(ref) =>
             aliasToTable += alias -> ref.refTable
@@ -452,8 +462,8 @@ object QueryStringBuilder {
   }
 
   class OracleQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      refTableAliasToRef: (String, String) => Option[Ref])
-    extends DefaultQueryStringBuilder(typeNameToViewDef, refTableAliasToRef) {
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]])
+    extends DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata) {
     override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
       if (countAll || limit == 0 || offset == 0)
         super.limitOffset(query, countAll, limit, offset)
