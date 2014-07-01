@@ -60,6 +60,8 @@ object TresqlJoinsParser extends JoinsParser {
           case _ => joins
         }
       }).reverse
+      case Obj(Ident(name), alias, _, _, _) =>
+        List(Join(alias, name.mkString("."), Right(false)))
       case _ => sys.error("Invalid join: " + joins)
     }
   }
