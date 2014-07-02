@@ -246,7 +246,9 @@ object QueryStringBuilder {
       if (f.expression != null) QueryParser.transformTresql(f.expression, {
         case Ident(i) =>
           if (i.size == 1)
-            Ident((Option(view.tableAlias) getOrElse view.table) :: i)
+            if (tableMetadata.col(view.table, i(0)).isDefined)
+              Ident((Option(view.tableAlias) getOrElse view.table) :: i)
+            else Ident(i) // no-arg function or unknown pseudo-col
           else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
       })
       else if (f.type_ != null && f.type_.isComplexType) {
