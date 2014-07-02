@@ -62,7 +62,8 @@ object TresqlJoinsParser extends JoinsParser {
       }).reverse
       case Obj(Ident(name), alias, _, _, _) =>
         List(Join(alias, name.mkString("."), Right(false)))
-      case _ => sys.error("Invalid join: " + joins)
+      case Obj(_, alias, _, _, _) => sys.error("Support me, Guntis, without base table join: " + joins)
+      case _ => sys.error("Invalid join xxx: " + joins)
     }
   }
 }
