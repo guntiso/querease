@@ -382,7 +382,7 @@ object QueryStringBuilder {
           // FIXME support multi-col refs
           case Some(ref) =>
             aliasToTable += alias -> ref.refTable
-            s"$contextTableOrAlias[${ref.cols(0)} $alias] ${ref.refTable}?"
+            s"$contextTableOrAlias[$contextTableOrAlias.${ref.cols(0)} $alias] ${ref.refTable}"
           case None =>
             aliasToTable += alias -> tableOrAlias
             contextTableOrAlias + "/" + tableOrAlias +
