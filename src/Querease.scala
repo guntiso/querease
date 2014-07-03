@@ -318,6 +318,8 @@ object QueryStringBuilder {
     def fromAndPathToAlias(view: ViewDef[FieldDef[Type]]): (String, Map[List[String], String]) = {
       // TODO prepare (pre-compile) views, use pre-compiled as source!
       // TODO complain if bad paths (no refs or ambiguous refs) etc.
+      def isExpressionOrPath(f: FieldDef[Type]) =
+        f.isExpression || f.expression != null
       val parsedJoins =
         Option(view.joins).map(TresqlJoinsParser(view.table, _))
           .getOrElse(Nil)
@@ -325,12 +327,12 @@ object QueryStringBuilder {
         parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
       val joined = joinAliasToTable.keySet
       val usedInFields = view.fields
-        .filterNot(_.isExpression)
+        .filterNot(isExpressionOrPath)
         .map(f => Option(f.tableAlias) getOrElse f.table)
-        .map(t => List(t)) // FIXME support longer paths in fields
+        .map(t => List(t))
         .toSet
       val usedInExpr = view.fields
-        .filter(_.isExpression)
+        .filter(isExpressionOrPath)
         .map(_.expression)
         .filter(_ != null)
         .filter(_.trim != "")
