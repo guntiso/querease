@@ -242,7 +242,7 @@ object QueryStringBuilder {
 
     def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type],
         pathToAlias: Map[List[String], String]) = {
-      val qName = queryColTableAlias(view, f) + "." + f.name
+      val qName = queryColTableAlias(view, f) + "." + f.name // TODO use pathToAlias!
       if (f.expression != null) QueryParser.transformTresql(f.expression, {
         case Ident(i) =>
           if (i.size == 1)
@@ -348,7 +348,7 @@ object QueryStringBuilder {
         used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten
       val missing =
         (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
-          .toList.sortBy(_.mkString("."))
+          .toList.sortBy(p => (p.size, p.mkString(".")))
       val baseTableOrAlias = Option(view.tableAlias) getOrElse view.table
       val autoBase =
         if (joined contains baseTableOrAlias) null
