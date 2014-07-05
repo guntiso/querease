@@ -12,6 +12,7 @@ import org.tresql.Result
 import org.tresql.RowLike
 
 import mojoz.metadata._
+import mojoz.metadata.out.ScalaClassWriter
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 
@@ -69,7 +70,7 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
     }
     protected def setters = _setters
     protected def set(dbName: String, r: RowLike) =
-      for (s <- setters.get(dbToPropName(dbName))) {
+      for (s <- setters.get(dbNameToPropName(dbName))) {
         if (s._2._2 != null) { //child result
           val m: Manifest[_ <: Dto] = s._2._2
           val childResult = r.result(dbName)
@@ -77,7 +78,10 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
             m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
         } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       }
-    protected def dbToPropName(name: String) = name.toLowerCase
+    protected def dbNameToPropName(name: String) =
+      ScalaClassWriter.scalaFieldName(name)
+    protected def propNameToDbName(name: String) =
+      DbConventions.xsdNameToDbName(name)
     protected def manifest(name: String, clazz: Class[_]) =
       if (!clazz.isPrimitive)
         ManifestFactory.classType(clazz) ->
@@ -113,7 +117,8 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
         scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
           //objects from one list can be put into different tables
           case s: Seq[Dto] => s map Dto.dtoToMap groupBy (_._1) map (t => t._1 -> (t._2 map (_._2))) toList
-          case x => List(m._1 -> x)
+          case x => List(propNameToDbName(m._1) -> x)
+
         } getOrElse Nil
         //child objects from different lists can be put into one table
       }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
