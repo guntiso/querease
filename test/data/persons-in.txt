@@ -1,0 +1,37 @@
+100 Pēteris    Priedītis
+101 Minna      Priedīte
+102 Jānis      Ozols
+103 Marija     Ozola
+104 Jānis      Stūrīts
+105 Kristīne   Ķiploka
+106 Aleksandrs Priedītis 101 100
+107 Velta      Ozola     103 102
+108 Alfrēds    Stūrītis  105 104
+109 Helēna     Stūrīte
+110 Juris      Ozols     107 106
+111 Sandra     Kumpiņa   107
+112 Ineta      Broča     107
+113 Valda      Dorna     109
+114 Aina       Dorna     109 108
+115 Anna       Ozola     109 108
+116 Mārīte     Briede    109 108
+117 Ojārs      Stūrītis  109 108
+118 Elmārs     Stūrītis  109 108
+119 Agnis      Kumpiņš
+120 Ēriks      Bročs
+121 Dace       Kumpiņa   111
+122 Šarlote    Kumpiņa   111 119
+123 Ieva       Kumpiņa   111 119
+124 Einārs     Briedis
+125 Dace       Ozola
+126 Inese      Ozola
+127 Guntis     Ozols     115 110
+128 Andris     Ozols     115 110
+129 Marija     Broča     112 120
+130 Jorens     Bročs     112 120
+131 Simona     Ozola     125 127
+132 Sigita     Ozola     125 127
+133 Līva       Ozola     126 128
+134 Kristers   Ozols     126 128
+135 Normunds   Briedis   116 124
+136 Rolands    Briedis   116 124

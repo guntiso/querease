@@ -33,7 +33,7 @@ scalacOptions in (Compile, doc) <++= (baseDirectory in
              "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
  }
 
-unmanagedResourceDirectories in Test <<= baseDirectory(b => Seq(b / "sample" / "md"))
+unmanagedResourceDirectories in Test <<= baseDirectory(b => Seq(b / "sample" / "md", b / "test" / "data"))
 
 scalaSource in Test <<= baseDirectory(_ / "test")
 
