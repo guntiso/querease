@@ -52,7 +52,7 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
           List("DtoWithId")
         else List("Dto")
     }
-    val file = outDir / "dto" / "Dtos.scala"
+    val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
       List("package dto", "",
         "import querease._", ""), viewDefs, Nil)
