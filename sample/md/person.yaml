@@ -28,3 +28,23 @@ name:   person_name
 table:  person c
 fields: name
 order:  name
+
+name:  person_info_alt
+table: person p
+fields:
+- name
+- surname
+- sex
+- mother.name
+- father.name
+- maternal_grandmother = mother.mother.name
+- maternal_grandfather = mother.father.name
+- paternal_grandmother = father.mother.name
+- paternal_grandfather = father.father.name
+- children * [p.id in (c.mother_id, c.father_id)]:
+    table:  person c
+    fields: name
+    order:  name
+order:
+- name
+- surname

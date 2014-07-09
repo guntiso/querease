@@ -155,6 +155,27 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (expected != produced)
         toFile(dataPath + "/" + "persons-out-produced.txt", produced)
       expected should be(produced)
+
+      def altToPersonInfo(a: PersonInfoAlt) = {
+        val p = new PersonInfo
+        p.name = a.name
+        p.surname = a.surname
+        p.sex = a.sex
+        p.motherName = a.motherName
+        p.fatherName = a.fatherName
+        p.maternalGrandmother = a.maternalGrandmother
+        p.maternalGrandfather = a.maternalGrandfather
+        p.paternalGrandmother = a.paternalGrandmother
+        p.paternalGrandfather = a.paternalGrandfather
+        p.children = a.children.map(c => { val n = new PersonName; n.name = c.name; n })
+        p
+      }
+      val producedAlt = qe.list(classOf[PersonInfoAlt], null)
+        .map(altToPersonInfo).map(personInfoString)
+        .mkString("", "\n", "\n")
+      if (expected != producedAlt)
+        toFile(dataPath + "/" + "persons-out-produced-alt.txt", producedAlt)
+      expected should be(producedAlt)
     } finally clearEnv
   }
   def getConnection = DriverManager.getConnection(url, user, password)
