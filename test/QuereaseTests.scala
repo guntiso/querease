@@ -23,17 +23,6 @@ import querease.TresqlJoinsParser
 import querease.TresqlMetadata
 
 class QuereaseTests extends FlatSpec with Matchers {
-  val path = "sample/md"
-  val mdDefs = YamlMd.fromFiles(path = path)
-  val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
-  val tableMd = new TableMetadata(tableDefs)
-  val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
-  val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
-    extendedViewDefTransformer = i18nRules.setI18n)
-  val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
-  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get, tableMd)
-  val qe = new Querease(qio, builder)
-  val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   import QuereaseTests._
 
   "querease" should "do something" in {
@@ -176,6 +165,15 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (expected != producedAlt)
         toFile(dataPath + "/" + "persons-out-produced-alt.txt", producedAlt)
       expected should be(producedAlt)
+      
+      val siblingsExpected = fileToString(dataPath + "/" + "siblings-out.txt")
+      val siblingsProduced =
+        qe.list(classOf[Siblings], null)
+          .map(s => List(s.sibling1, s.sibling2).filter(_ != null).mkString(", "))
+          .mkString("", "\n", "\n")
+      if (siblingsExpected != siblingsProduced)
+        toFile(dataPath + "/" + "siblings-out-produced.txt", siblingsProduced)
+      siblingsExpected should be(siblingsProduced)
     } finally clearEnv
   }
   def getConnection = DriverManager.getConnection(url, user, password)
@@ -194,6 +192,17 @@ class QuereaseTests extends FlatSpec with Matchers {
 }
 
 object QuereaseTests {
+  val path = "sample/md"
+  val mdDefs = YamlMd.fromFiles(path = path)
+  val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
+  val tableMd = new TableMetadata(tableDefs)
+  val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
+  val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
+    extendedViewDefTransformer = i18nRules.setI18n)
+  val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
+  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get, tableMd)
+  val qe = new Querease(qio, builder)
+  val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
   def fileToString(filename: String) = {

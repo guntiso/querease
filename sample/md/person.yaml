@@ -48,3 +48,17 @@ fields:
 order:
 - name
 - surname
+
+name:  siblings
+table:
+joins: (person p1 [p1.mother_id = p2.mother_id | p1.father_id = p2.father_id] person p2
+        [p1.name != p2.name] {p1.name sibling1, p2.name sibling2}
+        +
+        person p1[(person p2[(p1.mother_id = p2.mother_id | p1.father_id = p2.father_id) & p1.id != p2.id])]
+        {name, null}) x_
+fields:
+- sibling1
+- x_.sibling2
+order:
+- sibling1
+- x_.sibling2

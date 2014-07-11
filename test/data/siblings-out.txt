@@ -1,0 +1,74 @@
+Aina
+Aina, Anna
+Aina, Elmārs
+Aina, Mārīte
+Aina, Ojārs
+Aina, Valda
+Andris
+Andris, Guntis
+Anna
+Anna, Aina
+Anna, Elmārs
+Anna, Mārīte
+Anna, Ojārs
+Anna, Valda
+Dace
+Dace, Ieva
+Dace, Šarlote
+Elmārs
+Elmārs, Aina
+Elmārs, Anna
+Elmārs, Mārīte
+Elmārs, Ojārs
+Elmārs, Valda
+Guntis
+Guntis, Andris
+Ieva
+Ieva, Dace
+Ieva, Šarlote
+Ineta
+Ineta, Juris
+Ineta, Sandra
+Jorens
+Jorens, Marija
+Juris
+Juris, Ineta
+Juris, Sandra
+Kristers
+Kristers, Līva
+Līva
+Līva, Kristers
+Marija
+Marija, Jorens
+Mārīte
+Mārīte, Aina
+Mārīte, Anna
+Mārīte, Elmārs
+Mārīte, Ojārs
+Mārīte, Valda
+Normunds
+Normunds, Rolands
+Ojārs
+Ojārs, Aina
+Ojārs, Anna
+Ojārs, Elmārs
+Ojārs, Mārīte
+Ojārs, Valda
+Rolands
+Rolands, Normunds
+Sandra
+Sandra, Ineta
+Sandra, Juris
+Sigita
+Sigita, Simona
+Simona
+Simona, Sigita
+Valda
+Valda, Aina
+Valda, Anna
+Valda, Elmārs
+Valda, Mārīte
+Valda, Ojārs
+Šarlote
+Šarlote, Dace
+Šarlote, Ieva
