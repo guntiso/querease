@@ -57,6 +57,11 @@ object TresqlJoinsParser extends JoinsParser {
             fillJoinMap(join)
             currentJoin = join
             join :: joins
+          case Obj(_, alias, _, _, _) =>
+            val join = Join(alias, null, Right(true))
+            fillJoinMap(join)
+            currentJoin = join
+            join :: joins
           case _ => joins
         }
       }).reverse

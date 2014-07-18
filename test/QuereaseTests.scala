@@ -174,6 +174,14 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (siblingsExpected != siblingsProduced)
         toFile(dataPath + "/" + "siblings-out-produced.txt", siblingsProduced)
       siblingsExpected should be(siblingsProduced)
+
+      val siblingsProducedAlt =
+        qe.list(classOf[SiblingsAlt], null)
+          .map(s => List(s.sibling1, s.sibling2).filter(_ != null).mkString(", "))
+          .mkString("", "\n", "\n")
+      if (siblingsExpected != siblingsProducedAlt)
+        toFile(dataPath + "/" + "siblings-out-produced-alt.txt", siblingsProducedAlt)
+      siblingsExpected should be(siblingsProducedAlt)
     } finally clearEnv
   }
   def getConnection = DriverManager.getConnection(url, user, password)
