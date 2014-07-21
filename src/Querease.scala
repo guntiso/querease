@@ -17,6 +17,7 @@ import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 import mojoz.metadata.TableDef.Ref
+import mojoz.metadata.in.Join
 import mojoz.metadata._
 
 /*
@@ -95,13 +96,15 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
     list(q, viewClass, p)
   }
 
+
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
     extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
     // TODO do not use id and long, get key from tableDef
     val tableAlias = getViewDef(viewClass).tableAlias
+    val prefix = Option(tableAlias).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
-      case null | ("", _) => s"$tableAlias.id = :id"
-      case (x, _) => s"[$x] & [$tableAlias.id = :id]"
+      case null | ("", _) => s"${prefix}id = :id"
+      case (x, _) => s"[$x] & [${prefix}id = :id]"
     }
     val extraP = extraFilterAndParams match {
       case null | (_, null) => Map[String, Any]()
@@ -242,7 +245,8 @@ object QueryStringBuilder {
 
     def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type],
         pathToAlias: Map[List[String], String]) = {
-      val qName = queryColTableAlias(view, f) + "." + f.name // TODO use pathToAlias!
+      val qName = Option(queryColTableAlias(view, f))
+        .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
       if (f.expression != null) QueryParser.transformTresql(f.expression, {
         case Ident(i) =>
           if (i.size == 1)
@@ -349,10 +353,23 @@ object QueryStringBuilder {
       val missing =
         (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
           .toList.sortBy(p => (p.size, p.mkString(".")))
-      val baseTableOrAlias = Option(view.tableAlias) getOrElse view.table
+      val baseFieldsQualifier = view.tableAlias
+      // TODO baseFieldsQualifier from joins?
+      //  = Option(view.tableAlias) getOrElse parsedJoins
+      //  .filter(_.table == view.table).toList match {
+      //    case Join(a, _, _) :: Nil =>
+      //      // qualifier, if base table encountered only once
+      //      Option(a) getOrElse view.table
+      //    case _ => null // no qualifier
+      //  }
+      val baseTableOrAlias = Option(baseFieldsQualifier) getOrElse view.table
+      val autoBaseAlias =
+        if (baseTableOrAlias == view.table) null else baseTableOrAlias
       val autoBase =
-        if (joined contains baseTableOrAlias) null
-        else List(view.table, view.tableAlias).filter(_ != null) mkString " "
+        if (view.tableAlias != null &&
+          parsedJoins.contains((j: Join) => j.alias == view.tableAlias)) null
+        else if (view.tableAlias == null && parsedJoins.size > 0) null // TODO ?
+        else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
       val pathToAlias = mutable.Map[List[String], String]()
       pathToAlias ++= joined.map(j => List(j) -> j).toMap
       val usedNames = mutable.Set[String]()
