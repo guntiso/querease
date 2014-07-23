@@ -100,8 +100,8 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
     extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
     // TODO do not use id and long, get key from tableDef
-    val tableAlias = getViewDef(viewClass).tableAlias
-    val prefix = Option(tableAlias).map(_ + ".") getOrElse ""
+    val qualifier = baseFieldsQualifier(getViewDef(viewClass))
+    val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
       case null | ("", _) => s"${prefix}id = :id"
       case (x, _) => s"[$x] & [${prefix}id = :id]"
@@ -144,6 +144,7 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
 }
 
 trait QueryStringBuilder {
+  def baseFieldsQualifier(view: ViewDef[FieldDef[Type]]): String
   def queryStringAndParams(view: ViewDef[FieldDef[Type]], params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
@@ -179,6 +180,24 @@ object QueryStringBuilder {
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
+  override def baseFieldsQualifier(view: ViewDef[FieldDef[Type]]): String = {
+    // TODO do not parse multiple times!
+    def parsedJoins =
+      Option(view.joins).map(TresqlJoinsParser(view.table, _))
+        .getOrElse(Nil)
+    Option(view.tableAlias)
+      .orElse(if (view.joins == null) Some(view.table) else None)
+      .getOrElse(parsedJoins
+        .filter(_.table == view.table).toList match {
+          case Join(a, _, _) :: Nil =>
+            // qualifier, if base table encountered only once
+            Option(a) getOrElse view.table
+          case Nil => null // no qualifier
+          case baseTableJoinsList =>
+            // b - base table alias
+            if (baseTableJoinsList.exists(_.alias == "b")) "b" else null
+        })
+  }
   override def queryStringAndParams(view: ViewDef[FieldDef[Type]], params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
@@ -236,36 +255,42 @@ object QueryStringBuilder {
     private def isI18n(f: FieldDef[Type]) = false // f.isI18n
     def queryColTableAlias(view: ViewDef[FieldDef[Type]], f: FieldDef[Type]) =
       Option(f.tableAlias) getOrElse
-        (if (f.table == view.table) view.tableAlias else f.table)
+        (if (f.table == view.table) baseFieldsQualifier(view) else f.table)
 
     private def getChildViewDef(viewDef: ViewDef[FieldDef[Type]], fieldDef: FieldDef[Type]) =
       typeNameToViewDef(fieldDef.type_.name).getOrElse(
         sys.error("Child viewDef not found: " + fieldDef.type_.name +
           " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
+    def qualify(view: ViewDef[FieldDef[Type]], expression: String,
+      pathToAlias: Map[List[String], String]) = {
+      QueryParser.transformTresql(expression, {
+        case Ident(i) =>
+          if (i.size == 1)
+            if (tableMetadata.col(view.table, i(0)).isDefined)
+              Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
+            else Ident(i) // no-arg function or unknown pseudo-col
+          else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
+      })
+    }
     def queryColExpression(view: ViewDef[FieldDef[Type]], f: FieldDef[Type],
         pathToAlias: Map[List[String], String]) = {
       val qName = Option(queryColTableAlias(view, f))
         .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
-      if (f.expression != null) QueryParser.transformTresql(f.expression, {
-        case Ident(i) =>
-          if (i.size == 1)
-            if (tableMetadata.col(view.table, i(0)).isDefined)
-              Ident((Option(view.tableAlias) getOrElse view.table) :: i)
-            else Ident(i) // no-arg function or unknown pseudo-col
-          else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
-      })
+      if (f.expression != null) qualify(view, f.expression, pathToAlias)
       else if (f.type_ != null && f.type_.isComplexType) {
         val childViewDef = getChildViewDef(view, f)
         val joinToParent = Option(f.joinToParent) getOrElse ""
         val sortDetails = Option(f.orderBy match {
           case null => childViewDef.orderBy match {
             case null =>
-              val chAlias =
-                Option(childViewDef.tableAlias) getOrElse childViewDef.table
+              val prefix = baseFieldsQualifier(childViewDef) match {
+                case null => ""
+                case q => q + "."
+              }
               // preserve detail ordering
               tableMetadata.tableDef(childViewDef).pk
-                .map(_.cols.map(chAlias + "." + _).mkString(", ")).orNull
+                .map(_.cols.map(prefix + _).mkString(", ")).orNull
             case ord => ord
           }
           case "#" => null
@@ -353,16 +378,8 @@ object QueryStringBuilder {
       val missing =
         (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
           .toList.sortBy(p => (p.size, p.mkString(".")))
-      val baseFieldsQualifier = view.tableAlias
-      // TODO baseFieldsQualifier from joins?
-      //  = Option(view.tableAlias) getOrElse parsedJoins
-      //  .filter(_.table == view.table).toList match {
-      //    case Join(a, _, _) :: Nil =>
-      //      // qualifier, if base table encountered only once
-      //      Option(a) getOrElse view.table
-      //    case _ => null // no qualifier
-      //  }
-      val baseTableOrAlias = Option(baseFieldsQualifier) getOrElse view.table
+      val baseTableOrAlias =
+        Option(baseFieldsQualifier(view)) getOrElse view.table
       val autoBaseAlias =
         if (baseTableOrAlias == view.table) null else baseTableOrAlias
       val autoBase =
@@ -421,7 +438,7 @@ object QueryStringBuilder {
     def where(view: ViewDef[FieldDef[Type]], extraFilter: String) =
       (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
         .filter(_ != null).filter(_ != "")
-        .map(FilterResolver.resolve(_, view.tableAlias))
+        .map(FilterResolver.resolve(_, baseFieldsQualifier(view)))
         .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     def order(view: ViewDef[FieldDef[Type]], orderBy: String) =
