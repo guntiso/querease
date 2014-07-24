@@ -7,7 +7,8 @@ import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 
 object TresqlJoinsParser extends JoinsParser {
-  def apply(baseTable: String, joins: String) = if (joins == null) List() else {
+  def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
+    val joinsStr = joins.mkString("; ")
     var currentJoin: Join = null
     var joinMap: Map[String, Join] = Map()
     def fillJoinMap(join: Join) {
@@ -19,7 +20,7 @@ object TresqlJoinsParser extends JoinsParser {
       case (x, false) => x
     }
     //prefix joins with [] so that parser knows that it is a join not division operation
-    parseExp("\\w".r.findFirstIn(joins.substring(0, 1)).map(x=> "[]").getOrElse("") + joins) match {
+    parseExp("\\w".r.findFirstIn(joinsStr.substring(0, 1)).map(x=> "[]").getOrElse("") + joinsStr) match {
       case Query(tables, _, _, _, _, _, _, _) => (tables.foldLeft(List[Join]()) { (joins, j) =>
         j match {
           //base table
@@ -69,7 +70,7 @@ object TresqlJoinsParser extends JoinsParser {
         List(Join(alias, name.mkString("."), Right(false)))
       case Obj(_, alias, _, _, _) =>
         List(Join(alias, null, Right(true)))
-      case _ => sys.error("Unsupported or invalid join: " + joins)
+      case _ => sys.error("Unsupported or invalid join: " + joinsStr)
     }
   }
 }

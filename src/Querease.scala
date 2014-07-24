@@ -186,7 +186,7 @@ object QueryStringBuilder {
       Option(view.joins).map(TresqlJoinsParser(view.table, _))
         .getOrElse(Nil)
     Option(view.tableAlias)
-      .orElse(if (view.joins == null) Some(view.table) else None)
+      .orElse(if (view.joins == null || view.joins == Nil) Some(view.table) else None)
       .getOrElse(parsedJoins
         .filter(_.table == view.table).toList match {
           case Join(a, _, _) :: Nil =>
@@ -283,15 +283,15 @@ object QueryStringBuilder {
         val joinToParent = Option(f.joinToParent) getOrElse ""
         val sortDetails = Option(f.orderBy match {
           case null => childViewDef.orderBy match {
-            case null =>
+            case null | Nil =>
               val prefix = baseFieldsQualifier(childViewDef) match {
                 case null => ""
                 case q => q + "."
               }
               // preserve detail ordering
               tableMetadata.tableDef(childViewDef).pk
-                .map(_.cols.map(prefix + _).mkString(", ")).orNull
-            case ord => ord
+                .map(_.cols.map(prefix + _) mkString ", ").orNull
+            case ord => ord mkString ", "
           }
           case "#" => null
           case ord => // FIXME support multicol asc/desc order by
@@ -341,9 +341,12 @@ object QueryStringBuilder {
           + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
         .mkString(" {", ", ", "}")
     def groupBy(view: ViewDef[FieldDef[Type]]) = Option(view.groupBy)
+      .map(_ mkString ", ")
       .filter(_ != "").map(g => s"($g)") getOrElse ""
     def having(view: ViewDef[FieldDef[Type]]) = Option(view.having)
-      .filter(_ != "").map(g => s"^($g)") getOrElse ""
+      .map(hl => if (hl.size > 1) hl.map(h => s"($h)") else hl)
+      .map(_ mkString " & ")
+      .filter(_ != "").map(h => s"^($h)") getOrElse ""
     def fromAndPathToAlias(view: ViewDef[FieldDef[Type]]): (String, Map[List[String], String]) = {
       // TODO prepare (pre-compile) views, use pre-compiled as source!
       // TODO complain if bad paths (no refs or ambiguous refs) etc.
@@ -377,7 +380,7 @@ object QueryStringBuilder {
         used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten
       val missing =
         (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
-          .toList.sortBy(p => (p.size, p.mkString(".")))
+          .toList.sortBy(p => (p.size, p mkString "."))
       val baseTableOrAlias =
         Option(baseFieldsQualifier(view)) getOrElse view.table
       val autoBaseAlias =
@@ -424,9 +427,9 @@ object QueryStringBuilder {
             contextTableOrAlias + "/" + tableOrAlias +
               (if (tableOrAlias == alias) "" else " " + alias)
         }
-      }.mkString("; ")
-      (List(autoBase, view.joins, autoJoins)
-        .filter(_ != null).filter(_ != "").mkString("; "),
+      }
+      (List(List(autoBase), view.joins, autoJoins).flatten
+        .filter(_ != null).filter(_ != "") mkString "; ",
         pathToAlias.toMap)
     }
     /*
@@ -442,7 +445,7 @@ object QueryStringBuilder {
         .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
 
     def order(view: ViewDef[FieldDef[Type]], orderBy: String) =
-      Option(orderBy).orElse(Option(view.orderBy))
+      Option(orderBy).orElse(Option(view.orderBy).map(_ mkString ", "))
       .filter(_ != "").map(o => s"#($o)") getOrElse ""
 
     /* FIXME
