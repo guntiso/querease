@@ -10,6 +10,7 @@ import org.tresql.Env
 import org.tresql.dialects.HSQLDialect
 
 import dto._
+import mojoz.metadata._
 import mojoz.metadata.TableMetadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
@@ -26,16 +27,6 @@ class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
 
   "querease" should "do something" in {
-    Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
-    def executeStatements(statements: String*) {
-      val conn = getConnection
-      try {
-        val statement = conn.createStatement
-        try statements foreach { statement.execute } finally statement.close()
-      } finally conn.close()
-    }
-    val statements = SqlWriter.hsqldb().schema(tableDefs)
-      .split(";").toList.map(_.trim).filter(_ != "")
     executeStatements(statements: _*)
     executeStatements("CREATE SEQUENCE seq START WITH 10000")
     println
@@ -184,19 +175,6 @@ class QuereaseTests extends FlatSpec with Matchers {
       siblingsExpected should be(siblingsProducedAlt)
     } finally clearEnv
   }
-  def getConnection = DriverManager.getConnection(url, user, password)
-  def setEnv(conn: Connection = getConnection) = {
-    conn.setAutoCommit(false)
-    Env.dialect = HSQLDialect
-    Env update { (msg, level) => println(msg) }
-    Env.metaData = new TresqlMetadata(tableDefs, null)
-    Env.idExpr = s => "nextval('seq')"
-    Env.conn = conn
-  }
-  def clearEnv = {
-    if (Env.conn != null) Env.conn.close
-    Env.conn = null
-  }
 }
 
 object QuereaseTests {
@@ -213,6 +191,33 @@ object QuereaseTests {
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
+  def getConnection = DriverManager.getConnection(url, user, password)
+  def setEnv(conn: Connection = getConnection) = {
+    conn.setAutoCommit(false)
+    Env.dialect = HSQLDialect
+    Env update { (msg, level) => println(msg) }
+    Env.metaData = new TresqlMetadata(tableDefs, null)
+    Env.idExpr = s => "nextval('seq')"
+    Env.conn = conn
+  }
+  def clearEnv = {
+    if (Env.conn != null) Env.conn.close
+    Env.conn = null
+  }
+  Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
+  def executeStatements(statements: String*) {
+    val conn = getConnection
+    try {
+      val statement = conn.createStatement
+      try statements foreach { statement.execute } finally statement.close()
+    } finally conn.close()
+  }
+  val statements = SqlWriter.hsqldb().schema(tableDefs)
+    .split(";").toList.map(_.trim).filter(_ != "")
+  def tresql(viewName: String, params: Map[String, Any] = Map.empty): String =
+    tresql(viewDefs.extendedViewDefs(viewName), params)
+  def tresql(view: ViewDef[FieldDef[Type]], params: Map[String, Any]): String =
+    builder.queryStringAndParams(view, params)._1
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
     val body = source.mkString
