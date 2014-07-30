@@ -156,7 +156,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (expected != producedAlt)
         toFile(dataPath + "/" + "persons-out-produced-alt.txt", producedAlt)
       expected should be(producedAlt)
-      
+
       val siblingsExpected = fileToString(dataPath + "/" + "siblings-out.txt")
       val siblingsProduced =
         qe.list(classOf[Siblings], null)
@@ -173,6 +173,21 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (siblingsExpected != siblingsProducedAlt)
         toFile(dataPath + "/" + "siblings-out-produced-alt.txt", siblingsProducedAlt)
       siblingsExpected should be(siblingsProducedAlt)
+
+      val expectedFatherTree = fileToString(dataPath + "/" + "father-tree-out.txt")
+      def fatherTreeList(indent: String, ff: List[FatherTree], result: List[String]): List[String] = ff match {
+        case Nil => result
+        case (person :: tail) =>
+          val row = (indent + person.name)
+          fatherTreeList(indent, tail,
+            fatherTreeList(indent + "  ", person.sons.toList, row :: result))
+      }
+      val producedFatherTree =
+        fatherTreeList("", qe.list(classOf[FatherTree], null).toList, Nil)
+          .reverse.mkString("\n")
+      if (expectedFatherTree != producedFatherTree)
+        toFile(dataPath + "/" + "father-tree-out-produced.txt", producedFatherTree)
+      expectedFatherTree should be(producedFatherTree)
     } finally clearEnv
   }
 }

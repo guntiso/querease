@@ -1,0 +1,17 @@
+Agnis
+Einārs
+  Normunds
+  Rolands
+Jānis
+Jānis
+  Alfrēds
+    Elmārs
+    Ojārs
+Pēteris
+  Aleksandrs
+    Juris
+      Andris
+        Kristers
+      Guntis
+Ēriks
+  Jorens

@@ -76,3 +76,17 @@ fields:
 order:
 - name
 - x_.sibling2
+
+# hierarchy
+name:  father_tree
+table: person
+fields:
+- id
+- name
+- sons * [:1(id) = father_id] father_tree
+filter:
+- father_id = null # first filter is for selecting roots, it is dropped for child queries!
+- sex = 'M'
+order:
+- name
+- id

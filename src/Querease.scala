@@ -312,9 +312,13 @@ object QueryStringBuilder {
               Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
           }
         */
-        val (tresqlQueryString, _) =
-          queryStringAndParams(childViewDef, null, 0, 0, sortDetails)
-        "|" + joinToParent + tresqlQueryString
+        if (view.name == childViewDef.name)
+          s"(|$joinToParent)"
+        else {
+          val (tresqlQueryString, _) =
+            queryStringAndParams(childViewDef, null, 0, 0, sortDetails)
+          "|" + joinToParent + tresqlQueryString
+        }
       } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
       else qName
     }
@@ -442,7 +446,7 @@ object QueryStringBuilder {
       (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
         .filter(_ != null).filter(_ != "")
         .map(FilterResolver.resolve(_, baseFieldsQualifier(view)))
-        .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
+        .map("[" + _ + "]").mkString match { case "" => "" case a => a }
 
     def order(view: ViewDef[FieldDef[Type]], orderBy: String) =
       Option(orderBy).orElse(Option(view.orderBy).map(_ mkString ", "))
