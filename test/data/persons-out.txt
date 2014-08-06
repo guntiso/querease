@@ -1,37 +1,37 @@
 Agnis Kumpiņš, father of Ieva and Šarlote
-Aina Dorna, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna
-Aleksandrs Priedītis, son of Pēteris and Minna, father of Juris
-Alfrēds Stūrītis, son of Jānis and Kristīne, father of Aina, Anna, Elmārs, Mārīte and Ojārs
-Andris Ozols, son of Juris (son of Aleksandrs and Velta) and Anna (daughter of Alfrēds and Helēna), father of Kristers and Līva
-Anna Ozola, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna, mother of Andris and Guntis
+Aina Dorna, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna, father's full name Alfrēds Stūrītis
+Aleksandrs Priedītis, son of Pēteris and Minna, father of Juris, father's full name Pēteris Priedītis
+Alfrēds Stūrītis, son of Jānis and Kristīne, father of Aina, Anna, Elmārs, Mārīte and Ojārs, father's full name Jānis Stūrīts
+Andris Ozols, son of Juris (son of Aleksandrs and Velta) and Anna (daughter of Alfrēds and Helēna), father of Kristers and Līva, father's full name Juris Ozols
+Anna Ozola, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna, mother of Andris and Guntis, father's full name Alfrēds Stūrītis
 Dace Kumpiņa, daughter of Sandra (daughter of Velta)
 Dace Ozola, mother of Sigita and Simona
 Einārs Briedis, father of Normunds and Rolands
-Elmārs Stūrītis, son of Alfrēds (son of Jānis and Kristīne) and Helēna
-Guntis Ozols, son of Juris (son of Aleksandrs and Velta) and Anna (daughter of Alfrēds and Helēna), father of Sigita and Simona
+Elmārs Stūrītis, son of Alfrēds (son of Jānis and Kristīne) and Helēna, father's full name Alfrēds Stūrītis
+Guntis Ozols, son of Juris (son of Aleksandrs and Velta) and Anna (daughter of Alfrēds and Helēna), father of Sigita and Simona, father's full name Juris Ozols
 Helēna Stūrīte, mother of Aina, Anna, Elmārs, Mārīte, Ojārs and Valda
-Ieva Kumpiņa, daughter of Agnis and Sandra (daughter of Velta)
+Ieva Kumpiņa, daughter of Agnis and Sandra (daughter of Velta), father's full name Agnis Kumpiņš
 Inese Ozola, mother of Kristers and Līva
 Ineta Broča, daughter of Velta (daughter of Jānis and Marija), mother of Jorens and Marija
-Jorens Bročs, son of Ēriks and Ineta (daughter of Velta)
-Juris Ozols, son of Aleksandrs (son of Pēteris and Minna) and Velta (daughter of Jānis and Marija), father of Andris and Guntis
+Jorens Bročs, son of Ēriks and Ineta (daughter of Velta), father's full name Ēriks Bročs
+Juris Ozols, son of Aleksandrs (son of Pēteris and Minna) and Velta (daughter of Jānis and Marija), father of Andris and Guntis, father's full name Aleksandrs Priedītis
 Jānis Ozols, father of Velta
 Jānis Stūrīts, father of Alfrēds
-Kristers Ozols, son of Andris (son of Juris and Anna) and Inese
+Kristers Ozols, son of Andris (son of Juris and Anna) and Inese, father's full name Andris Ozols
 Kristīne Ķiploka, mother of Alfrēds
-Līva Ozola, daughter of Andris (son of Juris and Anna) and Inese
-Marija Broča, daughter of Ēriks and Ineta (daughter of Velta)
+Līva Ozola, daughter of Andris (son of Juris and Anna) and Inese, father's full name Andris Ozols
+Marija Broča, daughter of Ēriks and Ineta (daughter of Velta), father's full name Ēriks Bročs
 Marija Ozola, mother of Velta
 Minna Priedīte, mother of Aleksandrs
-Mārīte Briede, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna, mother of Normunds and Rolands
-Normunds Briedis, son of Einārs and Mārīte (daughter of Alfrēds and Helēna)
-Ojārs Stūrītis, son of Alfrēds (son of Jānis and Kristīne) and Helēna
+Mārīte Briede, daughter of Alfrēds (son of Jānis and Kristīne) and Helēna, mother of Normunds and Rolands, father's full name Alfrēds Stūrītis
+Normunds Briedis, son of Einārs and Mārīte (daughter of Alfrēds and Helēna), father's full name Einārs Briedis
+Ojārs Stūrītis, son of Alfrēds (son of Jānis and Kristīne) and Helēna, father's full name Alfrēds Stūrītis
 Pēteris Priedītis, father of Aleksandrs
-Rolands Briedis, son of Einārs and Mārīte (daughter of Alfrēds and Helēna)
+Rolands Briedis, son of Einārs and Mārīte (daughter of Alfrēds and Helēna), father's full name Einārs Briedis
 Sandra Kumpiņa, daughter of Velta (daughter of Jānis and Marija), mother of Dace, Ieva and Šarlote
-Sigita Ozola, daughter of Guntis (son of Juris and Anna) and Dace
-Simona Ozola, daughter of Guntis (son of Juris and Anna) and Dace
+Sigita Ozola, daughter of Guntis (son of Juris and Anna) and Dace, father's full name Guntis Ozols
+Simona Ozola, daughter of Guntis (son of Juris and Anna) and Dace, father's full name Guntis Ozols
 Valda Dorna, daughter of Helēna
-Velta Ozola, daughter of Jānis and Marija, mother of Ineta, Juris and Sandra
+Velta Ozola, daughter of Jānis and Marija, mother of Ineta, Juris and Sandra, father's full name Jānis Ozols
 Ēriks Bročs, father of Jorens and Marija
-Šarlote Kumpiņa, daughter of Agnis and Sandra (daughter of Velta)
+Šarlote Kumpiņa, daughter of Agnis and Sandra (daughter of Velta), father's full name Agnis Kumpiņš

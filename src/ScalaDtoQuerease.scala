@@ -72,11 +72,12 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
     protected def set(dbName: String, r: RowLike) =
       for (s <- setters.get(dbNameToPropName(dbName))) {
         if (s._2._2 != null) { //child result
-          val m: Manifest[_ <: Dto] = s._2._2
+          val rowManifest = s._2._2.asInstanceOf[Manifest[Dto]]
+          val setterManifest = s._2._1.asInstanceOf[Manifest[Dto]]
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
-            m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
-        } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
+          if(setterManifest == rowManifest) s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _, rowManifest).headOption.map(_.asInstanceOf[Object]).orNull)
+          else s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _, rowManifest).asInstanceOf[Object])
+        } else  s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       }
     protected def dbNameToPropName(name: String) =
       ScalaClassWriter.scalaFieldName(name)
@@ -87,7 +88,7 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
         ManifestFactory.classType(clazz) ->
           (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
             childManifest(getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
-          } else null)
+          } else if(classOf[Dto].isAssignableFrom(clazz)) ManifestFactory.classType(clazz) else null)
       else (clazz match {
         case java.lang.Integer.TYPE => ManifestFactory.Int
         case java.lang.Long.TYPE => ManifestFactory.Long

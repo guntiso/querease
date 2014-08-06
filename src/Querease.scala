@@ -327,6 +327,7 @@ object QueryStringBuilder {
       Option(f.alias) getOrElse {
         if (f.isExpression && f.expression != null || isI18n(f)) f.name
         else if (f.type_ != null && f.type_.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
+        else if (f.type_ != null && f.type_.isComplexType) f.name
         else null
       }
 

@@ -173,9 +173,11 @@ private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
       gc.setTime(x)
       XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
     }
-    case inMap: Map[_, _] if (t == Class.forName(itemClassName)) =>
-      mapToPojo(inMap.asInstanceOf[Map[String, _]],
-        Class.forName(itemClassName).newInstance).asInstanceOf[Object]
+    case inMap: Map[_, _] =>
+      mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance).asInstanceOf[Object]
+    case List(inMap: Map[_, _]) =>
+      mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance).asInstanceOf[Object]
+    case Nil => null
     //may be exact collection which is used in xsd generated pojos must be used?
     case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
       t.newInstance.asInstanceOf[java.util.Collection[_]]
