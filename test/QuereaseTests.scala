@@ -125,7 +125,7 @@ class QuereaseTests extends FlatSpec with Matchers {
                 case _ => sys.error("impossible")
               }
             }
-          })
+          },if(father != null) s"father's full name ${father.name} ${father.surname}" else null)
           .filter(_ != null)
           .mkString(", ")
       }
@@ -148,6 +148,7 @@ class QuereaseTests extends FlatSpec with Matchers {
         p.paternalGrandmother = a.paternalGrandmother
         p.paternalGrandfather = a.paternalGrandfather
         p.children = a.children.map(c => { val n = new PersonName; n.name = c.name; n })
+        p.father = if(a.father != null) {val n = new PersonInfoFather; n.name = a.father.name; n.surname = a.father.surname; n}else null
         p
       }
       val producedAlt = qe.list(classOf[PersonInfoAlt], null)
