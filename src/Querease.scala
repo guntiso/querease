@@ -9,6 +9,7 @@ import org.tresql.Env
 import org.tresql.Query
 import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
+import org.tresql.QueryParser.Query
 
 import mojoz.metadata.DbConventions
 import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
@@ -373,6 +374,8 @@ object QueryStringBuilder {
         .map(_.expression)
         .filter(_ != null)
         .filter(_.trim != "")
+        // do not collect identifiers from subqueries (skip deeper analysis)
+        .map(QueryParser.transformTresql(_, { case q: Query => Null }))
         .map(QueryParser.extract(_, { case i: Ident => i.ident }))
         .flatten
         .filter(_.size > 1)
