@@ -266,6 +266,8 @@ object QueryStringBuilder {
     def qualify(view: ViewDef[FieldDef[Type]], expression: String,
       pathToAlias: Map[List[String], String]) = {
       QueryParser.transformTresql(expression, {
+        // do not transform subqueries (skip deeper analysis)
+        case q: QueryParser.Query => q
         case Ident(i) =>
           if (i.size == 1)
             if (tableMetadata.col(view.table, i(0)).isDefined)
