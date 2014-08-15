@@ -376,8 +376,11 @@ object QueryStringBuilder {
         .map(_.expression)
         .filter(_ != null)
         .filter(_.trim != "")
+        .map(QueryParser.parseExp)
+        .filter(_.isInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
+        .map(_.asInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
         // do not collect identifiers from subqueries (skip deeper analysis)
-        .map(QueryParser.transformTresql(_, { case q: QueryParser.Query => Null }))
+        .map(QueryParser.transform(_, { case q: QueryParser.Query => Null }))
         .map(QueryParser.extract(_, { case i: Ident => i.ident }))
         .flatten
         .filter(_.size > 1)
