@@ -45,7 +45,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
       }
     }
   }
-
+/*
   "filter sugar syntax" should "work properly for wildcard comparisons" in {
     // %~ %~% %~~ %~~% ~% ~~% !%~ !%~% !%~~ !%~~% !~% !~~%
     Identifiers foreach { ident =>
@@ -94,7 +94,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
       }
     }
   }
-
+*/
   "filter sugar syntax" should "work properly for intervals" in {
     Identifiers foreach { ident =>
       IntervalOps foreach { leftComp =>
@@ -120,11 +120,12 @@ class FilterResolverTests extends FlatSpec with Matchers {
       }
     }
   }
-
+/*
   "filter sugar syntax resolver" should "bypass everything else" in {
     OtherFilters foreach { other =>
       resolve(other) should be(other)
       resolve(other, b) should be(other)
     }
   }
+*/
 }
