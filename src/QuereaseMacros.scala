@@ -55,17 +55,19 @@ class QuereaseMacros extends Macros {
   }
 
   private def valueProps(b: QueryBuilder, e: Expr) = {
+    var hasVar = false
     var una = true
     var low = true
     b.transform(e, {
       case v: b.VarExpr => v() match {
         case x =>
+          hasVar = true
           if (una) una = shouldUnaccent(String.valueOf(x))
           if (low) low = shouldIgnoreCase(String.valueOf(x))
           v
       }
     })
-    (una, low)
+    (una && hasVar, low && hasVar)
   }
 
   protected def shouldUnaccent(s: String) = hasNonAscii.findFirstIn(s).isEmpty
