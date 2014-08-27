@@ -431,14 +431,17 @@ object QueryStringBuilder {
           }
         val tableOrAlias = (path takeRight 1).head
         val alias = pathToAlias(path)
+        // TODO inner join if all steps in path to root are not nullable
+        val shouldOuterJoin = true
+        val joinMod = if (shouldOuterJoin) "?" else ""
         tableMetadata.ref(contextTable, tableOrAlias) match {
           // FIXME support multi-col refs
           case Some(ref) =>
             aliasToTable += alias -> ref.refTable
-            s"$contextTableOrAlias[$contextTableOrAlias.${ref.cols(0)} $alias] ${ref.refTable}"
+            s"$contextTableOrAlias[$contextTableOrAlias.${ref.cols(0)} $alias$joinMod] ${ref.refTable}"
           case None =>
             aliasToTable += alias -> tableOrAlias
-            contextTableOrAlias + "/" + tableOrAlias +
+            contextTableOrAlias + "/" + tableOrAlias + joinMod +
               (if (tableOrAlias == alias) "" else " " + alias)
         }
       }
