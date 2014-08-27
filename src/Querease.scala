@@ -104,7 +104,7 @@ def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
     val qualifier = baseFieldsQualifier(getViewDef(viewClass))
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
-      case null | ("", _) => s"${prefix}id = :id"
+      case null | (null, _) | ("", _) => s"${prefix}id = :id"
       case (x, _) => s"[$x] & [${prefix}id = :id]"
     }
     val extraP = extraFilterAndParams match {
