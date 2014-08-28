@@ -68,14 +68,15 @@ private[querease] trait ORT {
       lm.tail.foldLeft(tresql_structure(lm.head))((l, m) => {
         val x = tresql_structure(m)
         l map (t => (t._1, (t._2, x.getOrElse(t._1, null)))) map {
-          case (k, (v1: Map[String, _], v2: Map[String, _])) => (k, merge(List(v1, v2)))
-          case (k, (v1: Map[String, _], _)) => (k, v1)
-          case (k, (_, v2: Map[String, _])) => (k, v2)
+          case (k, (v1: Map[String, _], v2: Map[String, _])) if v1.size > 0 && v2.size > 0 =>
+            (k, merge(List(v1, v2)))
+          case (k, (v1: Map[String, _], _)) if v1.size > 0 => (k, v1)
+          case (k, (_, v2: Map[String, _])) if v2.size > 0 => (k, v2)
           case (k, (v1, _)) => (k, v1)
         }
       })
     obj map {
-      case (k, Seq() | Array()) => (k, null)
+      case (k, Seq() | Array()) => (k, Map())
       case (k, l: Seq[Map[String, _]]) => (k, merge(l))
       case (k, l: Array[Map[String, _]]) => (k, merge(l))
       case (k, m: Map[String, _]) => (k, tresql_structure(m))
@@ -122,8 +123,8 @@ private[querease] trait ORT {
           table.key.cols == List(refColName)))) Map()
        else Map(table.key.cols(0) -> ("#" + table.name)))).unzip match {
         case (Nil, Nil) => null
-        case (cols: List[_], vals: List[_]) => cols.mkString("+" + table.name +
-          "{", ", ", "}") + vals.filter(_ != null).mkString(" [", ", ", "]") +
+        case (cols: List[String], vals: List[String]) =>
+          cols.mkString(s"+${table.name}{", ", ", "}") + vals.filter(_ != null).mkString(" [", ", ", "]") +
           (if (parent != null) " '" + name + "'" else "")
       }
     }).orNull
@@ -163,11 +164,11 @@ private[querease] trait ORT {
           case _ => (table.colOption(cn).map(_.name).orNull, resources.valueExpr(name, n))
         }
       }).filter(_._1 != null).unzip match {
-        case (cols: List[_], vals: List[_]) => pkProp.flatMap(pk =>
+        case (cols: List[String], vals: List[String]) => pkProp.flatMap(pk =>
           //primary key in update condition is taken from sequence so that currId is updated for
           //child records
-          Some(cols.mkString("=" + table.name + "[" + table.key.cols(0) + " = #" + table.name + "]"
-              + "{", ", ", "}") + vals.filter(_ != null).mkString(" [", ", ", "]")))
+          Some(cols.mkString(s"=${table.name}[${table.key.cols(0)} = #${table.name}]{", ", ", "}") +
+              vals.filter(_ != null).mkString(" [", ", ", "]")))
       }
     }).orNull
   }
