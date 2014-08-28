@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import scala.collection.mutable
 
 import org.tresql.Env
+import org.tresql.ORT
 import org.tresql.Query
 import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
