@@ -7,7 +7,7 @@ object FilterResolver {
   private val s = "\\s*"
   private val Rq = "(!)?"
   private val IntervalOps = "< <=".split("\\s+").toSet
-  private val ComparisonOps = "!?in|[<>=!~%$]+"
+  private val ComparisonOps = "!?in\\b|[<>=!~%$]+"
   private def toGroup(p: String) = if (p startsWith "(") p else s"($p)"
   private def regex(patterns: String*) =
     ("^" + patterns.map(toGroup).mkString(s, s, s) + "$").r
