@@ -368,9 +368,13 @@ object QueryStringBuilder {
       val joinAliasToTable =
         parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
       val joined = joinAliasToTable.keySet
+      val baseQualifier = baseFieldsQualifier(view)
       val usedInFields = view.fields
         .filterNot(isExpressionOrPath)
-        .map(f => Option(f.tableAlias) getOrElse f.table)
+        .map(f => Option(f.tableAlias) getOrElse {
+          if (f.table == view.table) baseQualifier else f.table
+        })
+        .filterNot(_ == null)
         .map(t => List(t))
         .toSet
       val usedInExpr = view.fields
@@ -393,11 +397,10 @@ object QueryStringBuilder {
         if (l.size == 0) Nil else l :: tailists(l.tail)
       val usedAndPrepaths =
         used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten
+      val baseTableOrAlias = Option(baseQualifier) getOrElse view.table
       val missing =
-        (usedAndPrepaths -- joined.map(List(_)) - List(view.table))
+        (usedAndPrepaths -- joined.map(List(_)) - List(baseTableOrAlias))
           .toList.sortBy(p => (p.size, p mkString "."))
-      val baseTableOrAlias =
-        Option(baseFieldsQualifier(view)) getOrElse view.table
       val autoBaseAlias =
         if (baseTableOrAlias == view.table) null else baseTableOrAlias
       val autoBase =
