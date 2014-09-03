@@ -228,8 +228,8 @@ private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
     Map("id" -> getId(instance))
   def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef[FieldDef[Type]]) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
-      case (k, vList: List[Map[String, _]]) =>
-        (xsdNameToDbName(k), vList map toDbFormat)
+      case (k, vList: List[_]) =>
+        (xsdNameToDbName(k), vList.asInstanceOf[List[Map[String, _]]] map toDbFormat)
       case (k, v) => (xsdNameToDbName(k), xsdValueToDbValue(v))
     }
     val propMap = toDbFormat(pojoToMap(pojo))
@@ -249,7 +249,8 @@ private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
           Option(f.alias).getOrElse(f.name) == fieldName).getOrElse(sys.error(
           "Field not found for property: " + viewDef.name + "." + fieldName))
       propMap.filter(_._1 != "clazz").map {
-        case (key, l: List[Map[String, _]]) =>
+        case (key, list: List[_]) =>
+          val l = list.asInstanceOf[List[Map[String, _]]]
           val fieldName = toSingular(key) // XXX undo JAXB plural 
           val fieldDef = getFieldDef(fieldName)
           if (isSaveable(fieldDef)) {

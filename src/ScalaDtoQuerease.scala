@@ -107,27 +107,32 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
 
     def toMap: Map[String, Any] = setters.flatMap { m =>
       scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        case s: Seq[Dto] => m._1 -> (s map (_.toMap))
+        case s: Seq[_] => m._1 -> (s.asInstanceOf[Seq[Dto]] map (_.toMap))
         case x => m._1 -> x
       }
     } toMap
-    
+
     //creating map from object
-    def toSaveableMap: Map[String, Any] =
-      (setters.toList.flatMap { m =>
+    def toSaveableMap: Map[String, Any] = {
+      val keysValues = (setters.toList.flatMap { m =>
         scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
           //objects from one list can be put into different tables
-          case s: Seq[Dto] => s map Dto.dtoToMap groupBy (_._1) map (t => t._1 -> (t._2 map (_._2))) toList
+          case s: Seq[_] => s.asInstanceOf[Seq[Dto]] map {
+            Dto.dtoToMap
+          } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
           case x => List(propNameToDbName(m._1) -> x)
-
         } getOrElse Nil
-        //child objects from different lists can be put into one table
-      }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
-        case ("s", l: Seq[(_, Seq[_])]) =>
-          l groupBy (_._1) map (t => t._1 -> (t._2.asInstanceOf[Seq[(_, Seq[_])]] flatMap (_._2)))
-        case ("v", x) => x
+      })
+      //child objects from different lists can be put into one table
+      keysValues groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
+        case ("s", seq) =>
+          seq.asInstanceOf[Seq[(String, Seq[_])]] groupBy (_._1) map {
+            t => t.copy(_2 = t._2.flatMap(_._2))
+          }
+        case (_, kv) => kv
       }
-  }
+    }
+}
 
   trait DtoWithId extends Dto {
     def id: java.lang.Long

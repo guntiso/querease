@@ -9,7 +9,7 @@ crossScalaVersions := Seq(
   "2.10.4"
 )
 
-scalacOptions ++= Seq("-deprecation", "-feature")
+scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 retrieveManaged := true
 
