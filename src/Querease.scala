@@ -413,6 +413,12 @@ object QueryStringBuilder {
       val usedNames = mutable.Set[String]()
       usedNames ++= joined
       val aliasToTable = mutable.Map[String, String]()
+      if (baseQualifier != null) {
+        pathToAlias += (List(baseQualifier) -> baseQualifier)
+        usedNames += baseQualifier
+        if (view.table != null)
+          aliasToTable += (baseQualifier -> view.table)
+      }
       aliasToTable ++= joinAliasToTable
       @tailrec
       def unusedName(name: String, index: Int): String =
