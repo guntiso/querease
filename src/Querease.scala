@@ -405,7 +405,7 @@ object QueryStringBuilder {
         if (baseTableOrAlias == view.table) null else baseTableOrAlias
       val autoBase =
         if (view.tableAlias != null &&
-          parsedJoins.contains((j: Join) => j.alias == view.tableAlias)) null
+          parsedJoins.exists(_.alias == view.tableAlias)) null
         else if (view.tableAlias == null && parsedJoins.size > 0) null // TODO ?
         else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
       val pathToAlias = mutable.Map[List[String], String]()
