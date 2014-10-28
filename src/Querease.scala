@@ -216,7 +216,7 @@ object QueryStringBuilder {
     import language.existentials
     val (q, limitOffsetPars) =
       limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
-    Env log q
+    // Env log q
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
