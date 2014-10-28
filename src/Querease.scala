@@ -20,6 +20,7 @@ import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 import mojoz.metadata.TableDef.Ref
 import mojoz.metadata.in.Join
+import mojoz.metadata.in.JoinsParser
 import mojoz.metadata._
 
 /*
@@ -156,13 +157,16 @@ trait QueryStringBuilder {
 
 object QueryStringBuilder {
   def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]) =
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
+      joinsParser: JoinsParser = TresqlJoinsParser) =
     new DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata)
   def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]) =
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
+      joinsParser: JoinsParser = TresqlJoinsParser) =
     new OracleQueryStringBuilder(typeNameToViewDef, tableMetadata)
   class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]])
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
+      joinsParser: JoinsParser = TresqlJoinsParser)
     extends QueryStringBuilder {
     import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
   /*
@@ -185,7 +189,7 @@ object QueryStringBuilder {
   override def baseFieldsQualifier(view: ViewDef[FieldDef[Type]]): String = {
     // TODO do not parse multiple times!
     def parsedJoins =
-      Option(view.joins).map(TresqlJoinsParser(view.table, _))
+      Option(view.joins).map(joinsParser(view.table, _))
         .getOrElse(Nil)
     Option(view.tableAlias)
       .orElse(if (view.joins == null || view.joins == Nil) Some(view.table) else None)
@@ -363,7 +367,7 @@ object QueryStringBuilder {
       def isExpressionOrPath(f: FieldDef[Type]) =
         f.isExpression || f.expression != null
       val parsedJoins =
-        Option(view.joins).map(TresqlJoinsParser(view.table, _))
+        Option(view.joins).map(joinsParser(view.table, _))
           .getOrElse(Nil)
       val joinAliasToTable =
         parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
@@ -530,8 +534,9 @@ object QueryStringBuilder {
   }
 
   class OracleQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
-      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]])
-    extends DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata) {
+      tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
+      joinsParser: JoinsParser = TresqlJoinsParser)
+    extends DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata, joinsParser) {
     override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
       if (countAll || limit == 0 || offset == 0)
         super.limitOffset(query, countAll, limit, offset)
