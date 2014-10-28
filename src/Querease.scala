@@ -159,11 +159,11 @@ object QueryStringBuilder {
   def default(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
       tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
       joinsParser: JoinsParser = TresqlJoinsParser) =
-    new DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata)
+    new DefaultQueryStringBuilder(typeNameToViewDef, tableMetadata, joinsParser)
   def oracle(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
       tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
       joinsParser: JoinsParser = TresqlJoinsParser) =
-    new OracleQueryStringBuilder(typeNameToViewDef, tableMetadata)
+    new OracleQueryStringBuilder(typeNameToViewDef, tableMetadata, joinsParser)
   class DefaultQueryStringBuilder(typeNameToViewDef: (String) => Option[ViewDef[FieldDef[Type]]],
       tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
       joinsParser: JoinsParser = TresqlJoinsParser)
