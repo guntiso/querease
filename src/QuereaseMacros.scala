@@ -39,7 +39,8 @@ class QuereaseMacros extends Macros {
   private def matchMode(b: QueryBuilder, lop: Expr, rop: Expr, ilike: Boolean, not: Boolean, prefix: Boolean, suffix: Boolean) = {
     val ropp = if (prefix) b.BinExpr("||", b.ConstExpr("%"), rop) else rop
     val rops = if (suffix) b.BinExpr("||", ropp, b.ConstExpr("%")) else ropp
-    b.BinExpr((if (not) "!~" else "~") + (if (ilike) "~" else ""), lop, rops)
+    if (ilike) if (not) !~~(b, lop, rops) else ~~(b, lop, rops)
+    else b.BinExpr(if (not) "!~" else "~", lop, rops)
   }
 
   private def maybeTransform(b: QueryBuilder, lop: Expr, rop: Expr) = {

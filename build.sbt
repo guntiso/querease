@@ -61,6 +61,8 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
   }
 }
 
+initialCommands in console := "import org.tresql._; import querease._; import mojoz.metadata._"
+
 publishTo <<= version { v: String =>
   val nexus = "https://oss.sonatype.org/"
   if (v.trim.endsWith("SNAPSHOT"))
