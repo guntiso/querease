@@ -82,7 +82,7 @@ private[querease] class ScalaDtoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
     protected def dbNameToPropName(name: String) =
       ScalaClassWriter.scalaFieldName(name)
     protected def propNameToDbName(name: String) =
-      DbConventions.xsdNameToDbName(name)
+      Naming.xsdNameToDbName(name)
     protected def manifest(name: String, clazz: Class[_]) =
       if (!clazz.isPrimitive)
         ManifestFactory.classType(clazz) ->

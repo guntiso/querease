@@ -1,7 +1,7 @@
 package querease
 
 import org.tresql.Result
-import mojoz.metadata.DbConventions
+import mojoz.metadata.Naming
 import mojoz.metadata.Type
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
@@ -23,5 +23,5 @@ object QuereaseIo {
 
 object ViewName {
   def get(viewClass: Class[_ <: AnyRef]) =
-    DbConventions.dasherize(viewClass.getSimpleName)
+    Naming.dasherize(viewClass.getSimpleName)
 }

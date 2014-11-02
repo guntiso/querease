@@ -12,8 +12,8 @@ import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
 import org.tresql.QueryParser.Null
 
-import mojoz.metadata.DbConventions
-import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+import mojoz.metadata.Naming
+import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
@@ -168,7 +168,7 @@ object QueryStringBuilder {
       tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]],
       joinsParser: JoinsParser = TresqlJoinsParser)
     extends QueryStringBuilder {
-    import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+    import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -228,7 +228,7 @@ object QueryStringBuilder {
     /*
     val paramsFilter =
       Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
-    import mojoz.metadata.DbConventions.{ dbNameToXsdName => xsdName }
+    import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
     val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
     // FIXME extra order by, injection-safe!
     val safeExpr = List("decode(cnt, null, 0, 1)",
@@ -305,9 +305,9 @@ object QueryStringBuilder {
           case "#" => null
           case ord => // FIXME support multicol asc/desc order by
             ord.replace("#", "").replace("(", "").replace(")", "").trim
-        }) /* TODO ? .map(DbConventions.dbNameToXsdName) */ .orNull
+        }) /* TODO ? .map(Naming.dbNameToXsdName) */ .orNull
         /*
-        lazy val sortDetailsDbName = DbConventions.xsdNameToDbName(sortDetails)
+        lazy val sortDetailsDbName = Naming.xsdNameToDbName(sortDetails)
         val isSortFieldIncluded = sortDetails == null ||
           childViewDef.fields.map(f => Option(f.alias) getOrElse f.name).toSet
           .contains(sortDetailsDbName)

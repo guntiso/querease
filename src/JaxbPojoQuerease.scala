@@ -13,7 +13,7 @@ import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
 
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import mojoz.metadata.DbConventions.xsdNameToDbName
+import mojoz.metadata.Naming.xsdNameToDbName
 import mojoz.metadata._
 
 private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]) extends QuereaseIo {
