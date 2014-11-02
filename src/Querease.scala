@@ -49,13 +49,22 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   import quereaseIo._
   import builder._
 
+  private def tablesToSaveTo(viewDef: ViewDef[FieldDef[Type]]) =
+    if (viewDef.saveTo == null || viewDef.saveTo.size == 0) Seq(viewDef.table)
+    else viewDef.saveTo
+
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long =
-    saveTo(getViewDef(pojo.getClass).table, pojo, extraPropsToSave, transform, forceInsert)
+    saveToMultiple(tablesToSaveTo(getViewDef(pojo.getClass)), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
+    transform: (Map[String, Any]) => Map[String, Any] = m => m,
+    forceInsert: Boolean = false): Long =
+      saveToMultiple(Seq(tableName), pojo, extraPropsToSave, transform, forceInsert)
+
+  def saveToMultiple(tables: Seq[String], pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false): Long = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
@@ -66,10 +75,17 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
-      val (_, id) = ORT.insert(tableName, transf(propMap))
+      val (_, id) =
+        if (tables.size == 1)
+          ORT.insert(tables(0), transf(propMap))
+        else
+          ORT.insertMultiple(transf(propMap), tables: _*)
       id.asInstanceOf[Long]
     } else {
-      ORT.update(tableName, transf(propMap))
+      if (tables.size == 1)
+        ORT.update(tables(0), transf(propMap))
+      else
+        ORT.updateMultiple(transf(propMap), tables: _*)
       id.get
     }
   }
