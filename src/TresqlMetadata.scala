@@ -19,7 +19,7 @@ class TresqlMetadata(
     val cols = td.cols.map(c => Col(c.name, c.nullable)).toList
     val key = Key(td.pk.map(_.cols.toList) getOrElse Nil)
     val refs = td.refs.groupBy(_.refTable)
-      .mapValues(_.map(r => TresqlRef(r.cols.toList)).toList)
+      .mapValues(_.map(r => TresqlRef(r.cols.toList, r.refCols.toList)).toList)
     Table(name, cols, key, refs)
   }.map(t => (t.name, t)).toMap
 
