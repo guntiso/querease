@@ -30,6 +30,8 @@ object FilterResolver {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)
     filter match {
+      case "true" | "false" =>
+        filter
       case IdentFilterDef(name, _, req) =>
         s"${col(name)} = :${par(name)}" + opt(req)
       case ComparisonFilterDef(name, _, op, req) =>

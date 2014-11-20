@@ -21,6 +21,9 @@ class FilterResolverTests extends FlatSpec with Matchers {
       resolve(ident, b) should be(s"base.$ident = :$ident?")
       resolve(s"$ident!", b) should be(s"base.$ident = :$ident")
       resolve(s"$ident !", b) should be(s"base.$ident = :$ident")
+      //
+      resolve("true") should be("true")
+      resolve("false") should be("false")
     }
   }
 
