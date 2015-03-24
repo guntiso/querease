@@ -79,13 +79,13 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
         if (tables.size == 1)
           ORT.insert(tables(0), transf(propMap))
         else
-          ORT.insertMultiple(transf(propMap), tables: _*)
+          ORT.insertMultiple(transf(propMap), tables: _*)()
       id.asInstanceOf[Long]
     } else {
       if (tables.size == 1)
         ORT.update(tables(0), transf(propMap))
       else
-        ORT.updateMultiple(transf(propMap), tables: _*)
+        ORT.updateMultiple(transf(propMap), tables: _*)()
       id.get
     }
   }
