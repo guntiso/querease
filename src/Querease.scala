@@ -75,11 +75,17 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
-      val (_, id) =
+      val result =
         if (tables.size == 1)
           ORT.insert(tables(0), transf(propMap))
         else
           ORT.insertMultiple(transf(propMap), tables: _*)()
+      val id = result match {
+        case (_, id) => id
+        case _ :+ last => last match {
+          case (_, id) => id
+        }
+      }
       id.asInstanceOf[Long]
     } else {
       if (tables.size == 1)
