@@ -82,9 +82,10 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
           ORT.insertMultiple(transf(propMap), tables: _*)()
       val id = result match {
         case (_, id) => id
-        case _ :+ last => last match {
-          case (_, id) => id
-        }
+        case list: List[_] =>
+          list.reverse.head match {
+            case (_, id) => id
+          }
       }
       id.asInstanceOf[Long]
     } else {
