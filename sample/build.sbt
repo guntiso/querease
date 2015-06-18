@@ -1,6 +1,6 @@
 name := "querease-sample"
 
-scalaVersion := "2.11.0"
+scalaVersion := "2.11.6"
 
 scalacOptions ++= Seq("-deprecation", "-feature")
 
