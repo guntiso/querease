@@ -56,30 +56,32 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false): Long =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
     saveToMultiple(tablesToSaveTo(getViewDef(pojo.getClass)), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false): Long =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
       saveToMultiple(Seq(tableName), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveToMultiple(tables: Seq[String], pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false): Long = {
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
-    val propMap =
-      if (extraPropsToSave != null) pojoPropMap ++ extraPropsToSave
-      else pojoPropMap
+    val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
+      else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
+      else Map())
     val transf = if (transform != null) transform else (m: Map[String, Any]) => m
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
       val result =
         if (tables.size == 1)
-          ORT.insert(tables(0), transf(propMap))
+          ORT.insert(tables(0), transf(propMap),
+            Option(filterAndParams).map(_._1) orNull)
         else
-          ORT.insertMultiple(transf(propMap), tables: _*)()
+          ORT.insertMultiple(transf(propMap), tables: _*)(
+            Option(filterAndParams).map(_._1) orNull)
       val id = result match {
         case (_, id) => id
         case list: List[_] =>
@@ -114,7 +116,7 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     val req = ListRequestType(1, 0, filterDef, sortDef)
     query(viewClass, req, extraFilterAndParams).headOption getOrElse null.asInstanceOf[T]
 */
-def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
+  def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] = {
     val (q, p) = queryStringAndParams(getViewDef(viewClass), params,
