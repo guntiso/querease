@@ -211,7 +211,7 @@ object QuereaseTests {
   def setEnv(conn: Connection = getConnection) = {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
-    Env update { (msg, level) => println(msg) }
+    Env.logger = (msg, level) => println(msg)
     Env.metaData = new TresqlMetadata(tableDefs, null)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
