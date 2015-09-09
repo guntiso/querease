@@ -155,10 +155,11 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any]) =
     fromRows(Query(query, params), instanceClass)
 
-  def delete(instance: AnyRef) = {
+  def delete(instance: AnyRef, filterAndParams: (String, Map[String, Any]) = null) = {
     val view = getViewDef(instance.getClass)
     val keyMap = getKeyMap(instance, view)
-    Query(builder.deleteStatementString(view, keyMap), keyMap)
+    val (filter, params) = Option(filterAndParams).getOrElse((null, null))
+    ORT.delete(view.table, keyMap.head._2, filter, params)
   }
 /*
   def query[T <: AnyRef](view: ViewDef[FieldDef[Type]], pojoClass: Class[T], params: ListRequestType,
@@ -177,7 +178,6 @@ trait QueryStringBuilder {
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any])
-  def deleteStatementString(view: ViewDef[FieldDef[Type]], keyMap: Map[String, Any]): String
 }
 
 object QueryStringBuilder {
@@ -526,10 +526,6 @@ object QueryStringBuilder {
       case (limit, offset) =>
         (query + "@(? ?)", Array(offset, limit))
     }
-
-    def deleteStatementString(view: ViewDef[FieldDef[Type]], keyMap: Map[String, Any]) =
-      "-" + view.table +
-        keyMap.map(_._1).map(c => s"$c = :$c").mkString("[", " & ", "]")
 
 /*
     val values = if (filter == null) Map[String, Any]() else filter.map(f => {
