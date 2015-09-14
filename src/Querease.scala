@@ -56,17 +56,17 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] =
     saveToMultiple(tablesToSaveTo(getViewDef(pojo.getClass)), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] =
       saveToMultiple(Seq(tableName), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveToMultiple(tables: Seq[String], pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long = {
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
@@ -82,20 +82,20 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
         else
           ORT.insertMultiple(transf(propMap), tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
-      val id = result match {
-        case (_, id) => id
+      val (rowCount, id) = result match {
+        case x@(rowCount, id) => x
         case list: List[_] =>
           list.reverse.head match {
-            case (_, id) => id
+            case x@(rowCount, id) => x
           }
       }
-      id.asInstanceOf[Long]
+      if (rowCount == null) None else Some(id.asInstanceOf[Long])
     } else {
-      if (tables.size == 1)
+      val result = if (tables.size == 1)
         ORT.update(tables(0), transf(propMap))
       else
         ORT.updateMultiple(transf(propMap), tables: _*)()
-      id.get
+      if (result == null) None else Some(id.get)
     }
   }
 
