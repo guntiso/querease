@@ -165,7 +165,11 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     val view = getViewDef(instance.getClass)
     val keyMap = getKeyMap(instance, view)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
-    val result = ORT.delete(view.table, keyMap.head._2, filter, params)
+    val result = ORT.delete(
+      view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
+      keyMap.head._2,
+      filter,
+      params)
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
     else result
