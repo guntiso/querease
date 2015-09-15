@@ -45,6 +45,8 @@ case class ListRequestType(
 }
 */
 
+class NotFoundException(msg: String) extends Exception(msg)
+
 class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   import quereaseIo._
   import builder._
@@ -56,17 +58,17 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
     saveToMultiple(tablesToSaveTo(getViewDef(pojo.getClass)), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] =
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
       saveToMultiple(Seq(tableName), pojo, extraPropsToSave, transform, forceInsert)
 
   def saveToMultiple(tables: Seq[String], pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Option[Long] = {
+    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
@@ -89,13 +91,17 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
             case x@(rowCount, id) => x
           }
       }
-      if (rowCount == null) None else Some(id.asInstanceOf[Long])
+      if (rowCount == null) throw new NotFoundException(
+        s"Record not inserted into table(s): ${tables.mkString(",")}")
+      else id.asInstanceOf[Long]
     } else {
       val result = if (tables.size == 1)
         ORT.update(tables(0), transf(propMap))
       else
         ORT.updateMultiple(transf(propMap), tables: _*)()
-      if (result == null) None else Some(id.get)
+      if (result == null) throw new NotFoundException(
+        s"Record not updated in table(s): ${tables.mkString(",")}")
+      else id.get
     }
   }
 
@@ -159,7 +165,10 @@ class Querease(quereaseIo: QuereaseIo, builder: QueryStringBuilder) {
     val view = getViewDef(instance.getClass)
     val keyMap = getKeyMap(instance, view)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
-    ORT.delete(view.table, keyMap.head._2, filter, params)
+    val result = ORT.delete(view.table, keyMap.head._2, filter, params)
+    if (result == 0)
+      throw new NotFoundException(s"Record not deleted in table ${view.table}")
+    else result
   }
 /*
   def query[T <: AnyRef](view: ViewDef[FieldDef[Type]], pojoClass: Class[T], params: ListRequestType,
