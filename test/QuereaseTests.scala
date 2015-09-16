@@ -18,10 +18,9 @@ import mojoz.metadata.in.YamlTableDefLoader
 import mojoz.metadata.in.YamlViewDefLoader
 import mojoz.metadata.out.SqlWriter
 import querease.Querease
-import querease.QuereaseIo
-import querease.QueryStringBuilder
-import querease.TresqlJoinsParser
 import querease.TresqlMetadata
+import querease.ScalaDtoQuereaseIo
+import querease.TresqlJoinsParser
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
@@ -201,9 +200,10 @@ object QuereaseTests {
   val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
   val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
     extendedViewDefTransformer = i18nRules.setI18n)
-  val qio = QuereaseIo.scalaDto(viewDefs.extendedViewDefs)
-  val builder = QueryStringBuilder.default(viewDefs.extendedViewDefs.get, tableMd)
-  val qe = new Querease(qio, builder)
+  val qe = new Querease with ScalaDtoQuereaseIo {
+    override def nameToExtendedViewDef = viewDefs.extendedViewDefs
+    override def tableMetadata = tableMd
+  }
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
@@ -233,7 +233,7 @@ object QuereaseTests {
   def tresql(viewName: String, params: Map[String, Any] = Map.empty): String =
     tresql(viewDefs.extendedViewDefs(viewName), params)
   def tresql(view: ViewDef[FieldDef[Type]], params: Map[String, Any]): String =
-    builder.queryStringAndParams(view, params)._1
+    qe.queryStringAndParams(view, params)._1
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
     val body = source.mkString

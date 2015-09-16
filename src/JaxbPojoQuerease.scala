@@ -16,9 +16,11 @@ import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.Naming.xsdNameToDbName
 import mojoz.metadata._
 
-private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]) extends QuereaseIo {
+trait JaxbPojoQuereaseIo extends QuereaseIo {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
+
+  def nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]
 
   override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] =
     // FIXME apply naming properly
@@ -251,7 +253,7 @@ private[querease] class JaxbPojoQuereaseIo(nameToExtendedViewDef: Map[String, Vi
       propMap.filter(_._1 != "clazz").map {
         case (key, list: List[_]) =>
           val l = list.asInstanceOf[List[Map[String, _]]]
-          val fieldName = toSingular(key) // XXX undo JAXB plural 
+          val fieldName = toSingular(key) // XXX undo JAXB plural
           val fieldDef = getFieldDef(fieldName)
           if (isSaveable(fieldDef)) {
             val childViewDef = getChildViewDef(viewDef, fieldDef)

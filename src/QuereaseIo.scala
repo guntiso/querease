@@ -5,20 +5,17 @@ import mojoz.metadata.Naming
 import mojoz.metadata.Type
 import mojoz.metadata.FieldDef.{ FieldDefBase => FieldDef }
 import mojoz.metadata.ViewDef.{ ViewDefBase => ViewDef }
+import mojoz.metadata.TableDef
 import mojoz.metadata.ColumnDef
+import mojoz.metadata.TableMetadata
 
 trait QuereaseIo {
   def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]): List[T]
   def toSaveableMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]): Map[String, _]
   def getKeyMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]): Map[String, _]
-  def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] // TODO not class
-}
-
-object QuereaseIo {
-  def scalaDto(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]): QuereaseIo =
-    new ScalaDtoQuereaseIo(nameToExtendedViewDef)
-  def jaxbPojo(nameToExtendedViewDef: Map[String, ViewDef[FieldDef[Type]]]): QuereaseIo =
-    new JaxbPojoQuereaseIo(nameToExtendedViewDef)
+  def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] // TODO remove this one
+  def getViewDef(viewName: String): ViewDef[FieldDef[Type]]
+  def tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]
 }
 
 object ViewName {
