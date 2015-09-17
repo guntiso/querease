@@ -35,8 +35,6 @@ trait ScalaDtoQuereaseIo extends QuereaseIo {
       Map("id" -> instance.asInstanceOf[DtoWithId].id)
     else sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${instance.getClass.getName} not supported yet")
-  override def getViewDef(viewClass: Class[_ <: AnyRef]) =
-    getViewDef(ViewName.get(viewClass).replace("-", "_"))
   override def getViewDef(viewName: String) = {
     nameToExtendedViewDef.get(viewName)
       .getOrElse(sys.error(s"View definition for ${viewName} not found"))

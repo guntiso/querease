@@ -13,9 +13,10 @@ trait QuereaseIo {
   def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]): List[T]
   def toSaveableMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]): Map[String, _]
   def getKeyMap(instance: AnyRef, viewDef: ViewDef[FieldDef[Type]]): Map[String, _]
-  def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] // TODO remove this one
-  def getViewDef(viewName: String): ViewDef[FieldDef[Type]]
   def tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]
+  def getViewDef(viewName: String): ViewDef[FieldDef[Type]]
+  def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef[FieldDef[Type]] =
+    getViewDef(ViewName.get(viewClass).replace("-", "_"))
 }
 
 object ViewName {
