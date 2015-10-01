@@ -52,19 +52,41 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  def save(pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
+  def save(
+    pojo: AnyRef,
+    extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
-    saveToMultiple(tablesToSaveTo(getViewDef(pojo.getClass)), pojo, extraPropsToSave, transform, forceInsert)
+    forceInsert: Boolean = false,
+    filterAndParams: (String, Map[String, Any]) = null): Long =
+    saveToMultiple(
+      tablesToSaveTo(getViewDef(pojo.getClass)),
+      pojo,
+      extraPropsToSave,
+      transform,
+      forceInsert,
+      filterAndParams)
 
-  def saveTo(tableName: String, pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
+  def saveTo(
+    tableName: String, pojo: AnyRef,
+    extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long =
-      saveToMultiple(Seq(tableName), pojo, extraPropsToSave, transform, forceInsert)
+    forceInsert: Boolean = false,
+    filterAndParams: (String, Map[String, Any]) = null): Long =
+    saveToMultiple(
+      Seq(tableName),
+      pojo,
+      extraPropsToSave,
+      transform,
+      forceInsert,
+      filterAndParams)
 
-  def saveToMultiple(tables: Seq[String], pojo: AnyRef, extraPropsToSave: Map[String, Any] = null,
+  def saveToMultiple(
+    tables: Seq[String],
+    pojo: AnyRef,
+    extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
-    forceInsert: Boolean = false, filterAndParams: (String, Map[String, Any]) = null): Long = {
+    forceInsert: Boolean = false,
+    filterAndParams: (String, Map[String, Any]) = null): Long = {
     val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
