@@ -114,9 +114,11 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
       else id.asInstanceOf[Long]
     } else {
       val result = if (tables.size == 1)
-        ORT.update(tables(0), transf(propMap))
+        ORT.update(tables(0), transf(propMap),
+          Option(filterAndParams).map(_._1) orNull)
       else
-        ORT.updateMultiple(transf(propMap), tables: _*)()
+        ORT.updateMultiple(transf(propMap), tables: _*)(
+          Option(filterAndParams).map(_._1) orNull)
       if (result == null) throw new NotFoundException(
         s"Record not updated in table(s): ${tables.mkString(",")}")
       else id.get
