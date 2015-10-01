@@ -48,7 +48,8 @@ class NotFoundException(msg: String) extends Exception(msg)
 abstract class Querease extends QueryStringBuilder with QuereaseIo {
 
   private def tablesToSaveTo(viewDef: ViewDef) =
-    if (viewDef.saveTo == null || viewDef.saveTo.size == 0) Seq(viewDef.table)
+    if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
+      Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
