@@ -103,24 +103,24 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
         else
           ORT.insertMultiple(transf(propMap), tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
-      val (rowCount, id) = result match {
+      val (insertedRowCount, id) = result match {
         case x@(rowCount, id) => x
         case list: List[_] =>
           list.reverse.head match {
             case x@(rowCount, id) => x
           }
       }
-      if (rowCount == null) throw new NotFoundException(
+      if (insertedRowCount == 0) throw new NotFoundException(
         s"Record not inserted into table(s): ${tables.mkString(",")}")
       else id.asInstanceOf[Long]
     } else {
-      val result = if (tables.size == 1)
+      val updatedRowCount = if (tables.size == 1)
         ORT.update(tables(0), transf(propMap),
           Option(filterAndParams).map(_._1) orNull)
       else
         ORT.updateMultiple(transf(propMap), tables: _*)(
           Option(filterAndParams).map(_._1) orNull)
-      if (result == null) throw new NotFoundException(
+      if (updatedRowCount == 0) throw new NotFoundException(
         s"Record not updated in table(s): ${tables.mkString(",")}")
       else id.get
     }
