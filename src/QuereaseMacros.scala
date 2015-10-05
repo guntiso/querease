@@ -60,7 +60,7 @@ class QuereaseMacros extends Macros {
     var una = true
     var low = true
     b.transform(e, {
-      case v: b.VarExpr => v() match {
+      case v: b.VarExpr if b.env contains v.name => v() match {
         case x =>
           hasVar = true
           if (una) una = shouldUnaccent(String.valueOf(x))
