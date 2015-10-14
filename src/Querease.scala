@@ -104,8 +104,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
           ORT.insertMultiple(transf(propMap), tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
-        case x@(rowCount, id) => x
-        case list: List[_] =>
+        case x@(rowCount, id) => x //insert result
+        case list: List[_] => //if array result consider last element as insert result
           list.reverse.head match {
             case x@(rowCount, id) => x
           }
