@@ -128,8 +128,12 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
 
   def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
+      countAll_(getViewDef(pojoClass), params, extraFilterAndParams)
+  }
+  def countAll_(viewDef: ViewDef, params: Map[String, Any],
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(getViewDef(pojoClass), params, 0, 0, "", extraFilterAndParams, true)
+      queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
 /*
