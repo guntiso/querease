@@ -254,15 +254,17 @@ trait QueryStringBuilder { this: Querease =>
 
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
     val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull)
-    val cols = this.cols(view, countAll, pathToAlias)
     val groupBy = this.groupBy(view)
     val having = this.having(view)
+    val simpleCountAll = countAll && groupBy == "" && having == ""
+    val cols = this.cols(view, simpleCountAll, pathToAlias)
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
 
     import language.existentials
-    val (q, limitOffsetPars) =
+    val (q1, limitOffsetPars) =
       limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
+    val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
     // Env log q
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
