@@ -12,8 +12,6 @@ import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
 import org.tresql.QueryParser.Null
 
-import mojoz.metadata.Naming
-import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 import mojoz.metadata.TableDef.Ref
@@ -211,7 +209,6 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
 }
 
 trait QueryStringBuilder { this: Querease =>
-  import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
