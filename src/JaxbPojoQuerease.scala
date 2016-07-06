@@ -13,7 +13,7 @@ import mojoz.metadata.ViewDef.ViewDefBase
 
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import mojoz.metadata.Naming.xsdNameToDbName
+import mojoz.metadata.Naming.{dbName => xsdNameToDbName}
 import mojoz.metadata._
 
 trait JaxbPojoQuereaseIo extends QuereaseIo {

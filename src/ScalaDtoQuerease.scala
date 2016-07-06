@@ -88,7 +88,7 @@ trait Dto {
   protected def dbNameToPropName(name: String) =
     ScalaClassWriter.scalaFieldName(name)
   protected def propNameToDbName(name: String) =
-    Naming.xsdNameToDbName(name)
+    Naming.dbName(name)
   protected def manifest(name: String, clazz: Class[_]) =
     if (!clazz.isPrimitive)
       ManifestFactory.classType(clazz) ->

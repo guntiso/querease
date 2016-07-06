@@ -193,10 +193,15 @@ class QuereaseTests extends FlatSpec with Matchers {
 }
 
 object QuereaseTests {
+  def dbName(name: String) =
+    Naming.dbName(name)
+      .replace("_1", "1") // no underscore before 1 in our database names
+      .replace("_2", "2") // no underscore before 2 in our database names
+      .replace("_3", "3") // no underscore before 3 in our database names
   val path = "sample/md"
   val mdDefs = YamlMd.fromFiles(path = path)
   val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
-  val tableMd = new TableMetadata(tableDefs)
+  val tableMd = new TableMetadata(tableDefs, dbName)
   val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
   val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
     extendedViewDefTransformer = i18nRules.setI18n)

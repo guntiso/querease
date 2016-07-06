@@ -18,8 +18,8 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "7.2-SNAPSHOT",
-  "org.mojoz" %% "mojoz" % "0.2-SNAPSHOT",
+  "org.tresql" %% "tresql" % "7.3-SNAPSHOT",
+  "org.mojoz" %% "mojoz" % "0.3-SNAPSHOT",
   // test
   "org.hsqldb" % "hsqldb" % "2.3.2" % "test",
   "org.scalatest" %% "scalatest" % "2.1.5" % "test"
