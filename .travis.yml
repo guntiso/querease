@@ -7,6 +7,9 @@ scala:
 jdk:
   - oraclejdk7
   - openjdk7
+sudo: required # for setting hostname
+addons:
+  hostname: localhost #https://github.com/travis-ci/travis-ci/issues/5227
 notifications:
   email:
     - guntiso@uniso.lv
