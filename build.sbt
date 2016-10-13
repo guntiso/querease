@@ -11,8 +11,6 @@ crossScalaVersions := Seq(
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-retrieveManaged := true
-
 resolvers ++= Seq(
   "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
@@ -26,6 +24,8 @@ libraryDependencies ++= Seq(
 )
 
 scalaSource in Compile <<= baseDirectory(_ / "src")
+
+autoAPIMappings := true
 
 scalacOptions in (Compile, doc) <++= (baseDirectory in
  LocalProject("querease")).map {
