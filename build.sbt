@@ -23,22 +23,24 @@ libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.1.5" % "test"
 )
 
-scalaSource in Compile <<= baseDirectory(_ / "src")
+scalaSource in Compile := baseDirectory(_ / "src").value
 
 autoAPIMappings := true
 
-scalacOptions in (Compile, doc) <++= (baseDirectory in
+scalacOptions in (Compile, doc) ++= (baseDirectory in
  LocalProject("querease")).map {
    bd => Seq("-sourcepath", bd.getAbsolutePath,
              "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
- }
+ }.value
 
-unmanagedResourceDirectories in Test <<= baseDirectory(b => Seq(b / "sample" / "md", b / "test" / "data"))
+unmanagedResourceDirectories in Test := baseDirectory(b => Seq(b / "sample" / "md", b / "test" / "data")).value
 
-scalaSource in Test <<= baseDirectory(_ / "test")
+scalaSource in Test := baseDirectory(_ / "test").value
 
-sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Test, sourceManaged in Test) map {
-      (cache: File, resDirs: Seq[File], outDir: File) => {
+sourceGenerators in Test += Def.task {
+    // TODO val cacheDirectory = streams.value.cacheDirectory
+    val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
+    val outDir: File = (sourceManaged in Test).value
     import querease._
     import mojoz.metadata._
     import mojoz.metadata.in._
@@ -58,18 +60,17 @@ sourceGenerators in Test <+= (cacheDirectory, unmanagedResourceDirectories in Te
         "import querease._", ""), viewDefs, Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
-  }
-}
+}.taskValue
 
 initialCommands in console := "import org.tresql._; import querease._; import mojoz.metadata._"
 
-publishTo <<= version { v: String =>
+publishTo := version { v: String =>
   val nexus = "https://oss.sonatype.org/"
   if (v.trim.endsWith("SNAPSHOT"))
     Some("snapshots" at nexus + "content/repositories/snapshots")
   else
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}
+}.value
 
 publishMavenStyle := true
 
