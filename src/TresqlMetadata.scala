@@ -5,18 +5,26 @@ import org.tresql.metadata.Col
 import org.tresql.metadata.Key
 import org.tresql.metadata.{ Ref => TresqlRef }
 import org.tresql.metadata.Table
+import org.tresql.metadata.TypeMapper
 
+import mojoz.metadata.Type
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
 class TresqlMetadata(
-  val tableDefs: Seq[TableDef[ColumnDef[_]]],
+  val tableDefs: Seq[TableDef[ColumnDef[Type]]],
   val procedureMetadata: MetaData)
-  extends MetaData {
+  extends MetaData with TypeMapper {
 
   val tables = tableDefs.map { td =>
+    def toTresqlCol(c: ColumnDef[Type]) = {
+      val typeName = c.type_.name
+      val scalaType = xsd_scala_type_map(typeName)
+      val jdbcTypeCode = 0 // unknown, not interested
+      Col(c.name, c.nullable, jdbcTypeCode, scalaType)
+    }
     val name = td.name
-    val cols = td.cols.map(c => Col(c.name, c.nullable)).toList
+    val cols = td.cols.map(toTresqlCol).toList
     val key = Key(td.pk.map(_.cols.toList) getOrElse Nil)
     val refs = td.refs.groupBy(_.refTable)
       .mapValues(_.map(r => TresqlRef(r.cols.toList, r.refCols.toList)).toList)

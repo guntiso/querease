@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import scala.collection.mutable
 
 import org.tresql.Env
+import org.tresql.InsertResult
 import org.tresql.ORT
 import org.tresql.Query
 import org.tresql.QueryParser
@@ -102,10 +103,10 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
           ORT.insertMultiple(transf(propMap), tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
-        case x@(rowCount, id) => x //insert result
+        case x: InsertResult => (x.count.get, x.id.get)
         case list: List[_] => //if array result consider last element as insert result
           list.reverse.head match {
-            case x@(rowCount, id) => x
+            case x: InsertResult => (x.count.get, x.id.get)
           }
       }
       if (insertedRowCount == 0) throw new NotFoundException(
@@ -423,6 +424,9 @@ trait QueryStringBuilder { this: Querease =>
       .filterNot(_ == null)
       .map(t => List(t))
       .toSet
+    val IdentifierExtractor: QueryParser.Extractor[List[List[String]]] = {
+      case (l, i: Ident) => i.ident :: l
+    }
     val usedInExpr = view.fields
       .filter(isExpressionOrPath)
       .map(_.expression)
@@ -432,8 +436,8 @@ trait QueryStringBuilder { this: Querease =>
       .filter(_.isInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
       .map(_.asInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
       // do not collect identifiers from subqueries (skip deeper analysis)
-      .map(QueryParser.transform(_, { case q: QueryParser.Query => Null }))
-      .map(QueryParser.extract(_, { case i: Ident => i.ident }))
+      .map(QueryParser.transformer({ case q: QueryParser.Query => Null }))
+      .map(x => QueryParser.extractor(IdentifierExtractor)(Nil, x))
       .flatten
       .filter(_.size > 1)
       .map(_ dropRight 1)

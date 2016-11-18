@@ -23,7 +23,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo {
 
   def nameToExtendedViewDef: Map[String, ViewDef]
 
-  override def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]) = {
+  override def fromRows[T <: AnyRef](rows: Result[RowLike], clazz: Class[T]) = {
     def toDto(r: RowLike) = {
       val t = clazz.newInstance
       t.asInstanceOf[Dto].fill(r)

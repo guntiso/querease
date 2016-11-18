@@ -7,6 +7,7 @@ import scala.collection.JavaConversions.seqAsJavaList
 import scala.language.postfixOps
 
 import org.tresql.Result
+import org.tresql.RowLike
 
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
@@ -73,7 +74,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
       })) toMap
   }
 
-  override def fromRows[T <: AnyRef](rows: Result, pojoClass: Class[T]) = {
+  override def fromRows[T <: AnyRef](rows: Result[RowLike], pojoClass: Class[T]) = {
     def toPojo(m: Map[String, Any]) = mapToPojo(m, pojoClass.newInstance)
     rows.toListOfMaps map toPojo
   }

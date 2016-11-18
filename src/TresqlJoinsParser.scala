@@ -21,7 +21,7 @@ object TresqlJoinsParser extends JoinsParser {
     }
     //prefix joins with [] so that parser knows that it is a join not division operation
     parseExp("\\w".r.findFirstIn(joinsStr.substring(0, 1)).map(x=> "[]").getOrElse("") + joinsStr) match {
-      case Query(tables, _, _, _, _, _, _, _) => (tables.foldLeft(List[Join]()) { (joins, j) =>
+      case Query(tables, _, _, _, _, _, _) => (tables.foldLeft(List[Join]()) { (joins, j) =>
         j match {
           //base table
           case Obj(Ident(name), alias, _, outerJoin, _) if joins.size == 0 =>

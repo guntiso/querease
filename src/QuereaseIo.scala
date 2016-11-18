@@ -1,6 +1,7 @@
 package querease
 
 import org.tresql.Result
+import org.tresql.RowLike
 import mojoz.metadata.Naming
 import mojoz.metadata.Type
 import mojoz.metadata.FieldDef.FieldDefBase
@@ -14,7 +15,7 @@ trait QuereaseIo {
   type FieldDef <: FieldDefBase[Type]
   type ViewDef <: ViewDefBase[FieldDef]
 
-  def fromRows[T <: AnyRef](rows: Result, clazz: Class[T]): List[T]
+  def fromRows[T <: AnyRef](rows: Result[RowLike], clazz: Class[T]): List[T]
   def toSaveableMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
   def getKeyMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
   def tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]
