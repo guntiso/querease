@@ -2,8 +2,7 @@ package querease
 
 import java.lang.reflect.ParameterizedType
 
-import scala.collection.JavaConversions.collectionAsScalaIterable
-import scala.collection.JavaConversions.seqAsJavaList
+import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
 import org.tresql.Result
@@ -68,7 +67,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
         case b: Array[Byte] => new java.io.ByteArrayInputStream(b)
         case l: Seq[_] => l map pojoToMap
         case l: Array[_] => l map pojoToMap
-        case l: java.util.Collection[_] => l map pojoToMap
+        case l: java.util.Collection[_] => l.asScala map pojoToMap
         case x => throw new RuntimeException(
           "Pojo map not implemented - class: " + x.getClass + ", value: " + x)
       })) toMap
@@ -189,7 +188,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
       t.newInstance.asInstanceOf[java.util.Collection[_]]
     case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
       val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
-        .map(mapToPojo(_, Class.forName(itemClassName).newInstance))
+        .map(mapToPojo(_, Class.forName(itemClassName).newInstance)).asJava
       col
     }
     case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
