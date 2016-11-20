@@ -6,11 +6,12 @@ import org.tresql.metadata.Key
 import org.tresql.metadata.{ Ref => TresqlRef }
 import org.tresql.metadata.Table
 
+import mojoz.metadata.Type
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
 class TresqlMetadata(
-  val tableDefs: Seq[TableDef[ColumnDef[_]]],
+  val tableDefs: Seq[TableDef[ColumnDef[Type]]],
   val procedureMetadata: MetaData)
   extends MetaData {
 
@@ -31,4 +32,26 @@ class TresqlMetadata(
   override def procedureOption(name: String) =
     if (procedureMetadata != null) procedureMetadata.procedureOption(name)
     else None
+
+  lazy val tableMetadataString = {
+    def colToString(col: ColumnDef[Type]) =
+      col.name +
+        (if (!col.nullable) " !" else "") +
+        " " + col.type_.name
+    def refToString(cols: Seq[String], refTableName: String, refCols: Seq[String]) =
+      cols.mkString(", ") + " -> " + refTableName + cols.mkString("(", ", ", ")")
+    import scala.language.implicitConversions
+    implicit def stringToSeq(s: String): Seq[String] = Seq(s)
+    def tableToString(table: Table, mojozTable: TableDef[ColumnDef[Type]]) =
+      Seq[Seq[String]](
+        "table: " + table.name,
+        "columns:",
+        mojozTable.cols.map("- " + colToString(_)),
+        (if (table.key.cols.size > 0) "pk: " + table.key.cols.mkString(", ") else Nil),
+        (if (table.rfs.size > 0) "refs:" else Nil),
+        table.rfs.toSeq.flatMap(tr =>
+          tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
+      ).flatten.mkString("\n")
+    tableDefs.map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
+  }
 }
