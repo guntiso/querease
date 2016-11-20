@@ -1,5 +1,9 @@
 package querease
 
+import java.io.File
+
+import org.tresql.compiling.CompilerFunctions
+import org.tresql.compiling.CompilerMetaDataFactory
 import org.tresql.MetaData
 import org.tresql.metadata.Col
 import org.tresql.metadata.Key
@@ -7,6 +11,8 @@ import org.tresql.metadata.{ Ref => TresqlRef }
 import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
 
+import mojoz.metadata.io._
+import mojoz.metadata.in._
 import mojoz.metadata.Type
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
@@ -60,5 +66,30 @@ class TresqlMetadata(
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")
     tableDefs.map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
+  }
+}
+
+class TresqlMetadataFactory extends CompilerMetaDataFactory {
+  /** Creates tresql compiler metadata by loading table metadata (as produced by
+   *  [[querease.TresqlMetadata.tableMetadataString]]) and instantiating
+   *  function signatures class.
+   *
+   *  Expects "tableMetadataFile" and "functions" keys in conf parameter.
+   */
+  override def create(conf: Map[String, String]) = {
+    val tableMetadataFileName = conf.getOrElse("tableMetadataFile", null)
+    val functionSignaturesClassName = conf.getOrElse("functions", null)
+    val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
+    val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
+    val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions).tableDefs
+    val procedureMetadata = null // TODO?
+    if (functionSignaturesClassName == null)
+      new TresqlMetadata(tableDefs, procedureMetadata)
+    else {
+      val f = Class.forName(functionSignaturesClassName)
+      new TresqlMetadata(tableDefs, procedureMetadata) with CompilerFunctions {
+        override def compilerFunctions = f
+      }
+    }
   }
 }
