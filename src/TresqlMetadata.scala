@@ -75,10 +75,11 @@ class TresqlMetadataFactory extends CompilerMetaDataFactory {
    *  function signatures class.
    *
    *  Expects "tableMetadataFile" and "functions" keys in conf parameter.
+   *  Defaults to "tresql-table-metadata.yaml" and "org.tresql.compiling.Functions"
    */
   override def create(conf: Map[String, String]) = {
-    val tableMetadataFileName = conf.getOrElse("tableMetadataFile", null)
-    val functionSignaturesClassName = conf.getOrElse("functions", null)
+    val tableMetadataFileName = conf.getOrElse("tableMetadataFile", "tresql-table-metadata.yaml")
+    val functionSignaturesClassName = conf.getOrElse("functions", "org.tresql.compiling.Functions")
     val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions).tableDefs
