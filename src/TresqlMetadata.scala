@@ -52,7 +52,7 @@ class TresqlMetadata(
         (if (!col.nullable) " !" else "") +
         " " + col.type_.name
     def refToString(cols: Seq[String], refTableName: String, refCols: Seq[String]) =
-      cols.mkString(", ") + " -> " + refTableName + cols.mkString("(", ", ", ")")
+      cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions
     implicit def stringToSeq(s: String): Seq[String] = Seq(s)
     def tableToString(table: Table, mojozTable: TableDef[ColumnDef[Type]]) =
