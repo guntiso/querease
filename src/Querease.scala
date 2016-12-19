@@ -6,6 +6,7 @@ import scala.language.postfixOps
 import scala.collection.mutable
 
 import org.tresql.Env
+import org.tresql.DeleteResult
 import org.tresql.InsertResult
 import org.tresql.ORT
 import org.tresql.Query
@@ -193,7 +194,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
       keyMap.head._2,
       filter,
-      params)
+      params).asInstanceOf[DeleteResult].count.get
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
     else result
