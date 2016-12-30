@@ -4,11 +4,6 @@ organization := "org.mojoz"
 
 scalaVersion := "2.12.1"
 
-crossScalaVersions := Seq(
-  "2.12.1",
-  "2.11.8"
-)
-
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 resolvers ++= Seq(

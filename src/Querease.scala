@@ -425,8 +425,10 @@ trait QueryStringBuilder { this: Querease =>
       .filterNot(_ == null)
       .map(t => List(t))
       .toSet
-    val IdentifierExtractor: QueryParser.Extractor[List[List[String]]] = {
-      case (l, i: Ident) => i.ident :: l
+    val IdentifierExtractor: QueryParser.Traverser[List[List[String]]] = {
+      identifiers => {
+        case i: Ident => i.ident :: identifiers
+      }
     }
     val usedInExpr = view.fields
       .filter(isExpressionOrPath)
@@ -434,11 +436,9 @@ trait QueryStringBuilder { this: Querease =>
       .filter(_ != null)
       .filter(_.trim != "")
       .map(QueryParser.parseExp)
-      .filter(_.isInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
-      .map(_.asInstanceOf[QueryParser.Exp]) // TODO remove when tresql refactored
       // do not collect identifiers from subqueries (skip deeper analysis)
       .map(QueryParser.transformer({ case q: QueryParser.Query => Null }))
-      .map(x => QueryParser.extractor(IdentifierExtractor)(Nil, x))
+      .map(x => QueryParser.traverser(IdentifierExtractor)(Nil)(x))
       .flatten
       .filter(_.size > 1)
       .map(_ dropRight 1)
