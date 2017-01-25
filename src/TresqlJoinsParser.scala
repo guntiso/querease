@@ -10,7 +10,7 @@ import mojoz.metadata.Type
 
 object TresqlJoinsParser extends JoinsParser {
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val joinsStr = joins.mkString("; ")
+    val joinsStr = baseTable + ";" + joins.mkString("; ")
     //prefix joins with [] so that compiler knows that it is a join not division operation
     compile("\\w".r.findFirstIn(joinsStr.substring(0, 1)).map(x=> "[]").getOrElse("") + joinsStr) match {
       case s: SelectDef => s.tables.filter { //filter out aliases
