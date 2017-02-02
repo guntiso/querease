@@ -178,6 +178,18 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     result.headOption
   }
 
+  def create[T <: AnyRef](viewClass: Class[T], params: Map[String, Any] = Map.empty): T = {
+    val viewDef = getViewDef(viewClass)
+    viewDef.fields.collect { case f if f.default != null =>
+      f.default + " " + Option(queryColAlias(f)).getOrElse(queryColName(viewDef, f))
+    } match {
+      case x if x.isEmpty => viewClass.newInstance
+      case defaultVals =>
+        val query = defaultVals.mkString("{", ", ", "}")
+        fromRows(Query(query, params), viewClass).head
+    }
+  }
+
   private def list[T <: AnyRef](
     queryStringAndParams: (String, Map[String, Any]),
     instanceClass: Class[T]): List[T] =
