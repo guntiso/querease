@@ -1,5 +1,6 @@
 package querease
 
+import org.tresql.Env
 import org.tresql.QueryCompiler._
 import org.tresql.QueryCompiler.{ Join => QCJoin }
 
@@ -8,9 +9,12 @@ import mojoz.metadata.in.JoinsParser
 import mojoz.metadata.ColumnDef
 import mojoz.metadata.Type
 
-object TresqlJoinsParser extends JoinsParser {
+class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val joinsStr = baseTable + ";" + joins.mkString("; ")
+    val oldMetadata = Env.metaData
+    Env.metaData = tresqlMetadata
+   try {
+    val joinsStr = (Option(baseTable).toList ++ joins).mkString("; ")
     //prefix joins with [] so that compiler knows that it is a join not division operation
     compile("\\w".r.findFirstIn(joinsStr.substring(0, 1)).map(x=> "[]").getOrElse("") + joinsStr) match {
       case s: SelectDef => s.tables.filter { //filter out aliases
@@ -36,7 +40,10 @@ object TresqlJoinsParser extends JoinsParser {
           }
         )
       }
-      case x => sys.error(s"Joins can be parsed only from select statement, instead found this: $x")
+      case x => sys.error(s"Joins can be parsed only from select statement, instead found this: $joinsStr")
     }
+   } finally {
+      Env.metaData = oldMetadata
+   }
   }
 }

@@ -561,7 +561,8 @@ trait QueryStringBuilder { this: Querease =>
       (query + "@(? ?)", Array(offset, limit))
   }
 
-  def joinsParser: JoinsParser = TresqlJoinsParser
+  def joinsParser: JoinsParser =
+    new TresqlJoinsParser(new TresqlMetadata(tableMetadata.tableDefs, null))
 /*
   val values = if (filter == null) Map[String, Any]() else filter.map(f => {
     val v = f._2.Value
