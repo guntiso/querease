@@ -243,7 +243,7 @@ trait QueryStringBuilder { this: Querease =>
   def baseFieldsQualifier(view: ViewDef): String = {
     // TODO do not parse multiple times!
     def parsedJoins =
-      Option(view.joins).map(joinsParser(view.table, _))
+      Option(view.joins).map(joinsParser(tableAndAlias(view), _))
         .getOrElse(Nil)
     Option(view.tableAlias)
       .orElse(if (view.joins == null || view.joins == Nil) Some(view.table) else None)
@@ -423,7 +423,7 @@ trait QueryStringBuilder { this: Querease =>
     def isExpressionOrPath(f: FieldDef) =
       f.isExpression || f.expression != null
     val parsedJoins =
-      Option(view.joins).map(joinsParser(view.table, _))
+      Option(view.joins).map(joinsParser(tableAndAlias(view), _))
         .getOrElse(Nil)
     val joinAliasToTable =
       parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
@@ -561,6 +561,10 @@ trait QueryStringBuilder { this: Querease =>
       (query + "@(? ?)", Array(offset, limit))
   }
 
+  def tableAndAlias(view: ViewDef) =
+    Option(view.table)
+      .map(_ + Option(view.tableAlias).map(" " + _).getOrElse(""))
+      .orNull
   def joinsParser: JoinsParser =
     new TresqlJoinsParser(new TresqlMetadata(tableMetadata.tableDefs, null))
 /*
