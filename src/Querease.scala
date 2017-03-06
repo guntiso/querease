@@ -8,6 +8,7 @@ import scala.collection.mutable
 import org.tresql.Env
 import org.tresql.DeleteResult
 import org.tresql.InsertResult
+import org.tresql.ArrayResult
 import org.tresql.ORT
 import org.tresql.Query
 import org.tresql.QueryParser
@@ -105,8 +106,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
         case x: InsertResult => (x.count.get, x.id.get)
-        case list: List[_] => //if array result consider last element as insert result
-          list.reverse.head match {
+        case a: ArrayResult[_] => //if array result consider last element as insert result
+           a.values.last match {
             case x: InsertResult => (x.count.get, x.id.get)
           }
       }
