@@ -4,7 +4,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % "8.0-SNAPSHOT",
-  "org.mojoz" %% "mojoz" % "0.3-SNAPSHOT"
+  "org.mojoz" %% "mojoz" % "0.5-SNAPSHOT"
 )
 
 scalaSource in Compile := baseDirectory(_ / ".." / "src").value
