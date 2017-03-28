@@ -70,7 +70,7 @@ sourceGenerators in Test += Def.task {
     val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
       List("package dto", "",
-        "import querease._", ""), viewDefs, Nil)
+        "import test.{ Dto, DtoWithId }", ""), viewDefs, Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
 }.taskValue

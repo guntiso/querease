@@ -1,3 +1,5 @@
+package test
+
 import java.io.PrintWriter
 import java.sql.Connection
 import java.sql.DriverManager
@@ -205,6 +207,7 @@ object QuereaseTests {
   val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
   val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
     extendedViewDefTransformer = i18nRules.setI18n)
+  val dtoMetadata = new querease.Dto.DtoMetadata(tableMd, viewDefs.extendedViewDefs)
   val qe = new Querease with ScalaDtoQuereaseIo {
     override def nameToExtendedViewDef = viewDefs.extendedViewDefs
     override def tableMetadata = tableMd

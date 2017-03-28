@@ -1,5 +1,6 @@
 package querease
 
+import scala.collection.immutable.TreeMap
 import scala.collection.JavaConversions._
 import scala.language.existentials
 import scala.language.implicitConversions
@@ -12,7 +13,12 @@ import org.tresql.Result
 import org.tresql.RowLike
 
 import mojoz.metadata._
+import mojoz.metadata.in._
+import mojoz.metadata.io.MdConventions
+import mojoz.metadata.io.SimplePatternMdConventions
 import mojoz.metadata.out.ScalaClassWriter
+import mojoz.metadata.TableDef.TableDefBase
+import mojoz.metadata.ColumnDef.ColumnDefBase
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 
@@ -44,19 +50,42 @@ trait ScalaDtoQuereaseIo extends QuereaseIo {
   }
 }
 
-//retrieving from tresql plain objects with public var fields
 object Dto {
+  class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
+    override def compare(x: String, y: String) =
+      nameToIndex.get(x).getOrElse(999) - nameToIndex.get(y).getOrElse(999)
+  }
+  object FieldOrdering {
+    def apply(view: ViewDefBase[FieldDefBase[Type]]) =
+      new FieldOrdering(view.fields.map(f => Option(f.alias) getOrElse f.name).zipWithIndex.toMap)
+  }
+  class DtoMetadata(
+      tableMd: TableMetadata[TableDefBase[ColumnDefBase[Type]]] = new TableMetadata,
+      xViewDefs: Map[String, ViewDefBase[FieldDefBase[Type]]] = (new YamlViewDefLoader).extendedViewDefs) {
+    private lazy val viewNameToFieldOrdering =
+      xViewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
+    def classToViewName(viewClass: Class[_ <: AnyRef]): String =
+      ViewName.get(viewClass).replace("-", "_")
+    def tableDef(tableName: String): TableDefBase[ColumnDefBase[Type]] =
+      tableMd.tableDef(tableName)
+    def viewDefOption(viewName: String): Option[ViewDefBase[FieldDefBase[Type]]] =
+      xViewDefs.get(viewName)
+    def viewDef(viewClass: Class[_ <: AnyRef]): ViewDefBase[FieldDefBase[Type]] =
+      viewDefOption(classToViewName(viewClass)).getOrElse(
+        sys.error(s"View definition for ${classToViewName(viewClass)} (for class ${viewClass.getName}) not found"))
+    def fieldOrdering(viewClass: Class[_ <: AnyRef]): Ordering[String] =
+      viewNameToFieldOrdering.get(classToViewName(viewClass)) getOrElse Ordering[String]
+  }
   implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
     m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
-
-  //dto to map for ORT
-  implicit def dtoToMap[T <: Dto](p: T): (String, Map[String, Any]) =
-    "TODO" -> p.toSaveableMap // TODO convert class to table name
-    /*
-    model.Metadata.dtoClassToTable(p.getClass) -> p.toSaveableMap
-    */
 }
 trait Dto {
+
+  type FieldDef = FieldDefBase[Type]
+  type ViewDef = ViewDefBase[FieldDef]
+
+  protected lazy val metadata = new Dto.DtoMetadata
+
   //filling in object from RowLike
   private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
     (for (
@@ -76,25 +105,33 @@ trait Dto {
   }
   protected def setters = _setters
   protected def set(dbName: String, r: RowLike) =
-    for (s <- setters.get(dbNameToPropName(dbName))) {
+    (for (s <- setters.get(dbToPropName(dbName))) yield {
       if (s._2._2 != null) { //child result
-        val rowManifest = s._2._2.asInstanceOf[Manifest[Dto]]
-        val setterManifest = s._2._1.asInstanceOf[Manifest[Dto]]
+        val m: Manifest[_ <: Dto] = s._2._2
         val childResult = r.result(dbName)
-        if(setterManifest == rowManifest) s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _, rowManifest).headOption.map(_.asInstanceOf[Object]).orNull)
-        else s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _, rowManifest).asInstanceOf[Object])
-      } else  s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
+        s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
+          m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
+      } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
+        val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
+        val childResult = r.result(dbName)
+        s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
+          m.asInstanceOf[Manifest[Dto]]).headOption.orNull.asInstanceOf[Object])
+      } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
+      s /*return setter used*/
+    }) getOrElse {
+      setExtras(dbName, r)
     }
-  protected def dbNameToPropName(name: String) =
-    ScalaClassWriter.scalaFieldName(name)
-  protected def propNameToDbName(name: String) =
-    Naming.dbName(name)
+  protected def setExtras(dbName: String, r: RowLike): AnyRef = {
+    throw new RuntimeException(s"Setter for '$dbName' not found")
+  }
+  protected def dbToPropName(name: String) = name // .toLowerCase
+  protected def propToDbName(name: String) = name
   protected def manifest(name: String, clazz: Class[_]) =
     if (!clazz.isPrimitive)
       ManifestFactory.classType(clazz) ->
         (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
           childManifest(getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
-        } else if(classOf[Dto].isAssignableFrom(clazz)) ManifestFactory.classType(clazz) else null)
+        } else null)
     else (clazz match {
       case java.lang.Integer.TYPE => ManifestFactory.Int
       case java.lang.Long.TYPE => ManifestFactory.Long
@@ -111,22 +148,161 @@ trait Dto {
     ManifestFactory.classType(clazz)
   }
 
-  def toMap: Map[String, Any] = setters.flatMap { m =>
+  def toMap: Map[String, Any] =
+    toMap(metadata.fieldOrdering(getClass))
+  def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
+    TreeMap[String, Any]()(fieldOrdering) ++
+    (setters.flatMap { m =>
     scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-      case s: Seq[_] => m._1 -> (s.asInstanceOf[Seq[Dto]] map (_.toMap))
+      case s: Seq[_] => m._1 ->  s.map{
+        case dto: Dto => dto.toMap
+        case str: String => str
+        case i: java.lang.Integer => i
+      }
+      case c: Dto => m._1 -> c.asInstanceOf[Dto].toMap
       case x => m._1 -> x
     }
-  } toMap
+  } toMap)
 
+  def containsField(fieldName: String) = setters.contains(fieldName)
+
+  override def toString: String = {
+    val view = metadata.viewDef(getClass)
+    val fieldNames = view.fields.map { f => Option(f.alias) getOrElse f.name }
+    toString(fieldNames)
+  }
+
+  protected def toString(fieldNames: Seq[String]): String = {
+    def isMisleading(s: String) =
+      s.contains(" ") || s == "null" || s == "" || s(0).isDigit
+    val kv: Seq[(String, Object)] = fieldNames.flatMap{ name =>
+      Try(getClass.getMethod(name)).map(_.invoke(this) match {
+        case s: Seq[_] => name ->
+          ("(" + (s map {
+            case s: String => "\"" + s + "\""
+            case o => o.toString
+          }).mkString(", ") + ")")
+        case s: String if isMisleading(s) => name -> ("\"" + s + "\"")
+        case x => name -> x
+      }).map(List(_)).toOption.getOrElse(Nil)
+    }
+    s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}"
+  }
+
+  private[querease] val IdentifierPatternString = "([a-zA-Z_$][a-zA-Z\\d_$]*\\.)*[a-zA-Z_$][a-zA-Z\\d_$]*"
+  private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
   //creating map from object
   def toSaveableMap: Map[String, Any] = {
+    // FIXME child handling, do we rely on metadata or method list?
+    val view = metadata.viewDef(getClass).asInstanceOf[ViewDef]
+    val saveToMulti = view.saveTo != null && view.saveTo.size > 0
+    val saveTo =
+      if (!saveToMulti) Seq(view.table)
+      else view.saveTo
+    def identifier(s: String) = s match {
+      case IdentifierExtractor(ident, _) => ident
+      case _ => ""
+    }
+    val saveToTableNames = saveTo.map(identifier)
+    def isForInsert = // TODO isForInsert
+      if (this.isInstanceOf[DtoWithId]) this.asInstanceOf[DtoWithId].id == null
+      else sys.error(s"isForInsert() for ${getClass.getName} not supported yet")
+    def isForUpdate = // TODO isForUpdate
+      if (this.isInstanceOf[DtoWithId]) this.asInstanceOf[DtoWithId].id != null
+      else sys.error(s"isForUpdate() for ${getClass.getName} not supported yet")
+    def isSaveableField(field: FieldDef) =
+    /*
+      (field.db.insertable && field.db.updatable ||
+       field.db.insertable && isForInsert ||
+       field.db.updatable && isForUpdate) &&
+    */
+      (!field.isExpression &&
+        !field.type_.isComplexType &&
+        field.table != null &&
+        (!saveToMulti &&
+          field.table == view.table &&
+          (field.tableAlias == null || field.tableAlias == view.tableAlias)
+          ||
+          saveToMulti &&
+          saveToTableNames.contains(field.table) // TODO alias?
+          )
+       ||
+       field.saveTo != null
+      )
+    def tablesTo(v: ViewDef) =
+      if (v.saveTo != null && v.saveTo.size > 0)
+        v.saveTo.mkString("#")
+      else if (v.table != null)
+        v.table
+      else
+        null
+    def isChildTableField(field: FieldDef) =
+      !field.isExpression &&
+        field.type_.isComplexType &&
+        metadata.viewDefOption(field.type_.name).map(tablesTo).orNull != null
+    def saveableKeys(f: FieldDef) = {
+      // TODO various mixes of options and params etc?
+      if (f.saveTo != null)
+        List(
+          f.name + ">" + f.saveTo + ">" + f.resolver,
+          f.name
+        )
+      else
+        List(f.name + Option(f.options).getOrElse(""))
+    }
     val keysValues = (setters.toList.flatMap { m =>
-      scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        //objects from one list can be put into different tables
-        case s: Seq[_] => s.asInstanceOf[Seq[Dto]] map {
-          Dto.dtoToMap
-        } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
-        case x => List(propNameToDbName(m._1) -> x)
+      val methodName = m._1
+      val fieldName = propToDbName(methodName)
+      scala.util.Try(getClass.getMethod(methodName).invoke(this)).toOption.map {
+        case Nil => view.fields
+          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+          .filter(isChildTableField)
+          .map(f => metadata.viewDefOption(f.type_.name).map(v => tablesTo(v) + f.options).get -> Nil)
+          .orElse(Some("*" + methodName -> Nil)) // prefix * to avoid clashes
+          .toList
+        case s: Seq[_] =>
+          val options = view.fields
+            .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+            .filter(isChildTableField)
+            .map(_.options)
+            .headOption getOrElse ""
+          //objects from one list can be put into different tables
+          s.asInstanceOf[Seq[Dto]] map { d =>
+            (tablesTo(metadata.viewDef(d.getClass).asInstanceOf[ViewDef]) + options, d.toSaveableMap)
+          } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
+        case d: Dto => view.fields
+          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+          .filter(isChildTableField)
+          .map { f =>
+            val tables = saveToTableNames.map(metadata.tableDef)
+            val childTableName = metadata.viewDefOption(f.type_.name).map(tablesTo).get
+            val key = // XXX too complicated to save a child
+              // TODO support multiple, multiple direction, multi-col etc. refs properly
+              tables
+                .zipWithIndex
+                .map(ti => (
+                  ti._1.name != f.table, ti._2, // for priority (sorting)
+                  ti._1, ti._1.refs.count(_.refTable == childTableName)))
+                .sortBy(x => "" + x._1 + x._2)
+                .map(x => x._3 -> x._4)
+                .filter(_._2 > 0)
+                .headOption // <--- FIXME what's this BS?
+                .map {
+                  case (table, 1) => // TODO multi-col?
+                    table.refs.find(_.refTable == childTableName).map(_.cols.head).get
+                  case (table, n) => // FIXME analyze aliases and/or joins?
+                    f.name + "_id"
+                }.getOrElse(childTableName)
+            key + f.options -> d.toSaveableMap
+          }
+          .orElse(Some("*" + methodName -> d.toSaveableMap)) // prefix * to avoid clashes
+          .toList
+        case x => view.fields
+          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+          .filter(isSaveableField)
+          .map(f => saveableKeys(f).map(_ -> x))
+          .orElse(Some(List("*" + methodName -> x))) // prefix * to avoid clashes
+          .toList.flatten
       } getOrElse Nil
     })
     //child objects from different lists can be put into one table
