@@ -191,6 +191,22 @@ trait Dto {
 
   private[querease] val IdentifierPatternString = "([a-zA-Z_$][a-zA-Z\\d_$]*\\.)*[a-zA-Z_$][a-zA-Z\\d_$]*"
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
+
+  protected def isSavableField(field: FieldDef, view: ViewDef, saveToMulti: Boolean, saveToTableNames: Seq[String]) =
+    (!field.isExpression &&
+      !field.type_.isComplexType &&
+      field.table != null &&
+      (!saveToMulti &&
+        field.table == view.table &&
+        (field.tableAlias == null || field.tableAlias == view.tableAlias)
+        ||
+        saveToMulti &&
+        saveToTableNames.contains(field.table) // TODO alias?
+        )
+     ||
+     field.saveTo != null
+   )
+
   //creating map from object
   def toSaveableMap: Map[String, Any] = {
     // FIXME child handling, do we rely on metadata or method list?
@@ -211,24 +227,7 @@ trait Dto {
       if (this.isInstanceOf[DtoWithId]) this.asInstanceOf[DtoWithId].id != null
       else sys.error(s"isForUpdate() for ${getClass.getName} not supported yet")
     def isSaveableField(field: FieldDef) =
-    /*
-      (field.db.insertable && field.db.updatable ||
-       field.db.insertable && isForInsert ||
-       field.db.updatable && isForUpdate) &&
-    */
-      (!field.isExpression &&
-        !field.type_.isComplexType &&
-        field.table != null &&
-        (!saveToMulti &&
-          field.table == view.table &&
-          (field.tableAlias == null || field.tableAlias == view.tableAlias)
-          ||
-          saveToMulti &&
-          saveToTableNames.contains(field.table) // TODO alias?
-          )
-       ||
-       field.saveTo != null
-      )
+      isSavableField(field, view, saveToMulti, saveToTableNames)
     def tablesTo(v: ViewDef) =
       if (v.saveTo != null && v.saveTo.size > 0)
         v.saveTo.mkString("#")
