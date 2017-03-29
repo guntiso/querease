@@ -102,3 +102,11 @@ filter:
 order:
 - name
 - id
+
+
+name: resolver_test_person_1
+table: person
+fields:
+- id
+- mother = mother.name || mother.surname -> mother_id
+- father = father.name || father.surname -> father_id = person[name || surname = _]{id}

@@ -22,6 +22,9 @@ import mojoz.metadata.ColumnDef.ColumnDefBase
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 
+import org.tresql.QueryParser
+import org.tresql.QueryParser.Ident
+
 trait ScalaDtoQuereaseIo extends QuereaseIo {
 
   type FieldDef = FieldDefBase[Type]
@@ -239,15 +242,41 @@ trait Dto {
       !field.isExpression &&
         field.type_.isComplexType &&
         metadata.viewDefOption(field.type_.name).map(tablesTo).orNull != null
-    def saveableKeys(f: FieldDef) = {
+    def saveableKeys(f: FieldDef): Seq[String] = {
       // TODO various mixes of options and params etc?
-      if (f.saveTo != null)
-        List(
-          f.name + ">" + f.saveTo + ">" + f.resolver,
-          f.name
-        )
-      else
-        List(f.name + Option(f.options).getOrElse(""))
+      val name = f.name
+      def alias = Option(f.alias).getOrElse(f.name)
+      if (f.saveTo == null && f.resolver == null)
+        Seq(name + Option(f.options).getOrElse(""))
+      else {
+        // TODO view validation - validate f.saveTo and resolvers!
+        // TODO support refs to ^view.field for expressions and/or resolvers
+        // TODO support save-to table or alias qualifier
+        // TODO support some qualifiers in expression?
+        val fSaveTo = Option(f.saveTo) getOrElse name
+        val resolvers = Option(f.resolver).map(r => Seq(r)) getOrElse saveTo
+          .map(metadata.tableDef)
+          .filter(_.cols.exists(_.name == fSaveTo))
+          .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
+          .map { ref =>
+            val refTable = ref.refTable
+            val refCol = ref.refCols(0)
+            val expression = Option(f.expression)
+              .map(QueryParser.parseExp)
+              .map(QueryParser.transformer {
+                case i: Ident =>
+                  if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
+              })
+              .map(_.tresql)
+              .getOrElse(name)
+            s"$refTable[$expression = _]{$refCol}"
+          }
+        if (resolvers.size == 0) {
+          throw new RuntimeException(
+            s"Failed to imply resolver for ${view.name}.$alias")
+        }
+        resolvers.map(alias + ">" + fSaveTo + ">" + _) ++ Seq(alias)
+      }
     }
     val keysValues = (setters.toList.flatMap { m =>
       val methodName = m._1
