@@ -275,7 +275,7 @@ trait Dto {
           throw new RuntimeException(
             s"Failed to imply resolver for ${view.name}.$alias")
         }
-        resolvers.map(alias + ">" + fSaveTo + ">" + _) ++ Seq(alias)
+        resolvers.map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
       }
     }
     val keysValues = (setters.toList.flatMap { m =>

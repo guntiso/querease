@@ -196,24 +196,24 @@ class QuereaseTests extends FlatSpec with Matchers {
     def keys(instance: Dto) =
       instance.toSaveableMap.keys.toList.sorted.mkString("; ")
     def resolverKeys(instance: Dto) =
-      instance.toSaveableMap.keys.filter(_.indexOf('>') >= 0).toList.sorted.mkString("; ")
+      instance.toSaveableMap.keys.filter(_.indexOf('=') >= 0).toList.sorted.mkString("; ")
 
     keys(new ResolverTestAccount1) should be(List(
-      "code",
-      "code>bank_id>bank[code = _]{id}",
+      "code->",
+      "code->bank_id=bank[code = _]{id}",
       "id"
     ).mkString("; "))
-    resolverKeys(new ResolverTestBank1) should be("name>name>'My bank'")
-    resolverKeys(new ResolverTestBank2) should be("name>name>_ || ' saved'")
+    resolverKeys(new ResolverTestBank1) should be("name->name='My bank'")
+    resolverKeys(new ResolverTestBank2) should be("name->name=_ || ' saved'")
     keys(new ResolverTestAccountCurrency1) should be(List(
-      "account",
-      "account>account_id>account[billing_account = _]{id}",
-      "currency_name",
-      "currency_name>currency_code>currency[name = _]{code}"
+      "account->",
+      "account->account_id=account[billing_account = _]{id}",
+      "currency_name->",
+      "currency_name->currency_code=currency[name = _]{code}"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson1) should be(List(
-      "father>father_id>person[name || surname = _]{id}",
-      "mother>mother_id>person[name || surname = _]{id}"
+      "father->father_id=person[name || surname = _]{id}",
+      "mother->mother_id=person[name || surname = _]{id}"
     ).mkString("; "))
   }
 }
