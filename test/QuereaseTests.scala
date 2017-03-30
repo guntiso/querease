@@ -229,11 +229,12 @@ object QuereaseTests {
   val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
   val tableMd = new TableMetadata(tableDefs, dbName)
   val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
-  val viewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser,
-    extendedViewDefTransformer = i18nRules.setI18n)
-  val dtoMetadata = new querease.Dto.DtoMetadata(tableMd, viewDefs.extendedViewDefs)
+  val xViewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser)
+    .extendedViewDefs
+    .mapValues(i18nRules.setI18n)
+  val dtoMetadata = new querease.Dto.DtoMetadata(tableMd, xViewDefs)
   val qe = new Querease with ScalaDtoQuereaseIo {
-    override def nameToExtendedViewDef = viewDefs.extendedViewDefs
+    override def nameToExtendedViewDef = xViewDefs
     override def tableMetadata = tableMd
   }
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
@@ -263,7 +264,7 @@ object QuereaseTests {
   val statements = SqlWriter.hsqldb().schema(tableDefs)
     .split(";").toList.map(_.trim).filter(_ != "")
   def tresql(viewName: String, params: Map[String, Any] = Map.empty): String =
-    tresql(viewDefs.extendedViewDefs(viewName), params)
+    tresql(xViewDefs(viewName), params)
   def tresql(view: ViewDef[FieldDef[Type]], params: Map[String, Any]): String =
     qe.queryStringAndParams(view, params)._1
   def fileToString(filename: String) = {
