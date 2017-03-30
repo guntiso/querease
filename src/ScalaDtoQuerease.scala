@@ -24,6 +24,7 @@ import mojoz.metadata.ViewDef.ViewDefBase
 
 import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
+import org.tresql.QueryParser.Variable
 
 trait ScalaDtoQuereaseIo extends QuereaseIo {
 
@@ -254,23 +255,34 @@ trait Dto {
         // TODO support save-to table or alias qualifier
         // TODO support some qualifiers in expression?
         val fSaveTo = Option(f.saveTo) getOrElse name
-        val resolvers = Option(f.resolver).map(r => Seq(r)) getOrElse saveTo
-          .map(metadata.tableDef)
-          .filter(_.cols.exists(_.name == fSaveTo))
-          .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
-          .map { ref =>
-            val refTable = ref.refTable
-            val refCol = ref.refCols(0)
-            val expression = Option(f.expression)
-              .map(QueryParser.parseExp)
-              .map(QueryParser.transformer {
-                case i: Ident =>
-                  if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
-              })
-              .map(_.tresql)
-              .getOrElse(name)
-            s"$refTable[$expression = _]{$refCol}"
-          }
+        val resolvers =
+          Option(f.resolver)
+            .map(QueryParser.parseExp)
+            .map(QueryParser.transformer {
+              case v@Variable(a, _, _, _) if a == alias =>
+                v.copy(variable = alias + "->")
+            })
+            .map(_.tresql)
+            .map(r => Seq(r))
+            .getOrElse(
+          saveTo
+            .map(metadata.tableDef)
+            .filter(_.cols.exists(_.name == fSaveTo))
+            .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
+            .map { ref =>
+              val refTable = ref.refTable
+              val refCol = ref.refCols(0)
+              val expression = Option(f.expression)
+                .map(QueryParser.parseExp)
+                .map(QueryParser.transformer {
+                  case i: Ident =>
+                    if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
+                })
+                .map(_.tresql)
+                .getOrElse(name)
+              s"$refTable[$expression = _]{$refCol}"
+            }
+          )
         if (resolvers.size == 0) {
           throw new RuntimeException(
             s"Failed to imply resolver for ${view.name}.$alias")

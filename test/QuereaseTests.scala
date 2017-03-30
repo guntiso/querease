@@ -203,6 +203,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       "code->bank_id=bank[code = _]{id}",
       "id"
     ).mkString("; "))
+    keys(new ResolverTestAccount2) should be(List(
+      "code->",
+      "code->bank_id=bank[code = :'code->' && :'some_other_variable']{id}",
+      "id"
+    ).mkString("; "))
     resolverKeys(new ResolverTestBank1) should be("name->name='My bank'")
     resolverKeys(new ResolverTestBank2) should be("name->name=_ || ' saved'")
     keys(new ResolverTestAccountCurrency1) should be(List(
