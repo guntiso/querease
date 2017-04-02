@@ -104,9 +104,47 @@ order:
 - id
 
 
+name: person_choice_without_resolver
+table: person
+fields:
+- full_name = name || ' ' || surname || ' (#1)'
+
+name: person_choice_resolver_implied
+table: person
+fields:
+- full_name = name || ' ' || surname || ' (#2)' -> id
+
+name: person_choice_resolver_provided
+table: person
+fields:
+- full_name = name || ' ' || surname || ' (#3)' -> id = person[name || ' ' || surname || ' (#4)' = _]{id}
+
 name: resolver_test_person_1
 table: person
 fields:
 - id
 - mother = mother.name || mother.surname -> mother_id
 - father = father.name || father.surname -> father_id = person[name || surname = _]{id}
+
+name: resolver_test_person_2
+table: person
+fields:
+- id
+- mother = ^person_choice_without_resolver.full_name
+- father = ^person_choice_without_resolver.full_name -> father_id
+
+# resolver reuse
+name: resolver_test_person_3
+table: person
+fields:
+- id
+- mother = ^person_choice_resolver_implied.full_name -> mother_id
+- father = ^person_choice_resolver_provided.full_name -> father_id
+
+# resolver override
+name: resolver_test_person_4
+table: person
+fields:
+- id
+- mother = ^person_choice_resolver_implied.full_name -> mother_id = 1
+- father = ^person_choice_resolver_provided.full_name -> father_id = 2

@@ -82,6 +82,10 @@ object Dto {
   }
   implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
     m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
+
+  private def regex(pattern: String) = ("^" + pattern + "$").r
+  private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
+  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)")
 }
 trait Dto {
 
@@ -254,8 +258,7 @@ trait Dto {
         // TODO support refs to ^view.field for expressions and/or resolvers
         // TODO support save-to table or alias qualifier
         // TODO support some qualifiers in expression?
-        val fSaveTo = Option(f.saveTo) getOrElse name
-        val resolvers =
+        def explicitResolvers(f: FieldDef) =
           Option(f.resolver)
             .map(QueryParser.parseExp)
             .map(QueryParser.transformer {
@@ -264,7 +267,8 @@ trait Dto {
             })
             .map(_.tresql)
             .map(r => Seq(r))
-            .getOrElse(
+        def impliedResolvers(f: FieldDef, doRebaseTable: Boolean) = {
+          val fSaveTo = Option(f.saveTo) getOrElse name
           saveTo
             .map(metadata.tableDef)
             .filter(_.cols.exists(_.name == fSaveTo))
@@ -272,21 +276,64 @@ trait Dto {
             .map { ref =>
               val refTable = ref.refTable
               val refCol = ref.refCols(0)
-              val expression = Option(f.expression)
-                .map(QueryParser.parseExp)
-                .map(QueryParser.transformer {
-                  case i: Ident =>
-                    if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
-                })
-                .map(_.tresql)
-                .getOrElse(name)
+              val expressionOpt =
+                if (doRebaseTable)
+                  Option(f.expression)
+                  .map(QueryParser.parseExp)
+                  .map(QueryParser.transformer {
+                    case i: Ident =>
+                      if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
+                  })
+                  .map(_.tresql)
+                else
+                  Option(f.expression)
+              val expression = expressionOpt.getOrElse(name)
               s"$refTable[$expression = _]{$refCol}"
             }
-          )
+        }
+        def impliedRefResolvers(f: FieldDef, refFieldDef: FieldDef) = {
+          val fSaveTo = Option(f.saveTo) getOrElse name
+          saveTo
+            .map(metadata.tableDef)
+            .filter(_.cols.exists(_.name == fSaveTo))
+            .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
+            .map { ref =>
+              val refTable = ref.refTable
+              val refCol = ref.refCols(0)
+              val expression = Option(refFieldDef.expression).getOrElse(refFieldDef.name)
+              s"$refTable[$expression = _]{$refCol}"
+            }
+        }
+        def referencedResolvers =
+          Option(f.expression)
+            .filter(Dto.FieldRefRegexp.pattern.matcher(_).matches)
+            .map {
+              case Dto.FieldRefRegexp(refViewName, refFieldName) =>
+                val refViewDef = metadata.viewDefOption(refViewName)
+                  .getOrElse{
+                    throw new RuntimeException(
+                      s"View $refViewName referenced from ${view.name}.$alias is not found")
+                  }
+                val refFieldDef = refViewDef.fields
+                  .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+                  .headOption
+                  .getOrElse {
+                    throw new RuntimeException(
+                      s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
+                  }
+                explicitResolvers(refFieldDef)
+                  .orElse(Option(impliedResolvers(refFieldDef, false)).filter(_.size > 0))
+                  .getOrElse(impliedRefResolvers(f, refFieldDef))
+            }
+        val resolvers =
+          explicitResolvers(f)
+            .orElse(referencedResolvers)
+            .getOrElse(impliedResolvers(f, true))
         if (resolvers.size == 0) {
           throw new RuntimeException(
             s"Failed to imply resolver for ${view.name}.$alias")
         }
+        val fSaveTo = Option(f.saveTo) getOrElse name
         resolvers.map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
       }
     }

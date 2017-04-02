@@ -220,6 +220,17 @@ class QuereaseTests extends FlatSpec with Matchers {
       "father->father_id=person[name || surname = _]{id}",
       "mother->mother_id=person[name || surname = _]{id}"
     ).mkString("; "))
+    resolverKeys(new ResolverTestPerson2) should be(List(
+      "father->father_id=person[name || ' ' || surname || ' (#1)' = _]{id}"
+    ).mkString("; "))
+    resolverKeys(new ResolverTestPerson3) should be(List(
+      "father->father_id=person[name || ' ' || surname || ' (#4)' = _]{id}",
+      "mother->mother_id=person[name || ' ' || surname || ' (#2)' = _]{id}"
+    ).mkString("; "))
+    resolverKeys(new ResolverTestPerson4) should be(List(
+      "father->father_id=2",
+      "mother->mother_id=1"
+    ).mkString("; "))
   }
 }
 
