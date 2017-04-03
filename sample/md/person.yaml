@@ -132,6 +132,7 @@ fields:
 - id
 - mother = ^person_choice_without_resolver.full_name[p2.mother_id]
 - father = ^person_choice_without_resolver.full_name[id = p2.father_id] -> father_id
+- empty_expression_test =
 
 # resolver reuse
 name: resolver_test_person_3

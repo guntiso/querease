@@ -434,8 +434,7 @@ trait QueryStringBuilder { this: Querease =>
     pathToAlias: Map[List[String], String]) =
     if (countAll) " {count(*)}"
     else view.fields
-      .filter(f => !f.isExpression || f.expression != null
-        || FieldRefRegexp.pattern.matcher(f.expression).matches)
+      .filter(f => !f.isExpression || f.expression != null)
       .filter(f => !f.isCollection ||
         (f.type_.isComplexType && !countAll && !f.isExpression))
       .map(f => queryColExpression(view, f, pathToAlias)
