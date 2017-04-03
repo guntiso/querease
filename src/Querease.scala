@@ -137,6 +137,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
+    import org.tresql.CoreTypes._
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
 /*
