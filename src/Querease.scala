@@ -22,6 +22,8 @@ import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 import mojoz.metadata._
 
+import scala.util.Try
+
 /*
 case class ListFilterType(Field: String, Comparison: String, Value: String) {
   def this(f: String, v: String) = this(f, "=", v)
@@ -212,6 +214,12 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
 }
 
 trait QueryStringBuilder { this: Querease =>
+  // TODO duplicate code
+  private def regex(pattern: String) = ("^" + pattern + "$").r
+  private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
+  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
+  // -------------------
+
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -331,7 +339,40 @@ trait QueryStringBuilder { this: Querease =>
       pathToAlias: Map[List[String], String]) = {
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
-    if (f.expression != null) qualify(view, f.expression, pathToAlias)
+    if (f.expression != null)
+      if (FieldRefRegexp.pattern.matcher(f.expression).matches) {
+        f.expression match {
+          case FieldRefRegexp(refViewName, refFieldName, refFilter) =>
+            // TODO duplicate code with Dto
+            def alias = Option(f.alias).getOrElse(f.name)
+            val refViewDef = Try(getViewDef(refViewName)).toOption
+              .getOrElse{
+                throw new RuntimeException(
+                  s"View $refViewName referenced from ${view.name}.$alias is not found")
+              }
+            val refFieldDef = refViewDef.fields
+              .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+              .headOption
+              .getOrElse {
+                throw new RuntimeException(
+                  s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
+              }
+            val filter = Option(refFilter).map(_.trim).filter(_ != "") getOrElse {
+              // FIXME
+              s"[${view.tableAlias}.${f.saveTo}]"
+            }
+            // -------------------
+            // FIXME filter fields - select only reffed fields (or add extra subquery)
+            import refViewDef._
+            val resolverViewDef =
+              // refViewDef.copy(fields = List(refFieldDef))
+              refViewDef
+            s"(${queryStringAndParams(resolverViewDef, Map.empty)._1})"
+              .replaceFirst(" \\s*\\{", filter + " {") // FIXME
+        }
+      } else {
+       qualify(view, f.expression, pathToAlias)
+      }
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
       val joinToParent = Option(f.joinToParent) getOrElse ""
@@ -393,7 +434,8 @@ trait QueryStringBuilder { this: Querease =>
     pathToAlias: Map[List[String], String]) =
     if (countAll) " {count(*)}"
     else view.fields
-      .filter(f => !f.isExpression || f.expression != null)
+      .filter(f => !f.isExpression || f.expression != null
+        || FieldRefRegexp.pattern.matcher(f.expression).matches)
       .filter(f => !f.isCollection ||
         (f.type_.isComplexType && !countAll && !f.isExpression))
       .map(f => queryColExpression(view, f, pathToAlias)
@@ -410,7 +452,9 @@ trait QueryStringBuilder { this: Querease =>
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
     def isExpressionOrPath(f: FieldDef) =
-      f.isExpression || f.expression != null
+      (f.isExpression || f.expression != null) &&
+        Option(f.expression).map(expr =>
+          !FieldRefRegexp.pattern.matcher(expr).matches).getOrElse(true)
     val parsedJoins =
       Option(view.joins).map(joinsParser(view.table, _))
         .getOrElse(Nil)

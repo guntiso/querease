@@ -85,7 +85,7 @@ object Dto {
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
-  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)")
+  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
 }
 trait Dto {
 
@@ -308,7 +308,7 @@ trait Dto {
           Option(f.expression)
             .filter(Dto.FieldRefRegexp.pattern.matcher(_).matches)
             .map {
-              case Dto.FieldRefRegexp(refViewName, refFieldName) =>
+              case Dto.FieldRefRegexp(refViewName, refFieldName, refFilter) =>
                 val refViewDef = metadata.viewDefOption(refViewName)
                   .getOrElse{
                     throw new RuntimeException(

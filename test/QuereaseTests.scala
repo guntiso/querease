@@ -232,6 +232,20 @@ class QuereaseTests extends FlatSpec with Matchers {
       "mother->mother_id=1"
     ).mkString("; "))
   }
+  "querease" should "select referenced fields correctly" in {
+    qe.queryStringAndParams(xViewDefs("resolver_test_person_2"), Map.empty)._1 should be(
+      "person p2 {" +
+      "p2.id, " +
+      "(person[p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+    )
+    qe.queryStringAndParams(xViewDefs("resolver_test_person_3"), Map.empty)._1 should be(
+      "person p3 {" +
+      "p3.id, " +
+      "(person[p3.mother_id = id + 3] {person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
+      "(person[p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
+    )
+  }
 }
 
 object QuereaseTests {
