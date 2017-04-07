@@ -86,13 +86,14 @@ object Dto {
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
   private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
+  private lazy val defaultMetadata = new Dto.DtoMetadata
 }
 trait Dto {
 
   type FieldDef = FieldDefBase[Type]
   type ViewDef = ViewDefBase[FieldDef]
 
-  protected lazy val metadata = new Dto.DtoMetadata
+  protected lazy val metadata = Dto.defaultMetadata
 
   //filling in object from RowLike
   private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
