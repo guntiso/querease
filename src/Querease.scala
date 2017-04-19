@@ -218,7 +218,7 @@ trait QueryStringBuilder { this: Querease =>
   // TODO duplicate code
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
-  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
+  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
   // -------------------
 
   /*
@@ -277,6 +277,16 @@ trait QueryStringBuilder { this: Querease =>
     // Env log q
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+  }
+  private def queryString(view: ViewDef, field: FieldDef, filter: String): String = {
+    val (from, pathToAlias) = this.fromAndPathToAlias(view, Seq(field))
+    val where = Option(filter).filter(_ != "")
+      .map("[" + _ + "]").mkString match { case "" => "" case a => a }
+    val groupBy = this.groupBy(view)
+    val having = this.having(view)
+    val cols = "{" + queryColExpression(view, field, pathToAlias) +
+      Option(queryColAlias(field)).map(" " + _).getOrElse("") + "}"
+    from + where + " " + cols + groupBy + having
   }
 
   /*
@@ -343,7 +353,7 @@ trait QueryStringBuilder { this: Querease =>
     if (f.expression != null)
       if (FieldRefRegexp.pattern.matcher(f.expression).matches) {
         f.expression match {
-          case FieldRefRegexp(refViewName, refFieldName, refFilter) =>
+          case FieldRefRegexp(refViewName, refFieldName, _, refFilter) =>
             // TODO duplicate code with Dto
             def alias = Option(f.alias).getOrElse(f.name)
             val refViewDef = Try(getViewDef(refViewName)).toOption
@@ -360,16 +370,9 @@ trait QueryStringBuilder { this: Querease =>
               }
             val filter = Option(refFilter).map(_.trim).filter(_ != "") getOrElse {
               // FIXME
-              s"[${view.tableAlias}.${f.saveTo}]"
+              s"${Option(view.tableAlias).getOrElse(view.table)}.${f.saveTo}"
             }
-            // -------------------
-            // FIXME filter fields - select only reffed fields (or add extra subquery)
-            import refViewDef._
-            val resolverViewDef =
-              // refViewDef.copy(fields = List(refFieldDef))
-              refViewDef
-            s"(${queryStringAndParams(resolverViewDef, Map.empty)._1})"
-              .replaceFirst(" \\s*\\{", filter + " {") // FIXME
+            "(" + queryString(refViewDef, refFieldDef, filter) + ")"
         }
       } else {
        qualify(view, f.expression, pathToAlias)
@@ -448,7 +451,9 @@ trait QueryStringBuilder { this: Querease =>
     .map(hl => if (hl.size > 1) hl.map(h => s"($h)") else hl)
     .map(_ mkString " & ")
     .filter(_ != "").map(h => s"^($h)") getOrElse ""
-  def fromAndPathToAlias(view: ViewDef): (String, Map[List[String], String]) = {
+  def fromAndPathToAlias(view: ViewDef): (String, Map[List[String], String]) =
+    fromAndPathToAlias(view, view.fields)
+  private def fromAndPathToAlias(view: ViewDef, view_fields: Seq[FieldDef]): (String, Map[List[String], String]) = {
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
     def isExpressionOrPath(f: FieldDef) =
@@ -462,7 +467,7 @@ trait QueryStringBuilder { this: Querease =>
       parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
     val joined = joinAliasToTable.keySet
     val baseQualifier = baseFieldsQualifier(view)
-    val usedInFields = view.fields
+    val usedInFields = view_fields
       .filterNot(isExpressionOrPath)
       .map(f => Option(f.tableAlias) getOrElse {
         if (f.table == view.table) baseQualifier else f.table
@@ -475,7 +480,7 @@ trait QueryStringBuilder { this: Querease =>
         case i: Ident => i.ident :: identifiers
       }
     }
-    val usedInExpr = view.fields
+    val usedInExpr = view_fields
       .filter(isExpressionOrPath)
       .map(_.expression)
       .filter(_ != null)

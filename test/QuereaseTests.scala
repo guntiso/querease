@@ -231,6 +231,14 @@ class QuereaseTests extends FlatSpec with Matchers {
       "father->father_id=2",
       "mother->mother_id=1"
     ).mkString("; "))
+    resolverKeys(new ResolverTestPerson5) should be(List(
+      "father->father_id=person[name || ' ' || surname || ' (#7)' = _]{id}",
+      "mother->mother_id=person[name || ' ' || surname || ' (#5)' = _]{id}"
+    ).mkString("; "))
+    resolverKeys(new ResolverTestPerson6) should be(List(
+      "father->father_id=4",
+      "mother->mother_id=3"
+    ).mkString("; "))
   }
   "querease" should "select referenced fields correctly" in {
     qe.queryStringAndParams(xViewDefs("resolver_test_person_2"), Map.empty)._1 should be(
@@ -245,6 +253,18 @@ class QuereaseTests extends FlatSpec with Matchers {
       "(person[p3.mother_id = id + 3] {person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
       "(person[p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
     )
+    qe.queryStringAndParams(xViewDefs("resolver_test_person_5"), Map.empty)._1 should be(
+      "person p5 {" +
+      "p5.id, " +
+      "(person[p5.mother_id = id + 5] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
+      "(person[p5.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+    )
+    qe.queryStringAndParams(xViewDefs("resolver_test_person_6"), Map.empty)._1 should be(
+      "person p6 {" +
+      "p6.id, " +
+      "(person[p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
+      "(person[p6.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+    )
   }
 }
 
@@ -254,6 +274,9 @@ object QuereaseTests {
       .replace("_1", "1") // no underscore before 1 in our database names
       .replace("_2", "2") // no underscore before 2 in our database names
       .replace("_3", "3") // no underscore before 3 in our database names
+      .replace("_4", "4") // no underscore before 4 in our database names
+      .replace("_5", "5") // no underscore before 5 in our database names
+      .replace("_6", "6") // no underscore before 6 in our database names
   val path = "sample/md"
   val mdDefs = YamlMd.fromFiles(path = path)
   val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
