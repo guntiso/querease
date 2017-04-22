@@ -26,6 +26,7 @@ trait QuereaseMetadata { this: Querease =>
 
   def tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]]
   def nameToExtendedViewDef: Map[String, ViewDef]
+  def fieldOrdering(viewName: String): Ordering[String]
 
   def tableDef(tableName: String): TableDefBase[ColumnDefBase[Type]] =
     tableMetadata.tableDef(tableName)
@@ -33,13 +34,12 @@ trait QuereaseMetadata { this: Querease =>
     nameToExtendedViewDef.get(viewName)
       .getOrElse(sys.error(s"View definition for ${viewName} not found"))
   }
-  def viewDefOption(viewName: String): Option[ViewDef]
+  def viewDefOption(viewName: String): Option[ViewDef] = nameToExtendedViewDef.get(viewName)
   def classToViewName(viewClass: Class[_ <: AnyRef]): String =
     ViewName.get(viewClass).replace("-", "_")
   def viewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
     viewDefOption(classToViewName(viewClass)).getOrElse(
       sys.error(s"View definition for ${classToViewName(viewClass)} (for class ${viewClass.getName}) not found"))
-  def fieldOrdering(viewName: String): Ordering[String]
   def fieldOrdering(viewClass: Class[_ <: AnyRef]): Ordering[String] =
     fieldOrdering(classToViewName(viewClass))
 }

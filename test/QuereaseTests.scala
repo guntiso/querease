@@ -292,8 +292,6 @@ object QuereaseTests {
       xViewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
     override def nameToExtendedViewDef = xViewDefs
     override def tableMetadata = tableMd
-    override def viewDefOption(viewName: String): Option[ViewDef] =
-      xViewDefs.get(viewName)
     override def fieldOrdering(viewName: String): Ordering[String] =
       viewNameToFieldOrdering.get(viewName) getOrElse Ordering[String]
   }
