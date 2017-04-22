@@ -126,7 +126,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
           case str: String => str
           case i: java.lang.Integer => i
         }
-        case c: Dto => m._1 -> c.asInstanceOf[Dto].toMap
+        case c: Dto => m._1 -> c.toMap
         case x => m._1 -> x
       }
     } toMap)
@@ -177,7 +177,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     //creating map from object
     def toSaveableMap: Map[String, Any] = {
       // FIXME child handling, do we rely on metadata or method list?
-      val view = viewDef(getClass).asInstanceOf[ViewDef]
+      val view = viewDef(getClass)
       val saveToMulti = view.saveTo != null && view.saveTo.size > 0
       val saveTo =
         if (!saveToMulti) Seq(view.table)
@@ -314,7 +314,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
               .headOption getOrElse ""
             //objects from one list can be put into different tables
             s.asInstanceOf[Seq[Dto]] map { d =>
-              (tablesTo(viewDef(d.getClass).asInstanceOf[ViewDef]) + options, d.toSaveableMap)
+              (tablesTo(viewDef(d.getClass)) + options, d.toSaveableMap)
             } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
           case d: Dto => view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
