@@ -16,7 +16,7 @@ import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.Naming.{dbName => xsdNameToDbName}
 import mojoz.metadata._
 
-trait JaxbPojoQuereaseIo extends QuereaseIo {
+trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
 
   type FieldDef = FieldDefBase[Type]
   type ViewDef = ViewDefBase[FieldDef]
@@ -25,14 +25,14 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
 
   def nameToExtendedViewDef: Map[String, ViewDef]
 
-  override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
+  override def viewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
     // FIXME apply naming properly
     nameToExtendedViewDef.get(ViewName.get(viewClass)) getOrElse
       (nameToExtendedViewDef.get(ViewName.get(viewClass)
         .replace("-", "_")) getOrElse
         (viewClass.getSuperclass match {
           case c: Class[_] =>
-            try getViewDef(c.asInstanceOf[Class[_ <: AnyRef]]) catch {
+            try viewDef(c.asInstanceOf[Class[_ <: AnyRef]]) catch {
               case e: Exception => throw new RuntimeException(
                 "Failed to get view definition for " + viewClass.getName, e)
             }
@@ -228,7 +228,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
 
   override def toSaveableMap(instance: AnyRef, viewDef: ViewDef) =
     pojoToSaveableMap(instance, viewDef)
-  override def getKeyMap(instance: AnyRef, viewDef: ViewDef) =
+  override def keyMap(instance: AnyRef, viewDef: ViewDef) =
     // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
   def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef) = {

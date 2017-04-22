@@ -48,7 +48,7 @@ case class ListRequestType(
 
 class NotFoundException(msg: String) extends Exception(msg)
 
-abstract class Querease extends QueryStringBuilder with QuereaseIo {
+abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseIo {
 
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
@@ -63,7 +63,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long =
     saveToMultiple(
-      tablesToSaveTo(getViewDef(pojo.getClass)),
+      tablesToSaveTo(viewDef(pojo.getClass)),
       pojo,
       extraPropsToSave,
       transform,
@@ -91,7 +91,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long = {
-    val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
+    val pojoPropMap = toSaveableMap(pojo, viewDef(pojo.getClass))
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
       else Map())
@@ -131,7 +131,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
 
   def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
-      countAll_(getViewDef(pojoClass), params, extraFilterAndParams)
+      countAll_(viewDef(pojoClass), params, extraFilterAndParams)
   }
   def countAll_(viewDef: ViewDef, params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
@@ -143,7 +143,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
 /*
   def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] =
-    query(getViewDef(pojoClass), pojoClass, params, extraFilterAndParams)
+    query(viewDef(pojoClass), pojoClass, params, extraFilterAndParams)
   def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
     extraFilterAndParams: (String, Map[String, Any])): T = {
     val filterDef = Array(new ListFilterType("Id", "=", id.toString))
@@ -154,7 +154,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
   def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] = {
-    val (q, p) = queryStringAndParams(getViewDef(viewClass), params,
+    val (q, p) = queryStringAndParams(viewDef(viewClass), params,
         offset, limit, orderBy, extraFilterAndParams)
     list(q, viewClass, p)
   }
@@ -163,7 +163,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
   def get[T <: AnyRef](viewClass: Class[T], id: Long,
     extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
     // TODO do not use id and long, get key from tableDef
-    val qualifier = baseFieldsQualifier(getViewDef(viewClass))
+    val qualifier = baseFieldsQualifier(viewDef(viewClass))
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
       case null | (null, _) | ("", _) => s"${prefix}id = :id"
@@ -173,7 +173,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
       case null | (_, null) => Map[String, Any]()
       case (_, m) => m
     }
-    val (q, p) = queryStringAndParams(getViewDef(viewClass),
+    val (q, p) = queryStringAndParams(viewDef(viewClass),
       Map("id" -> id), 0, 2, "", (extraQ, extraP))
     val result = list(q, viewClass, p)
     if (result.size > 1)
@@ -191,8 +191,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     fromRows(Query(query, params), instanceClass)
 
   def delete(instance: AnyRef, filterAndParams: (String, Map[String, Any]) = null) = {
-    val view = getViewDef(instance.getClass)
-    val keyMap = getKeyMap(instance, view)
+    val view = viewDef(instance.getClass)
+    val keyMap = this.keyMap(instance, view)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
@@ -329,7 +329,7 @@ trait QueryStringBuilder { this: Querease =>
       (if (f.table == view.table) baseFieldsQualifier(view) else f.table)
 
   private def getChildViewDef(viewDef: ViewDef, fieldDef: FieldDef) =
-    scala.util.Try(getViewDef(fieldDef.type_.name)).toOption.getOrElse(
+    scala.util.Try(this.viewDef(fieldDef.type_.name)).toOption.getOrElse(
       sys.error("Child viewDef not found: " + fieldDef.type_.name +
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
@@ -356,7 +356,7 @@ trait QueryStringBuilder { this: Querease =>
           case FieldRefRegexp(refViewName, refFieldName, _, refFilter) =>
             // TODO duplicate code with Dto
             def alias = Option(f.alias).getOrElse(f.name)
-            val refViewDef = Try(getViewDef(refViewName)).toOption
+            val refViewDef = Try(viewDef(refViewName)).toOption
               .getOrElse{
                 throw new RuntimeException(
                   s"View $refViewName referenced from ${view.name}.$alias is not found")
