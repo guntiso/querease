@@ -84,7 +84,7 @@ object Dto {
     m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
-  private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
   private lazy val defaultMetadata = new Dto.DtoMetadata
 }
@@ -198,7 +198,7 @@ trait Dto {
     s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}"
   }
 
-  private[querease] val IdentifierPatternString = "([a-zA-Z_$][a-zA-Z\\d_$]*\\.)*[a-zA-Z_$][a-zA-Z\\d_$]*"
+  private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
 
   protected def isSavableField(field: FieldDef, view: ViewDef, saveToMulti: Boolean, saveToTableNames: Seq[String]) =
