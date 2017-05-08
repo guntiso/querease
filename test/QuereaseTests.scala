@@ -279,8 +279,6 @@ object QuereaseTests {
       .replace("_6", "6") // no underscore before 6 in our database names
   val qe = new Querease with ScalaDtoQuereaseIo {
 
-    override type FieldDef = mojoz.metadata.FieldDef[Type]
-    override type ViewDef = mojoz.metadata.ViewDef[FieldDef]
     override type DTO = Dto
 
     private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
@@ -317,10 +315,6 @@ object QuereaseTests {
   }
   val statements = SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs)
     .split(";").toList.map(_.trim).filter(_ != "")
-  def tresql(viewName: String, params: Map[String, Any] = Map.empty): String =
-    tresql(qe.viewDefs(viewName), params)
-  def tresql(view: ViewDef[FieldDef[Type]], params: Map[String, Any]): String =
-    qe.queryStringAndParams(view, params)._1
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
     val body = source.mkString
