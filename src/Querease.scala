@@ -174,7 +174,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 trait QueryStringBuilder { this: Querease =>
   // TODO duplicate code
   private def regex(pattern: String) = ("^" + pattern + "$").r
-  private val ident = "[_a-zA-Z][_a-zA-Z0-9]*"
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
   // -------------------
 

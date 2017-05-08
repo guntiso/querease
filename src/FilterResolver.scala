@@ -2,7 +2,7 @@ package querease;
 
 object FilterResolver {
   // TODO resolve names like in views (maybe strip prefix etc.)
-  private val ident = "[_a-zA-z][_a-zA-Z0-9]*"
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val qualifiedIdent = s"$ident(\\.$ident)*"
   private val s = "\\s*"
   private val Rq = "(!)?"
