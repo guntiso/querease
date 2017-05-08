@@ -2,15 +2,15 @@ package querease
 
 import org.tresql.Result
 import org.tresql.RowLike
-import mojoz.metadata.Naming
-import mojoz.metadata.Type
+import mojoz.metadata._
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.TableDef.TableDefBase
 import mojoz.metadata.ColumnDef.ColumnDefBase
-import mojoz.metadata.TableMetadata
+import mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
+import mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
-trait QuereaseMetadata { this: Querease =>
+trait QuereaseMetadata {
 
   type FieldDef <: FieldDefBase[Type]
   type ViewDef <: ViewDefBase[FieldDef]
@@ -24,27 +24,24 @@ trait QuereaseMetadata { this: Querease =>
       new FieldOrdering(view.fields.map(f => Option(f.alias) getOrElse f.name).zipWithIndex.toMap)
   }
 
-  def tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]]
-  def nameToExtendedViewDef: Map[String, ViewDef]
-  def fieldOrdering(viewName: String): Ordering[String]
+  protected lazy val yamlMetadata = YamlMd.fromResources()
+  lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
+  lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
+    new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs)
 
-  def tableDef(tableName: String): TableDefBase[ColumnDefBase[Type]] =
-    tableMetadata.tableDef(tableName)
-  def viewDef(viewName: String) = {
-    nameToExtendedViewDef.get(viewName)
-      .getOrElse(sys.error(s"View definition for ${viewName} not found"))
-  }
-  def viewDefOption(viewName: String): Option[ViewDef] = nameToExtendedViewDef.get(viewName)
-  def classToViewName(viewClass: Class[_ <: AnyRef]): String =
-    ViewName.get(viewClass).replace("-", "_")
-  def viewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
-    viewDefOption(classToViewName(viewClass)).getOrElse(
-      sys.error(s"View definition for ${classToViewName(viewClass)} (for class ${viewClass.getName}) not found"))
-  def fieldOrdering(viewClass: Class[_ <: AnyRef]): Ordering[String] =
-    fieldOrdering(classToViewName(viewClass))
-}
+  lazy val viewDefs: Map[String, ViewDef] =
+    YamlViewDefLoader(tableMetadata, yamlMetadata, TresqlJoinsParser, metadataConventions)
+      .extendedViewDefs.asInstanceOf[Map[String, ViewDef]]
+  lazy val viewNameToFieldOrdering = viewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
 
-object ViewName {
-  def get(viewClass: Class[_ <: AnyRef]) =
-    Naming.dasherize(viewClass.getSimpleName)
+  def fieldOrdering(viewName: String): Ordering[String] = viewNameToFieldOrdering(viewName)
+  def fieldOrdering[T <: AnyRef: Manifest]: Ordering[String] = fieldOrdering(viewName[T])
+  def viewDefOption(viewName: String): Option[ViewDef] = viewDefs.get(viewName)
+  def viewDef(viewName: String) = viewDefOption(viewName)
+    .getOrElse(sys.error(s"View definition for ${viewName} not found"))
+  def viewDef[T <: AnyRef](implicit mf: Manifest[T]): ViewDef =
+    viewDefOption(viewName[T]).getOrElse(sys.error(s"View definition for type $mf not found"))
+
+  def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
+    Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
 }

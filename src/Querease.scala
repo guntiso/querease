@@ -24,31 +24,9 @@ import mojoz.metadata._
 
 import scala.util.Try
 
-/*
-case class ListFilterType(Field: String, Comparison: String, Value: String) {
-  def this(f: String, v: String) = this(f, "=", v)
-}
-case class ListSortType(
-  Field: String,
-  Order: String) {
-  def this() = this(null, null)
-  def this(Field: String) = this(Field, "asc")
-}
-case class ListRequestType(
-  Limit: Int,
-  Offset: Int,
-  var Filter: Array[ListFilterType],
-  Sort: Array[ListSortType]) {
-  def this() = this(0, 0, null, null)
-  def this(filter: ListFilterType) = this(0, 0, Array(filter), null)
-  def this(filters: Array[ListFilterType], sorts: Array[ListSortType]) =
-    this(0, 0, filters, sorts)
-}
-*/
-
 class NotFoundException(msg: String) extends Exception(msg)
 
-abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseIo {
+abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this: QuereaseIo =>
 
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
@@ -56,22 +34,22 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  def save(
-    pojo: AnyRef,
+  def save[B <: DTO: Manifest](
+    pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long =
     saveToMultiple(
-      tablesToSaveTo(viewDef(pojo.getClass)),
+      tablesToSaveTo(viewDef[B]),
       pojo,
       extraPropsToSave,
       transform,
       forceInsert,
       filterAndParams)
 
-  def saveTo(
-    tableName: String, pojo: AnyRef,
+  def saveTo[B <: DTO: Manifest](
+    tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
@@ -84,14 +62,14 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       forceInsert,
       filterAndParams)
 
-  def saveToMultiple(
+  def saveToMultiple[B <: DTO: Manifest](
     tables: Seq[String],
-    pojo: AnyRef,
+    pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long = {
-    val pojoPropMap = toSaveableMap(pojo, viewDef(pojo.getClass))
+    val pojoPropMap = toSaveableMap(pojo, viewDef[B])
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
       else Map())
@@ -129,41 +107,31 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     }
   }
 
-  def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
+  def countAll[B <: DTO: Manifest](params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
-      countAll_(viewDef(pojoClass), params, extraFilterAndParams)
+      countAll_(viewDef[B], params, extraFilterAndParams)
   }
-  def countAll_(viewDef: ViewDef, params: Map[String, Any],
+  protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
     import org.tresql.CoreTypes._
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
-/*
-  def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] =
-    query(viewDef(pojoClass), pojoClass, params, extraFilterAndParams)
-  def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
-    extraFilterAndParams: (String, Map[String, Any])): T = {
-    val filterDef = Array(new ListFilterType("Id", "=", id.toString))
-    val sortDef = Array[ListSortType]()
-    val req = ListRequestType(1, 0, filterDef, sortDef)
-    query(viewClass, req, extraFilterAndParams).headOption getOrElse null.asInstanceOf[T]
-*/
-  def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
+
+  def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] = {
-    val (q, p) = queryStringAndParams(viewDef(viewClass), params,
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
+    val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilterAndParams)
-    list(q, viewClass, p)
+    list(q, p)
   }
 
 
-  def get[T <: AnyRef](viewClass: Class[T], id: Long,
-    extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
+  def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
+      implicit mf: Manifest[B]): Option[B] = {
     // TODO do not use id and long, get key from tableDef
-    val qualifier = baseFieldsQualifier(viewDef(viewClass))
+    val qualifier = baseFieldsQualifier(viewDef[B])
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
       case null | (null, _) | ("", _) => s"${prefix}id = :id"
@@ -173,45 +141,34 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       case null | (_, null) => Map[String, Any]()
       case (_, m) => m
     }
-    val (q, p) = queryStringAndParams(viewDef(viewClass),
+    val (q, p) = queryStringAndParams(viewDef[B],
       Map("id" -> id), 0, 2, "", (extraQ, extraP))
-    val result = list(q, viewClass, p)
+    val result = list(q, p)
     if (result.size > 1)
-      sys.error("Too many rows returned by query for get method for " +
-        viewClass.getName)
+      sys.error("Too many rows returned by query for get method for " + mf)
     result.headOption
   }
 
-  private def list[T <: AnyRef](
-    queryStringAndParams: (String, Map[String, Any]),
-    instanceClass: Class[T]): List[T] =
-    list(queryStringAndParams._1, instanceClass, queryStringAndParams._2)
+  private def list[B <: DTO: Manifest](
+    queryStringAndParams: (String, Map[String, Any])): List[B] =
+    list(queryStringAndParams._1, queryStringAndParams._2)
 
-  def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any]) =
-    fromRows(Query(query, params), instanceClass)
+  def list[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
+    fromRows(Query(query, params))
 
-  def delete(instance: AnyRef, filterAndParams: (String, Map[String, Any]) = null) = {
-    val view = viewDef(instance.getClass)
+  def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {
+    val view = viewDef[B]
     val keyMap = this.keyMap(instance, view)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
       keyMap.head._2,
       filter,
-      params).asInstanceOf[DeleteResult].count.get
+      params) match { case r: DeleteResult => r.count.get }
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
     else result
   }
-/*
-  def query[T <: AnyRef](view: ViewDef, pojoClass: Class[T], params: ListRequestType,
-    extraFilterAndParams: (String, Map[String, Any])) = {
-    val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(view, params, extraFilterAndParams)
-    Env.log(tresqlQueryString)
-    list(tresqlQueryString, pojoClass, paramsMap)
-  }
- */
 }
 
 trait QueryStringBuilder { this: Querease =>
@@ -494,7 +451,7 @@ trait QueryStringBuilder { this: Querease =>
       .map(_ dropRight 1)
       .toSet
     val used = usedInFields ++ usedInExpr
-    def tailists[T](l: List[T]): List[List[T]] =
+    def tailists[B](l: List[B]): List[List[B]] =
       if (l.size == 0) Nil else l :: tailists(l.tail)
     val usedAndPrepaths =
       used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten

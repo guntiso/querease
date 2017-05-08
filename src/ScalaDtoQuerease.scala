@@ -26,11 +26,12 @@ import org.tresql.QueryParser.Variable
 
 trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
-  override def fromRows[T <: AnyRef](rows: Result[RowLike], clazz: Class[T]) = {
-    def toDto(r: RowLike) = {
-      val t = clazz.newInstance
-      t.asInstanceOf[Dto].fill(r)
-      t
+  override type DTO <: Dto
+
+  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]): List[B] = {
+    def toDto(r: RowLike): B = {
+      val t = mf.runtimeClass.newInstance
+      t.asInstanceOf[B].fill(r)
     }
     rows.map(toDto).toList
   }
@@ -116,7 +117,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     }
 
     def toMap: Map[String, Any] =
-      toMap(fieldOrdering(getClass))
+      toMap(fieldOrdering(ManifestFactory.classType(getClass)))
     def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
       TreeMap[String, Any]()(fieldOrdering) ++
       (setters.flatMap { m =>
@@ -134,7 +135,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     def containsField(fieldName: String) = setters.contains(fieldName)
 
     override def toString: String = {
-      val view = viewDef(getClass)
+      val view = viewDef(ManifestFactory.classType(getClass))
       val fieldNames = view.fields.map { f => Option(f.alias) getOrElse f.name }
       toString(fieldNames)
     }
@@ -177,7 +178,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     //creating map from object
     def toSaveableMap: Map[String, Any] = {
       // FIXME child handling, do we rely on metadata or method list?
-      val view = viewDef(getClass)
+      val view = viewDef(ManifestFactory.classType(getClass))
       val saveToMulti = view.saveTo != null && view.saveTo.size > 0
       val saveTo =
         if (!saveToMulti) Seq(view.table)
@@ -229,7 +230,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
           def impliedResolvers(f: FieldDef, doRebaseTable: Boolean) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
-              .map(tableDef)
+              .map(tableMetadata.tableDef)
               .filter(_.cols.exists(_.name == fSaveTo))
               .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
               .map { ref =>
@@ -253,7 +254,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
           def impliedRefResolvers(f: FieldDef, refFieldDef: FieldDef) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
-              .map(tableDef)
+              .map(tableMetadata.tableDef)
               .filter(_.cols.exists(_.name == fSaveTo))
               .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
               .map { ref =>
@@ -314,13 +315,13 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
               .headOption getOrElse ""
             //objects from one list can be put into different tables
             s.asInstanceOf[Seq[Dto]] map { d =>
-              (tablesTo(viewDef(d.getClass)) + options, d.toSaveableMap)
+              (tablesTo(viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
             } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
           case d: Dto => view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
             .filter(isChildTableField)
             .map { f =>
-              val tables = saveToTableNames.map(tableDef)
+              val tables = saveToTableNames.map(tableMetadata.tableDef)
               val childTableName = viewDefOption(f.type_.name).map(tablesTo).get
               val key = // XXX too complicated to save a child
                 // TODO support multiple, multiple direction, multi-col etc. refs properly

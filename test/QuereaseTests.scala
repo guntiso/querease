@@ -40,32 +40,32 @@ class QuereaseTests extends FlatSpec with Matchers {
       bank.code = "b2"
       bank.name = "Bank 2"
       qe.save(bank)
-      qe.countAll(classOf[BankListRow], null) should be(2)
-      val b1 = qe.get(classOf[BankListRow], 10000).get
+      qe.countAll[BankListRow](null) should be(2)
+      val b1 = qe.get[BankListRow](10000).get
       b1.name should be("Bank 1")
-      val b2 = qe.get(classOf[BankListRow], 10001).get
+      val b2 = qe.get[BankListRow](10001).get
       b2.name should be("Bank 2")
-      qe.list(classOf[BankListRow], null)(0).id should be(10001)
-      val banks = qe.list(classOf[BankListRow], null, orderBy = "id")
+      qe.list[BankListRow](null).head.id should be(10001)
+      val banks = qe.list[BankListRow](null, orderBy = "id")
       banks.map(b => (b.id, b.code, b.name)) foreach println
       banks(0).id should be(10000)
       banks(0).name should be("Bank 1")
       banks(1).id should be(10001)
       banks(1).code should be("b2")
       banks.size should be(2)
-      qe.list(classOf[BankListRowWithFilter], null).size should be(1)
+      qe.list[BankListRowWithFilter](null).size should be(1)
       qe.delete(b1)
-      val banksAfter = qe.list(classOf[BankListRow], null)
+      val banksAfter = qe.list[BankListRow](null)
       banksAfter.size should be(1)
       val name2 = "Bank 2 updated name"
       b2.name = name2
       qe.save(b2)
-      qe.get(classOf[BankListRow], 10001).get.name should be(name2)
+      qe.get[BankListRow](10001).get.name should be(name2)
       qe.save(bank)
       qe.save(bank)
-      qe.list(classOf[BankListRow], null).size should be(3)
-      qe.list(classOf[BankListRowWithGroup], null).size should be(2)
-      val banksHv = qe.list(classOf[BankListRowWithHaving], null)
+      qe.list[BankListRow](null).size should be(3)
+      qe.list[BankListRowWithGroup](null).size should be(2)
+      val banksHv = qe.list[BankListRowWithHaving](null)
       banksHv.size should be(1)
       banksHv(0).total should be(2)
 
@@ -131,7 +131,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           .mkString(", ")
       }
       val expected = fileToString(dataPath + "/" + "persons-out.txt")
-      val produced = qe.list(classOf[PersonInfo], null).map(personInfoString)
+      val produced = qe.list[PersonInfo](null).map(personInfoString)
         .mkString("", "\n", "\n")
       if (expected != produced)
         toFile(dataPath + "/" + "persons-out-produced.txt", produced)
@@ -152,7 +152,7 @@ class QuereaseTests extends FlatSpec with Matchers {
         p.father = if(a.father != null) {val n = new PersonInfoFather; n.name = a.father.name; n.surname = a.father.surname; n}else null
         p
       }
-      val producedAlt = qe.list(classOf[PersonInfoAlt], null)
+      val producedAlt = qe.list[PersonInfoAlt](null)
         .map(altToPersonInfo).map(personInfoString)
         .mkString("", "\n", "\n")
       if (expected != producedAlt)
@@ -161,7 +161,7 @@ class QuereaseTests extends FlatSpec with Matchers {
 
       val siblingsExpected = fileToString(dataPath + "/" + "siblings-out.txt")
       val siblingsProduced =
-        qe.list(classOf[Siblings], null)
+        qe.list[Siblings](null)
           .map(s => List(s.sibling1, s.sibling2).filter(_ != null).mkString(", "))
           .mkString("", "\n", "\n")
       if (siblingsExpected != siblingsProduced)
@@ -169,7 +169,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       siblingsExpected should be(siblingsProduced)
 
       val siblingsProducedAlt =
-        qe.list(classOf[SiblingsAlt], null)
+        qe.list[SiblingsAlt](null)
           .map(s => List(s.sibling1, s.sibling2).filter(_ != null).mkString(", "))
           .mkString("", "\n", "\n")
       if (siblingsExpected != siblingsProducedAlt)
@@ -185,7 +185,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             fatherTreeList(indent + "  ", person.sons.toList, row :: result))
       }
       val producedFatherTree =
-        fatherTreeList("", qe.list(classOf[FatherTree], null).toList, Nil)
+        fatherTreeList("", qe.list[FatherTree](null).toList, Nil)
           .reverse.mkString("\n")
       if (expectedFatherTree != producedFatherTree)
         toFile(dataPath + "/" + "father-tree-out-produced.txt", producedFatherTree)
@@ -241,25 +241,25 @@ class QuereaseTests extends FlatSpec with Matchers {
     ).mkString("; "))
   }
   "querease" should "select referenced fields correctly" in {
-    qe.queryStringAndParams(xViewDefs("resolver_test_person_2"), Map.empty)._1 should be(
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_2"), Map.empty)._1 should be(
       "person p2 {" +
       "p2.id, " +
       "(person[p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
       "(person[id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
     )
-    qe.queryStringAndParams(xViewDefs("resolver_test_person_3"), Map.empty)._1 should be(
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_3"), Map.empty)._1 should be(
       "person p3 {" +
       "p3.id, " +
       "(person[p3.mother_id = id + 3] {person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
       "(person[p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
     )
-    qe.queryStringAndParams(xViewDefs("resolver_test_person_5"), Map.empty)._1 should be(
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_5"), Map.empty)._1 should be(
       "person p5 {" +
       "p5.id, " +
       "(person[p5.mother_id = id + 5] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
       "(person[p5.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
     )
-    qe.queryStringAndParams(xViewDefs("resolver_test_person_6"), Map.empty)._1 should be(
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_6"), Map.empty)._1 should be(
       "person p6 {" +
       "p6.id, " +
       "(person[p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
@@ -277,23 +277,19 @@ object QuereaseTests {
       .replace("_4", "4") // no underscore before 4 in our database names
       .replace("_5", "5") // no underscore before 5 in our database names
       .replace("_6", "6") // no underscore before 6 in our database names
-  val path = "sample/md"
-  val mdDefs = YamlMd.fromFiles(path = path)
-  val tableDefs = new YamlTableDefLoader(mdDefs).tableDefs
-  val tableMd = new TableMetadata(tableDefs, dbName)
-  val i18nRules = I18nRules.suffixI18n(tableMd, Set("_eng", "_rus"))
-  val xViewDefs = YamlViewDefLoader(tableMd, mdDefs, TresqlJoinsParser)
-    .extendedViewDefs
-    .mapValues(i18nRules.setI18n)
   val qe = new Querease with ScalaDtoQuereaseIo {
-    type FieldDef = mojoz.metadata.FieldDef.FieldDefBase[Type]
-    type ViewDef = mojoz.metadata.ViewDef.ViewDefBase[FieldDef]
-    private lazy val viewNameToFieldOrdering =
-      xViewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
-    override def nameToExtendedViewDef = xViewDefs
-    override def tableMetadata = tableMd
-    override def fieldOrdering(viewName: String): Ordering[String] =
-      viewNameToFieldOrdering.get(viewName) getOrElse Ordering[String]
+
+    override type FieldDef = mojoz.metadata.FieldDef[Type]
+    override type ViewDef = mojoz.metadata.ViewDef[FieldDef]
+    override type DTO = Dto
+
+    private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
+    override lazy val tableMetadata =
+      new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
+    override lazy val yamlMetadata = YamlMd.fromFiles(path = "sample/md")
+    override lazy val viewDefs = YamlViewDefLoader(
+      tableMetadata, yamlMetadata, TresqlJoinsParser, metadataConventions)
+        .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
   }
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
@@ -303,7 +299,7 @@ object QuereaseTests {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
     Env.logger = (msg, level) => println(msg)
-    Env.metaData = new TresqlMetadata(tableDefs, null)
+    Env.metaData = new TresqlMetadata(qe.tableMetadata.tableDefs, null)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
   }
@@ -319,10 +315,10 @@ object QuereaseTests {
       try statements foreach { statement.execute } finally statement.close()
     } finally conn.close()
   }
-  val statements = SqlWriter.hsqldb().schema(tableDefs)
+  val statements = SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs)
     .split(";").toList.map(_.trim).filter(_ != "")
   def tresql(viewName: String, params: Map[String, Any] = Map.empty): String =
-    tresql(xViewDefs(viewName), params)
+    tresql(qe.viewDefs(viewName), params)
   def tresql(view: ViewDef[FieldDef[Type]], params: Map[String, Any]): String =
     qe.queryStringAndParams(view, params)._1
   def fileToString(filename: String) = {
