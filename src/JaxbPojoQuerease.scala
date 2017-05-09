@@ -214,12 +214,11 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef) =
-    pojoToSaveableMap(instance, viewDef)
-  override def keyMap(instance: AnyRef, viewDef: ViewDef) =
+  override def toSaveableMap[B <: DTO: Manifest](instance: B) = pojoToSaveableMap(instance)
+  override def keyMap[B <: DTO: Manifest](instance: B) =
     // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
-  def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef) = {
+  def pojoToSaveableMap[B <: DTO](pojo: B) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[_]) =>
         (xsdNameToDbName(k), vList.asInstanceOf[List[Map[String, _]]] map toDbFormat)

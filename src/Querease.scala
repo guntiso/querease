@@ -28,6 +28,10 @@ class NotFoundException(msg: String) extends Exception(msg)
 
 abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this: QuereaseIo =>
 
+  private[querease] def regex(pattern: String) = ("^" + pattern + "$").r
+  private[querease] val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private[querease] val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
+
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
       Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
@@ -69,7 +73,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long = {
-    val pojoPropMap = toSaveableMap(pojo, viewDef[B])
+    val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
       else Map())
@@ -158,7 +162,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 
   def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {
     val view = viewDef[B]
-    val keyMap = this.keyMap(instance, view)
+    val keyMap = this.keyMap(instance)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
@@ -172,12 +176,6 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 }
 
 trait QueryStringBuilder { this: Querease =>
-  // TODO duplicate code
-  private def regex(pattern: String) = ("^" + pattern + "$").r
-  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-  private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
-  // -------------------
-
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =

@@ -35,22 +35,15 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     }
     rows.map(toDto).toList
   }
-  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef) =
-    instance.asInstanceOf[Dto].toSaveableMap
-  override def keyMap(instance: AnyRef, viewDef: ViewDef) =
-    if (instance.isInstanceOf[DtoWithId])
-      Map("id" -> instance.asInstanceOf[DtoWithId].id)
-    else sys.error( // TODO use viewDef to get key-values if defined
+  override def toSaveableMap[B <: DTO: Manifest](instance: B) = instance.toSaveableMap
+  override def keyMap[B <: DTO: Manifest](instance: B) = instance match {
+    case o: DtoWithId @unchecked => Map("id" -> o.id)
+    case x => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${instance.getClass.getName} not supported yet")
-
-  object Dto {
-    implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
-      m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
-
-    private def regex(pattern: String) = ("^" + pattern + "$").r
-    private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-    private val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)(.*)")
   }
+
+  protected def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
+    m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
   trait Dto {
 
@@ -77,12 +70,12 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
         if (s._2._2 != null) { //child result
           val m: Manifest[_ <: Dto] = s._2._2
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
+          s._1.invoke(this, childResult.list[Dto](rowLikeToDto _,
             m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
         } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
           val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Dto](Dto.rowLikeToDto _,
+          s._1.invoke(this, childResult.list[Dto](rowLikeToDto _,
             m.asInstanceOf[Manifest[Dto]]).headOption.orNull.asInstanceOf[Object])
         } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
         s /*return setter used*/
@@ -188,12 +181,14 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
         case _ => ""
       }
       val saveToTableNames = saveTo.map(identifier)
-      def isForInsert = // TODO isForInsert
-        if (this.isInstanceOf[DtoWithId]) this.asInstanceOf[DtoWithId].id == null
-        else sys.error(s"isForInsert() for ${getClass.getName} not supported yet")
-      def isForUpdate = // TODO isForUpdate
-        if (this.isInstanceOf[DtoWithId]) this.asInstanceOf[DtoWithId].id != null
-        else sys.error(s"isForUpdate() for ${getClass.getName} not supported yet")
+      def isForInsert = this match {
+        case o: DtoWithId => o.id
+        case _ => sys.error(s"isForInsert() for ${getClass.getName} not supported yet") // TODO isForInsert
+      }
+      def isForUpdate = this match {
+        case o: DtoWithId => o.id
+        case _ => sys.error(s"isForUpdate() for ${getClass.getName} not supported yet") // TODO isForUpdate
+      }
       def isSaveableField(field: FieldDef) =
         isSavableField(field, view, saveToMulti, saveToTableNames)
       def tablesTo(v: ViewDef) =
@@ -266,9 +261,9 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
           }
           def referencedResolvers =
             Option(f.expression)
-              .filter(Dto.FieldRefRegexp.pattern.matcher(_).matches)
+              .filter(FieldRefRegexp.pattern.matcher(_).matches)
               .map {
-                case Dto.FieldRefRegexp(refViewName, refFieldName, refFilter) =>
+                case FieldRefRegexp(refViewName, refFieldName, _, _) =>
                   val refViewDef = viewDefOption(refViewName)
                     .getOrElse{
                       throw new RuntimeException(

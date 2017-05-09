@@ -8,6 +8,6 @@ trait QuereaseIo { this: Querease =>
   type DTO <: AnyRef
 
   def fromRows[B <: DTO: Manifest](rows: Result[RowLike]): List[B]
-  def toSaveableMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
-  def keyMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
+  def toSaveableMap[B <: DTO: Manifest](instance: B): Map[String, _]
+  def keyMap[B <: DTO: Manifest](instance: B): Map[String, _]
 }
