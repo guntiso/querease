@@ -1,13 +1,15 @@
 language: scala
-before_install:
-  - mkdir launcher
-  - curl https://repo1.maven.org/maven2/org/scala-sbt/launcher/1.0.0/launcher-1.0.0.jar > launcher/sbt-launch.jar
-  - curl https://raw.githubusercontent.com/sbt/sbt/v1.0.0-M4/src/main/conscript/xsbt/launchconfig > launcher/launchconfig
+# before_install:
+#   - mkdir launcher
+#   - curl https://repo1.maven.org/maven2/org/scala-sbt/launcher/1.0.0/launcher-1.0.0.jar > launcher/sbt-launch.jar
+#   - curl https://raw.githubusercontent.com/sbt/sbt/v1.0.0-M4/src/main/conscript/xsbt/launchconfig > launcher/launchconfig
 script:
-  - java -Xms2048M -Xmx2048M -Xss6M -XX:MaxPermSize=512M -jar launcher/sbt-launch.jar @launcher/launchconfig ++$TRAVIS_SCALA_VERSION clean update compile test
+  - sbt ++$TRAVIS_SCALA_VERSION clean update compile test
+# - java -Xms2048M -Xmx2048M -Xss6M -XX:MaxPermSize=512M -jar launcher/sbt-launch.jar @launcher/launchconfig ++$TRAVIS_SCALA_VERSION clean update compile test
 scala:
-  - 2.12.1
-  - 2.11.8
+  - 2.12.2
+  - 2.11.11
+  - 2.10.6
 env:
   - JDK=oraclejdk8
   - JDK=oraclejdk7
@@ -15,15 +17,17 @@ env:
 matrix:
   # scala 2.12 requires java 8
   exclude:
-    - scala: 2.12.1
+    - scala: 2.12.2
       env: JDK=oraclejdk7
-    - scala: 2.12.1
+    - scala: 2.12.2
       env: JDK=openjdk7
 before_script:
   - jdk_switcher use $JDK
+  - sudo chmod +x /usr/local/bin/sbt #https://github.com/travis-ci/travis-ci/issues/7703
 sudo: required # for setting hostname
 addons:
   hostname: localhost #https://github.com/travis-ci/travis-ci/issues/5227
 notifications:
   email:
     - guntiso@uniso.lv
+    - martins@uniso.lv

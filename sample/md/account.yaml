@@ -10,3 +10,22 @@ extends: account
 fields:
 - bank.code
 - bank.name
+
+
+name: resolver_test_account_1
+table: account
+fields:
+- id
+- code = -> bank_id
+
+name: resolver_test_account_2
+table: account
+fields:
+- id
+- code = -> bank_id = bank[code = :code && :some_other_variable]{id}
+
+name: resolver_test_account_currency_1
+table: account_currency
+fields:
+- account = account.billing_account -> account_id
+- currency.name -> currency_code

@@ -29,3 +29,16 @@ fields:
  - total int = count(*)
 group: name
 having: count(*) > 1
+
+
+name: resolver_test_bank_1
+table: bank
+fields:
+- id
+- name -> = 'My bank'
+
+name: resolver_test_bank_2
+table: bank
+fields:
+- id
+- name -> = _ || ' saved'

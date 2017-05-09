@@ -2,29 +2,12 @@ package querease
 
 import org.tresql.Result
 import org.tresql.RowLike
-import mojoz.metadata.Naming
-import mojoz.metadata.Type
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.TableDef
-import mojoz.metadata.ColumnDef
-import mojoz.metadata.TableMetadata
 
-trait QuereaseIo {
+trait QuereaseIo { this: Querease =>
 
-  type FieldDef <: FieldDefBase[Type]
-  type ViewDef <: ViewDefBase[FieldDef]
+  type DTO <: AnyRef
 
-  def fromRows[T <: AnyRef](rows: Result[RowLike], clazz: Class[T]): List[T]
-  def toSaveableMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
-  def getKeyMap(instance: AnyRef, viewDef: ViewDef): Map[String, _]
-  def tableMetadata: TableMetadata[TableDef[ColumnDef[Type]]]
-  def getViewDef(viewName: String): ViewDef
-  def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
-    getViewDef(ViewName.get(viewClass).replace("-", "_"))
-}
-
-object ViewName {
-  def get(viewClass: Class[_ <: AnyRef]) =
-    Naming.dasherize(viewClass.getSimpleName)
+  def fromRows[B <: DTO: Manifest](rows: Result[RowLike]): List[B]
+  def toSaveableMap[B <: DTO: Manifest](instance: B): Map[String, _]
+  def keyMap[B <: DTO: Manifest](instance: B): Map[String, _]
 }

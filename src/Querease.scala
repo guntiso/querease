@@ -8,6 +8,7 @@ import scala.collection.mutable
 import org.tresql.Env
 import org.tresql.DeleteResult
 import org.tresql.InsertResult
+import org.tresql.ArrayResult
 import org.tresql.ORT
 import org.tresql.Query
 import org.tresql.QueryParser
@@ -21,31 +22,15 @@ import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 import mojoz.metadata._
 
-/*
-case class ListFilterType(Field: String, Comparison: String, Value: String) {
-  def this(f: String, v: String) = this(f, "=", v)
-}
-case class ListSortType(
-  Field: String,
-  Order: String) {
-  def this() = this(null, null)
-  def this(Field: String) = this(Field, "asc")
-}
-case class ListRequestType(
-  Limit: Int,
-  Offset: Int,
-  var Filter: Array[ListFilterType],
-  Sort: Array[ListSortType]) {
-  def this() = this(0, 0, null, null)
-  def this(filter: ListFilterType) = this(0, 0, Array(filter), null)
-  def this(filters: Array[ListFilterType], sorts: Array[ListSortType]) =
-    this(0, 0, filters, sorts)
-}
-*/
+import scala.util.Try
 
 class NotFoundException(msg: String) extends Exception(msg)
 
-abstract class Querease extends QueryStringBuilder with QuereaseIo {
+abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this: QuereaseIo =>
+
+  private[querease] def regex(pattern: String) = ("^" + pattern + "$").r
+  private[querease] val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private[querease] val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
 
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
@@ -53,22 +38,22 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  def save(
-    pojo: AnyRef,
+  def save[B <: DTO: Manifest](
+    pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long =
     saveToMultiple(
-      tablesToSaveTo(getViewDef(pojo.getClass)),
+      tablesToSaveTo(viewDef[B]),
       pojo,
       extraPropsToSave,
       transform,
       forceInsert,
       filterAndParams)
 
-  def saveTo(
-    tableName: String, pojo: AnyRef,
+  def saveTo[B <: DTO: Manifest](
+    tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
@@ -81,14 +66,14 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
       forceInsert,
       filterAndParams)
 
-  def saveToMultiple(
+  def saveToMultiple[B <: DTO: Manifest](
     tables: Seq[String],
-    pojo: AnyRef,
+    pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null): Long = {
-    val pojoPropMap = toSaveableMap(pojo, getViewDef(pojo.getClass))
+    val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
       else Map())
@@ -105,8 +90,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
         case x: InsertResult => (x.count.get, x.id.get)
-        case list: List[_] => //if array result consider last element as insert result
-          list.reverse.head match {
+        case a: ArrayResult[_] => //if array result consider last element as insert result
+           a.values.last match {
             case x: InsertResult => (x.count.get, x.id.get)
           }
       }
@@ -126,40 +111,31 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
     }
   }
 
-  def countAll[T <: AnyRef](pojoClass: Class[T], params: Map[String, Any],
+  def countAll[B <: DTO: Manifest](params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
-      countAll_(getViewDef(pojoClass), params, extraFilterAndParams)
+      countAll_(viewDef[B], params, extraFilterAndParams)
   }
-  def countAll_(viewDef: ViewDef, params: Map[String, Any],
+  protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
+    import org.tresql.CoreTypes._
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
-/*
-  def query[T <: AnyRef](pojoClass: Class[T], params: ListRequestType,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] =
-    query(getViewDef(pojoClass), pojoClass, params, extraFilterAndParams)
-  def getOrNull[T <: AnyRef](viewClass: Class[T], id: Long,
-    extraFilterAndParams: (String, Map[String, Any])): T = {
-    val filterDef = Array(new ListFilterType("Id", "=", id.toString))
-    val sortDef = Array[ListSortType]()
-    val req = ListRequestType(1, 0, filterDef, sortDef)
-    query(viewClass, req, extraFilterAndParams).headOption getOrElse null.asInstanceOf[T]
-*/
-  def list[T <: AnyRef](viewClass: Class[T], params: Map[String, Any],
+
+  def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[T] = {
-    val (q, p) = queryStringAndParams(getViewDef(viewClass), params,
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
+    val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilterAndParams)
-    list(q, viewClass, p)
+    list(q, p)
   }
 
 
-  def get[T <: AnyRef](viewClass: Class[T], id: Long,
-    extraFilterAndParams: (String, Map[String, Any]) = null): Option[T] = {
+  def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
+      implicit mf: Manifest[B]): Option[B] = {
     // TODO do not use id and long, get key from tableDef
-    val qualifier = baseFieldsQualifier(getViewDef(viewClass))
+    val qualifier = baseFieldsQualifier(viewDef[B])
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     val extraQ = extraFilterAndParams match {
       case null | (null, _) | ("", _) => s"${prefix}id = :id"
@@ -169,57 +145,46 @@ abstract class Querease extends QueryStringBuilder with QuereaseIo {
       case null | (_, null) => Map[String, Any]()
       case (_, m) => m
     }
-    val (q, p) = queryStringAndParams(getViewDef(viewClass),
+    val (q, p) = queryStringAndParams(viewDef[B],
       Map("id" -> id), 0, 2, "", (extraQ, extraP))
-    val result = list(q, viewClass, p)
+    val result = list(q, p)
     if (result.size > 1)
-      sys.error("Too many rows returned by query for get method for " +
-        viewClass.getName)
+      sys.error("Too many rows returned by query for get method for " + mf)
     result.headOption
   }
 
-  def create[T <: AnyRef](viewClass: Class[T], params: Map[String, Any] = Map.empty): T = {
-    val viewDef = getViewDef(viewClass)
+  def create[B <: DTO](params: Map[String, Any] = Map.empty)(implicit mf: Manifest[B]): B = {
+    val viewDef = this.viewDef
     viewDef.fields.collect { case f if f.default != null =>
       f.default + " " + Option(queryColAlias(f)).getOrElse(queryColName(viewDef, f))
     } match {
-      case x if x.isEmpty => viewClass.newInstance
+      case x if x.isEmpty => mf.runtimeClass.newInstance.asInstanceOf[B]
       case defaultVals =>
         val query = defaultVals.mkString("{", ", ", "}")
-        fromRows(Query(query, params), viewClass).head
+        fromRows(Query(query, params)).head
     }
   }
 
-  private def list[T <: AnyRef](
-    queryStringAndParams: (String, Map[String, Any]),
-    instanceClass: Class[T]): List[T] =
-    list(queryStringAndParams._1, instanceClass, queryStringAndParams._2)
+  private def list[B <: DTO: Manifest](
+    queryStringAndParams: (String, Map[String, Any])): List[B] =
+    list(queryStringAndParams._1, queryStringAndParams._2)
 
-  def list[T <: AnyRef](query: String, instanceClass: Class[T], params: Map[String, Any]) =
-    fromRows(Query(query, params), instanceClass)
+  def list[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
+    fromRows(Query(query, params))
 
-  def delete(instance: AnyRef, filterAndParams: (String, Map[String, Any]) = null) = {
-    val view = getViewDef(instance.getClass)
-    val keyMap = getKeyMap(instance, view)
+  def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {
+    val view = viewDef[B]
+    val keyMap = this.keyMap(instance)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
       keyMap.head._2,
       filter,
-      params).asInstanceOf[DeleteResult].count.get
+      params) match { case r: DeleteResult => r.count.get }
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
     else result
   }
-/*
-  def query[T <: AnyRef](view: ViewDef, pojoClass: Class[T], params: ListRequestType,
-    extraFilterAndParams: (String, Map[String, Any])) = {
-    val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(view, params, extraFilterAndParams)
-    Env.log(tresqlQueryString)
-    list(tresqlQueryString, pojoClass, paramsMap)
-  }
- */
 }
 
 trait QueryStringBuilder { this: Querease =>
@@ -280,6 +245,16 @@ trait QueryStringBuilder { this: Querease =>
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
+  private def queryString(view: ViewDef, field: FieldDef, filter: String): String = {
+    val (from, pathToAlias) = this.fromAndPathToAlias(view, Seq(field))
+    val where = Option(filter).filter(_ != "")
+      .map("[" + _ + "]").mkString match { case "" => "" case a => a }
+    val groupBy = this.groupBy(view)
+    val having = this.having(view)
+    val cols = "{" + queryColExpression(view, field, pathToAlias) +
+      Option(queryColAlias(field)).map(" " + _).getOrElse("") + "}"
+    from + where + " " + cols + groupBy + having
+  }
 
   /*
   val paramsFilter =
@@ -321,7 +296,7 @@ trait QueryStringBuilder { this: Querease =>
       (if (f.table == view.table) baseFieldsQualifier(view) else f.table)
 
   private def getChildViewDef(viewDef: ViewDef, fieldDef: FieldDef) =
-    scala.util.Try(getViewDef(fieldDef.type_.name)).toOption.getOrElse(
+    scala.util.Try(this.viewDef(fieldDef.type_.name)).toOption.getOrElse(
       sys.error("Child viewDef not found: " + fieldDef.type_.name +
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
@@ -342,7 +317,33 @@ trait QueryStringBuilder { this: Querease =>
       pathToAlias: Map[List[String], String]) = {
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
-    if (f.expression != null) qualify(view, f.expression, pathToAlias)
+    if (f.expression != null)
+      if (FieldRefRegexp.pattern.matcher(f.expression).matches) {
+        f.expression match {
+          case FieldRefRegexp(refViewName, refFieldName, _, refFilter) =>
+            // TODO duplicate code with Dto
+            def alias = Option(f.alias).getOrElse(f.name)
+            val refViewDef = Try(viewDef(refViewName)).toOption
+              .getOrElse{
+                throw new RuntimeException(
+                  s"View $refViewName referenced from ${view.name}.$alias is not found")
+              }
+            val refFieldDef = refViewDef.fields
+              .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+              .headOption
+              .getOrElse {
+                throw new RuntimeException(
+                  s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
+              }
+            val filter = Option(refFilter).map(_.trim).filter(_ != "") getOrElse {
+              // FIXME
+              s"${Option(view.tableAlias).getOrElse(view.table)}.${f.saveTo}"
+            }
+            "(" + queryString(refViewDef, refFieldDef, filter) + ")"
+        }
+      } else {
+       qualify(view, f.expression, pathToAlias)
+      }
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
       val joinToParent = Option(f.joinToParent) getOrElse ""
@@ -417,11 +418,15 @@ trait QueryStringBuilder { this: Querease =>
     .map(hl => if (hl.size > 1) hl.map(h => s"($h)") else hl)
     .map(_ mkString " & ")
     .filter(_ != "").map(h => s"^($h)") getOrElse ""
-  def fromAndPathToAlias(view: ViewDef): (String, Map[List[String], String]) = {
+  def fromAndPathToAlias(view: ViewDef): (String, Map[List[String], String]) =
+    fromAndPathToAlias(view, view.fields)
+  private def fromAndPathToAlias(view: ViewDef, view_fields: Seq[FieldDef]): (String, Map[List[String], String]) = {
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
     def isExpressionOrPath(f: FieldDef) =
-      f.isExpression || f.expression != null
+      (f.isExpression || f.expression != null) &&
+        Option(f.expression).map(expr =>
+          !FieldRefRegexp.pattern.matcher(expr).matches).getOrElse(true)
     val parsedJoins =
       Option(view.joins).map(joinsParser(tableAndAlias(view), _))
         .getOrElse(Nil)
@@ -429,7 +434,7 @@ trait QueryStringBuilder { this: Querease =>
       parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
     val joined = joinAliasToTable.keySet
     val baseQualifier = baseFieldsQualifier(view)
-    val usedInFields = view.fields
+    val usedInFields = view_fields
       .filterNot(isExpressionOrPath)
       .map(f => Option(f.tableAlias) getOrElse {
         if (f.table == view.table) baseQualifier else f.table
@@ -442,7 +447,7 @@ trait QueryStringBuilder { this: Querease =>
         case i: Ident => i.ident :: identifiers
       }
     }
-    val usedInExpr = view.fields
+    val usedInExpr = view_fields
       .filter(isExpressionOrPath)
       .map(_.expression)
       .filter(_ != null)
@@ -456,7 +461,7 @@ trait QueryStringBuilder { this: Querease =>
       .map(_ dropRight 1)
       .toSet
     val used = usedInFields ++ usedInExpr
-    def tailists[T](l: List[T]): List[List[T]] =
+    def tailists[B](l: List[B]): List[List[B]] =
       if (l.size == 0) Nil else l :: tailists(l.tail)
     val usedAndPrepaths =
       used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten

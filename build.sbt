@@ -2,11 +2,12 @@ name := "querease"
 
 organization := "org.mojoz"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.12.2"
 
 crossScalaVersions := Seq(
-  "2.12.1",
-  "2.11.8"
+  "2.12.2",
+  "2.11.11",
+  "2.10.6"
 )
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
@@ -71,7 +72,7 @@ sourceGenerators in Test += Def.task {
     val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
       List("package dto", "",
-        "import querease._", ""), viewDefs, Nil)
+        "import test.{ Dto, DtoWithId }", ""), viewDefs, Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
 }.taskValue

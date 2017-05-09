@@ -16,29 +16,13 @@ import javax.xml.datatype.XMLGregorianCalendar
 import mojoz.metadata.Naming.{dbName => xsdNameToDbName}
 import mojoz.metadata._
 
-trait JaxbPojoQuereaseIo extends QuereaseIo {
+trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
 
   type FieldDef = FieldDefBase[Type]
   type ViewDef = ViewDefBase[FieldDef]
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
-  def nameToExtendedViewDef: Map[String, ViewDef]
-
-  override def getViewDef(viewClass: Class[_ <: AnyRef]): ViewDef =
-    // FIXME apply naming properly
-    nameToExtendedViewDef.get(ViewName.get(viewClass)) getOrElse
-      (nameToExtendedViewDef.get(ViewName.get(viewClass)
-        .replace("-", "_")) getOrElse
-        (viewClass.getSuperclass match {
-          case c: Class[_] =>
-            try getViewDef(c.asInstanceOf[Class[_ <: AnyRef]]) catch {
-              case e: Exception => throw new RuntimeException(
-                "Failed to get view definition for " + viewClass.getName, e)
-            }
-          case x => throw new RuntimeException(
-            "Failed to get view definition for " + viewClass.getName)
-        }))
   def pojoToMap(pojo: Any): Map[String, _] = {
     def propName(m: java.lang.reflect.Method) = {
       val mName = m.getName
@@ -73,11 +57,11 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
       })) toMap
   }
 
-  override def fromRows[T <: AnyRef](rows: Result[RowLike], pojoClass: Class[T]) = {
-    def toPojo(m: Map[String, Any]) = mapToPojo(m, pojoClass.newInstance)
+  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]) = {
+    def toPojo(m: Map[String, Any]) = mapToPojo(m, mf.runtimeClass.newInstance.asInstanceOf[B])
     rows.toListOfMaps map toPojo
   }
-  def mapToPojo[T](m: Map[String, _], pojo: T): T = {
+  def mapToPojo[B <: DTO: Manifest](m: Map[String, _], pojo: B): B = {
     def propToClassName(prop: String) =
       if (prop.endsWith("List")) prop.dropRight(4) else prop
     def getCollectionType(t: java.lang.reflect.Type) = {
@@ -93,7 +77,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
       val t = m.getParameterTypes()(0)
 
       map.get(xsdNameToDbName(propName)).map(value => try { // FIXME wtf rename propname?
-        m.invoke(pojo, convertValue(value, t, propClass))
+        m.invoke(pojo, convertValue(value, propClass))
       } catch {
         case ex: Exception =>
           throw new RuntimeException("Failed to invoke setter " + m.getName +
@@ -115,7 +99,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
               val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
               collection.clear
               list.foreach { data =>
-                val child = genericType.newInstance.asInstanceOf[java.lang.Object]
+                val child = genericType.newInstance.asInstanceOf[B]
                 mapToPojo(data.asInstanceOf[Map[String, _]], child)
                 collection.add(child)
               }
@@ -126,81 +110,85 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
     pojo
   }
 
-  def convertValue(value: Any, t: Class[_],
-    itemClassName: String = "<collections not supported>"): AnyRef = value match {
-    case d: BigDecimal => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        new java.lang.Integer(d.toInt)
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        new java.lang.Long(d.toLong)
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        d.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        d.bigDecimal
-      else if (t == classOf[java.math.BigInteger])
-        d.bigDecimal.unscaledValue
-      else d
+  def convertValue[B <: DTO](value: Any,
+      itemClassName: String = "<collections not supported>")(implicit mf: Manifest[B]): AnyRef = {
+    val t = mf.runtimeClass
+    value match {
+      case d: BigDecimal => {
+        if (t == classOf[Int] || t == classOf[java.lang.Integer])
+          new java.lang.Integer(d.toInt)
+        else if (t == classOf[Long] || t == classOf[java.lang.Long])
+          new java.lang.Long(d.toLong)
+        else if (t == classOf[Double] || t == classOf[java.lang.Double])
+          d.doubleValue.asInstanceOf[Object]
+        else if (t == classOf[java.math.BigDecimal])
+          d.bigDecimal
+        else if (t == classOf[java.math.BigInteger])
+          d.bigDecimal.unscaledValue
+        else d
+      }
+      case i: Integer => {
+        if (t == classOf[Int] || t == classOf[java.lang.Integer])
+          i
+        else if (t == classOf[Long] || t == classOf[java.lang.Long])
+          new java.lang.Long(i.toLong)
+        else if (t == classOf[Double] || t == classOf[java.lang.Double])
+          i.doubleValue.asInstanceOf[Object]
+        else if (t == classOf[java.math.BigDecimal])
+          new java.math.BigDecimal(i.intValue())
+        else if (t == classOf[java.math.BigInteger])
+          java.math.BigInteger.valueOf(i.toLong)
+        else if (t == classOf[String] || t == classOf[java.lang.String])
+          i.toString
+        else i
+      }
+      case l: java.lang.Long => {
+        if (t == classOf[Int] || t == classOf[java.lang.Integer])
+          new java.lang.Integer(l.toInt)
+        else if (t == classOf[Long] || t == classOf[java.lang.Long])
+          l
+        else if (t == classOf[Double] || t == classOf[java.lang.Double])
+          l.doubleValue.asInstanceOf[Object]
+        else if (t == classOf[java.math.BigDecimal])
+          new java.math.BigDecimal(l.longValue)
+        else if (t == classOf[java.math.BigInteger])
+          java.math.BigInteger.valueOf(l.toLong)
+        else if (t == classOf[String] || t == classOf[java.lang.String])
+          l.toString
+        else l
+      }
+      case x if (t == classOf[java.math.BigInteger] && x != null) =>
+        new java.math.BigInteger(x.toString)
+      case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
+        val gc = new java.util.GregorianCalendar()
+        gc.setTime(x)
+        XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
+      }
+      case inMap: Map[_, _] =>
+        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance.asInstanceOf[B])
+      case List(inMap: Map[_, _]) =>
+        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance.asInstanceOf[B])
+      case Nil => null
+      //may be exact collection which is used in xsd generated pojos must be used?
+      case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
+        t.newInstance.asInstanceOf[java.util.Collection[_]]
+      case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
+        val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
+          .map(mapToPojo(_, Class.forName(itemClassName).newInstance.asInstanceOf[B])).asJava
+        col
+      }
+      case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
+        case "y" | "Y" | "true" | "TRUE" => java.lang.Boolean.TRUE
+        case "n" | "N" | "false" | "FALSE" => java.lang.Boolean.FALSE
+        case null => java.lang.Boolean.FALSE
+        case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
+      }
+      case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
+        blob.getBytes(1, blob.length.toInt) // FIXME toInt!
+      case x => x.asInstanceOf[Object]
     }
-    case i: Integer => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        i
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        new java.lang.Long(i.toLong)
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        i.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        new java.math.BigDecimal(i.intValue())
-      else if (t == classOf[java.math.BigInteger])
-        java.math.BigInteger.valueOf(i.toLong)
-      else if (t == classOf[String] || t == classOf[java.lang.String])
-        i.toString
-      else i
-    }
-    case l: java.lang.Long => {
-      if (t == classOf[Int] || t == classOf[java.lang.Integer])
-        new java.lang.Integer(l.toInt)
-      else if (t == classOf[Long] || t == classOf[java.lang.Long])
-        l
-      else if (t == classOf[Double] || t == classOf[java.lang.Double])
-        l.doubleValue.asInstanceOf[Object]
-      else if (t == classOf[java.math.BigDecimal])
-        new java.math.BigDecimal(l.longValue)
-      else if (t == classOf[java.math.BigInteger])
-        java.math.BigInteger.valueOf(l.toLong)
-      else if (t == classOf[String] || t == classOf[java.lang.String])
-        l.toString
-      else l
-    }
-    case x if (t == classOf[java.math.BigInteger] && x != null) =>
-      new java.math.BigInteger(x.toString)
-    case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
-      val gc = new java.util.GregorianCalendar()
-      gc.setTime(x)
-      XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
-    }
-    case inMap: Map[_, _] =>
-      mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance).asInstanceOf[Object]
-    case List(inMap: Map[_, _]) =>
-      mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance).asInstanceOf[Object]
-    case Nil => null
-    //may be exact collection which is used in xsd generated pojos must be used?
-    case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
-      t.newInstance.asInstanceOf[java.util.Collection[_]]
-    case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
-      val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
-        .map(mapToPojo(_, Class.forName(itemClassName).newInstance)).asJava
-      col
-    }
-    case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
-      case "y" | "Y" | "true" | "TRUE" => java.lang.Boolean.TRUE
-      case "n" | "N" | "false" | "FALSE" => java.lang.Boolean.FALSE
-      case null => java.lang.Boolean.FALSE
-      case x => sys.error("No idea how to convert to boolean: \"" + x + "\"")
-    }
-    case blob: java.sql.Blob if t == classOf[Array[Byte]] =>
-      blob.getBytes(1, blob.length.toInt) // FIXME toInt!
-    case x => x.asInstanceOf[Object]
   }
+
 
   def xsdValueToDbValue(xsdValue: Any) = xsdValue match {
     case true => "Y"
@@ -226,12 +214,11 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap(instance: AnyRef, viewDef: ViewDef) =
-    pojoToSaveableMap(instance, viewDef)
-  override def getKeyMap(instance: AnyRef, viewDef: ViewDef) =
+  override def toSaveableMap[B <: DTO: Manifest](instance: B) = pojoToSaveableMap(instance)
+  override def keyMap[B <: DTO: Manifest](instance: B) =
     // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
-  def pojoToSaveableMap(pojo: AnyRef, viewDef: ViewDef) = {
+  def pojoToSaveableMap[B <: DTO](pojo: B) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[_]) =>
         (xsdNameToDbName(k), vList.asInstanceOf[List[Map[String, _]]] map toDbFormat)
@@ -245,7 +232,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo {
 
     def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef): Map[String, Any] = {
       def getChildViewDef(viewDef: ViewDef, fieldDef: FieldDef) =
-        nameToExtendedViewDef.getOrElse(fieldDef.type_.name,
+        viewDefOption(fieldDef.type_.name).getOrElse(
           sys.error("Child viewDef not found: " + fieldDef.type_.name +
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
       def isSaveable(f: FieldDef) = !f.isExpression
