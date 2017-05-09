@@ -182,11 +182,11 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
       }
       val saveToTableNames = saveTo.map(identifier)
       def isForInsert = this match {
-        case o: DtoWithId => o.id
+        case o: DtoWithId => o.id == null
         case _ => sys.error(s"isForInsert() for ${getClass.getName} not supported yet") // TODO isForInsert
       }
       def isForUpdate = this match {
-        case o: DtoWithId => o.id
+        case o: DtoWithId => o.id != null
         case _ => sys.error(s"isForUpdate() for ${getClass.getName} not supported yet") // TODO isForUpdate
       }
       def isSaveableField(field: FieldDef) =
