@@ -42,7 +42,8 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
       s"getting key map for ${instance.getClass.getName} not supported yet")
   }
 
-  protected def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
+  //org.tresql.Converter[T]
+  implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
     m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
   trait Dto {
