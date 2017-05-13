@@ -111,20 +111,21 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     }
 
     def toMap: Map[String, Any] =
-      toMap(fieldOrdering(ManifestFactory.classType(getClass)))
-    def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
-      TreeMap[String, Any]()(fieldOrdering) ++
-      (setters.flatMap { m =>
-      scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        case s: Seq[_] => m._1 ->  s.map{
-          case dto: Dto => dto.toMap
-          case str: String => str
-          case i: java.lang.Integer => i
+      toMap(fieldOrderingOption(ManifestFactory.classType(getClass)))
+    def toMap(fieldOrdering: Option[Ordering[String]]): Map[String, Any] = {
+      def unorderedMap: Map[String, Any] = (setters.flatMap { m =>
+        scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
+          case s: Seq[_] => m._1 ->  s.map{
+            case dto: Dto => dto.toMap
+            case str: String => str
+            case i: java.lang.Integer => i
+          }
+          case c: Dto => m._1 -> c.toMap
+          case x => m._1 -> x
         }
-        case c: Dto => m._1 -> c.toMap
-        case x => m._1 -> x
-      }
-    } toMap)
+      } toMap)
+      fieldOrdering.map(TreeMap[String, Any]()(_) ++ unorderedMap).getOrElse(unorderedMap)
+    }
 
     def containsField(fieldName: String) = setters.contains(fieldName)
 
