@@ -125,12 +125,16 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 
   def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
+    stream(params, offset, limit, orderBy, extraFilterAndParams).toList
+  }
+  def stream[B <: DTO: Manifest](params: Map[String, Any],
+      offset: Int = 0, limit: Int = 0, orderBy: String = null,
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Stream[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilterAndParams)
-    list(q, p)
+    stream(q, p)
   }
-
 
   def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
       implicit mf: Manifest[B]): Option[B] = {
@@ -153,11 +157,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     result.headOption
   }
 
-  private def list[B <: DTO: Manifest](
-    queryStringAndParams: (String, Map[String, Any])): List[B] =
-    list(queryStringAndParams._1, queryStringAndParams._2)
-
   def list[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
+    stream(query, params).toList
+  def stream[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
     fromRows(Query(query, params))
 
   def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {

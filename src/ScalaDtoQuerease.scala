@@ -28,12 +28,12 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
   override type DTO <: Dto
 
-  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]): List[B] = {
+  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]): Stream[B] = {
     def toDto(r: RowLike): B = {
       val t = mf.runtimeClass.newInstance
       t.asInstanceOf[B].fill(r)
     }
-    rows.map(toDto).toList
+    Stream.continually(rows.hasNext).takeWhile(_ == true).map(_ => toDto(rows.next))
   }
   override def toSaveableMap[B <: DTO: Manifest](instance: B) = instance.toSaveableMap
   override def keyMap[B <: DTO: Manifest](instance: B) = instance match {

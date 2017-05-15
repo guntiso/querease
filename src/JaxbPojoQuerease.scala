@@ -59,7 +59,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
 
   override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]) = {
     def toPojo(m: Map[String, Any]) = mapToPojo(m, mf.runtimeClass.newInstance.asInstanceOf[B])
-    rows.toListOfMaps map toPojo
+    Stream.continually(rows.hasNext).takeWhile(_ == true).map(_ => toPojo(rows.next.toMap))
   }
   def mapToPojo[B <: DTO: Manifest](m: Map[String, _], pojo: B): B = {
     def propToClassName(prop: String) =
