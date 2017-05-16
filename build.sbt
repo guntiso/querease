@@ -16,7 +16,7 @@ resolvers ++= Seq(
   "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
-val tresqlV = "8.0-SNAPSHOT"
+val tresqlV = "8.1-SNAPSHOT"
 val mojozV = "0.5-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,

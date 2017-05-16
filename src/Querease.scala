@@ -5,6 +5,7 @@ import scala.language.existentials
 import scala.language.postfixOps
 import scala.collection.mutable
 
+import org.tresql.Resources
 import org.tresql.Env
 import org.tresql.DeleteResult
 import org.tresql.InsertResult
@@ -43,7 +44,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long =
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
       tablesToSaveTo(viewDef[B]),
       pojo,
@@ -57,7 +58,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long =
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
       Seq(tableName),
       pojo,
@@ -72,7 +73,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long = {
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long = {
     val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
@@ -112,11 +113,13 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
   }
 
   def countAll[B <: DTO: Manifest](params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      implicit resources: Resources) = {
       countAll_(viewDef[B], params, extraFilterAndParams)
   }
   protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      implicit resources: Resources): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
     import org.tresql.CoreTypes._
@@ -125,19 +128,21 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 
   def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
-    stream(params, offset, limit, orderBy, extraFilterAndParams).toList
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+        implicit resources: Resources): List[B] = {
+    result(params, offset, limit, orderBy, extraFilterAndParams).toList
   }
-  def stream[B <: DTO: Manifest](params: Map[String, Any],
+  def result[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Stream[B] = {
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+        implicit resources: Resources): CloseableResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilterAndParams)
-    stream(q, p)
+    result(q, p)
   }
 
   def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
-      implicit mf: Manifest[B]): Option[B] = {
+      implicit mf: Manifest[B], resources: Resources): Option[B] = {
     // TODO do not use id and long, get key from tableDef
     val qualifier = baseFieldsQualifier(viewDef[B])
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
@@ -157,12 +162,20 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     result.headOption
   }
 
-  def list[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
-    stream(query, params).toList
-  def stream[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
-    fromRows(Query(query, params))
+  def list[B <: DTO: Manifest](query: String, params: Map[String, Any])(
+    implicit resources: Resources) =
+    result(query, params).toList
+  def result[B <: DTO: Manifest](query: String, params: Map[String, Any])(
+      implicit resources: Resources): CloseableResult[B] =
+    new Iterator[B] with AutoCloseable {
+      private val result = Query(query, params)
+      override def hasNext = result.hasNext
+      override def next = convertRow[B](result.next)
+      override def close = result.close
+    }
 
-  def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {
+  def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null)(
+    implicit resources: Resources) = {
     val view = viewDef[B]
     val keyMap = this.keyMap(instance)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
