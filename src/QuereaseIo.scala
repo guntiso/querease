@@ -7,7 +7,7 @@ trait QuereaseIo { this: Querease =>
 
   type DTO <: AnyRef
 
-  type CloseableResult[B <: DTO] = Iterator[B] with AutoCloseable
+  type CloseableResult[+B <: DTO] = Iterator[B] with AutoCloseable
 
   def convertRow[B <: DTO: Manifest](row: RowLike): B
   def toSaveableMap[B <: DTO: Manifest](instance: B): Map[String, _]
