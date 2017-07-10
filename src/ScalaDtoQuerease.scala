@@ -27,6 +27,7 @@ import org.tresql.QueryParser.Variable
 trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
   override type DTO <: Dto
+  type DWI <: DTO with DtoWithId
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
