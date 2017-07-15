@@ -427,9 +427,13 @@ trait QueryStringBuilder { this: Querease =>
       (f.isExpression || f.expression != null) &&
         Option(f.expression).map(expr =>
           !FieldRefRegexp.pattern.matcher(expr).matches).getOrElse(true)
-    val parsedJoins =
-      Option(view.joins).map(joinsParser(tableAndAlias(view), _))
-        .getOrElse(Nil)
+    val (needsBaseTable, parsedJoins) =
+      Option(view.joins)
+        .map(joins =>
+          Try(joinsParser(null, joins)).toOption
+            .map(joins => (false, joins))
+            .getOrElse((true, joinsParser(tableAndAlias(view), joins))))
+        .getOrElse((false, Nil))
     val joinAliasToTable =
       parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
     val joined = joinAliasToTable.keySet
@@ -472,9 +476,10 @@ trait QueryStringBuilder { this: Querease =>
     val autoBaseAlias =
       if (baseTableOrAlias == view.table) null else baseTableOrAlias
     val autoBase =
-      if (view.tableAlias != null &&
+      if (view.tableAlias != null && !needsBaseTable &&
         parsedJoins.exists(_.alias == view.tableAlias)) null
-      else if (view.tableAlias == null && parsedJoins.size > 0) null // TODO ?
+      else if (view.tableAlias == null && !needsBaseTable &&
+        parsedJoins.size > 0) null // TODO ?
       else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
     val pathToAlias = mutable.Map[List[String], String]()
     pathToAlias ++= joined.map(j => List(j) -> j).toMap
