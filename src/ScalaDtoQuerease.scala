@@ -31,8 +31,8 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
-  override def toSaveableMap[B <: DTO: Manifest](instance: B) = instance.toSaveableMap
-  override def keyMap[B <: DTO: Manifest](instance: B) = instance match {
+  override def toSaveableMap[B <: DTO](instance: B) = instance.toSaveableMap
+  override def keyMap[B <: DTO](instance: B) = instance match {
     case o: DtoWithId @unchecked => Map("id" -> o.id)
     case x => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${instance.getClass.getName} not supported yet")

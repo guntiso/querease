@@ -10,6 +10,6 @@ trait QuereaseIo { this: Querease =>
   type CloseableResult[+B <: DTO] = Iterator[B] with AutoCloseable
 
   def convertRow[B <: DTO: Manifest](row: RowLike): B
-  def toSaveableMap[B <: DTO: Manifest](instance: B): Map[String, _]
-  def keyMap[B <: DTO: Manifest](instance: B): Map[String, _]
+  def toSaveableMap[B <: DTO](instance: B): Map[String, _]
+  def keyMap[B <: DTO](instance: B): Map[String, _]
 }
