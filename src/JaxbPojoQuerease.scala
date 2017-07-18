@@ -57,10 +57,8 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
       })) toMap
   }
 
-  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]) = {
-    def toPojo(m: Map[String, Any]) = mapToPojo(m, mf.runtimeClass.newInstance.asInstanceOf[B])
-    rows.toListOfMaps map toPojo
-  }
+  override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]) =
+    mapToPojo(row.toMap, mf.runtimeClass.newInstance.asInstanceOf[B])
   def mapToPojo[B <: DTO: Manifest](m: Map[String, _], pojo: B): B = {
     def propToClassName(prop: String) =
       if (prop.endsWith("List")) prop.dropRight(4) else prop
@@ -214,8 +212,8 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap[B <: DTO: Manifest](instance: B) = pojoToSaveableMap(instance)
-  override def keyMap[B <: DTO: Manifest](instance: B) =
+  override def toSaveableMap[B <: DTO](instance: B) = pojoToSaveableMap(instance)
+  override def keyMap[B <: DTO](instance: B) =
     // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
   def pojoToSaveableMap[B <: DTO](pojo: B) = {

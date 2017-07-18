@@ -27,6 +27,8 @@ import querease.TresqlJoinsParser
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
 
+  implicit val resources = Env
+
   "querease" should "do something" in {
     executeStatements(statements: _*)
     executeStatements("CREATE SEQUENCE seq START WITH 10000")

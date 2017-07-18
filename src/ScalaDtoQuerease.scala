@@ -27,22 +27,19 @@ import org.tresql.QueryParser.Variable
 trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
   override type DTO <: Dto
+  type DWI <: DTO with DtoWithId
 
-  override def fromRows[B <: DTO](rows: Result[RowLike])(implicit mf: Manifest[B]): List[B] = {
-    def toDto(r: RowLike): B = {
-      val t = mf.runtimeClass.newInstance
-      t.asInstanceOf[B].fill(r)
-    }
-    rows.map(toDto).toList
-  }
-  override def toSaveableMap[B <: DTO: Manifest](instance: B) = instance.toSaveableMap
-  override def keyMap[B <: DTO: Manifest](instance: B) = instance match {
+  override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
+    rowLikeToDto(row, mf)
+  override def toSaveableMap[B <: DTO](instance: B) = instance.toSaveableMap
+  override def keyMap[B <: DTO](instance: B) = instance match {
     case o: DtoWithId @unchecked => Map("id" -> o.id)
     case x => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${instance.getClass.getName} not supported yet")
   }
 
-  protected def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
+  //org.tresql.Converter[T]
+  implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
     m.runtimeClass.newInstance.asInstanceOf[T].fill(r)
 
   trait Dto {
@@ -109,11 +106,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
       ManifestFactory.classType(clazz)
     }
 
-    def toMap: Map[String, Any] =
-      toMap(fieldOrdering(ManifestFactory.classType(getClass)))
-    def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
-      TreeMap[String, Any]()(fieldOrdering) ++
-      (setters.flatMap { m =>
+    private def toUnorderedMap: Map[String, Any] = (setters.flatMap { m =>
       scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
         case s: Seq[_] => m._1 ->  s.map{
           case dto: Dto => dto.toMap
@@ -124,6 +117,10 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
         case x => m._1 -> x
       }
     } toMap)
+    def toMap: Map[String, Any] = fieldOrderingOption(ManifestFactory.classType(getClass))
+      .map(toMap).getOrElse(toUnorderedMap)
+    def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
+      TreeMap[String, Any]()(fieldOrdering) ++ toUnorderedMap
 
     def containsField(fieldName: String) = setters.contains(fieldName)
 

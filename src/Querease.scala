@@ -4,7 +4,10 @@ import scala.annotation.tailrec
 import scala.language.existentials
 import scala.language.postfixOps
 import scala.collection.mutable
+import scala.util.Try
+import scala.reflect.ManifestFactory
 
+import org.tresql.Resources
 import org.tresql.Env
 import org.tresql.DeleteResult
 import org.tresql.InsertResult
@@ -22,8 +25,6 @@ import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 import mojoz.metadata._
 
-import scala.util.Try
-
 class NotFoundException(msg: String) extends Exception(msg)
 
 abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this: QuereaseIo =>
@@ -38,26 +39,26 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  def save[B <: DTO: Manifest](
+  def save[B <: DTO](
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long =
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
-      tablesToSaveTo(viewDef[B]),
+      tablesToSaveTo(viewDef(ManifestFactory.classType(pojo.getClass))),
       pojo,
       extraPropsToSave,
       transform,
       forceInsert,
       filterAndParams)
 
-  def saveTo[B <: DTO: Manifest](
+  def saveTo[B <: DTO](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long =
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
       Seq(tableName),
       pojo,
@@ -66,13 +67,13 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
       forceInsert,
       filterAndParams)
 
-  def saveToMultiple[B <: DTO: Manifest](
+  def saveToMultiple[B <: DTO](
     tables: Seq[String],
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null): Long = {
+    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long = {
     val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
@@ -112,11 +113,13 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
   }
 
   def countAll[B <: DTO: Manifest](params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())) = {
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      implicit resources: Resources) = {
       countAll_(viewDef[B], params, extraFilterAndParams)
   }
   protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): Int = {
+    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      implicit resources: Resources): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
     import org.tresql.CoreTypes._
@@ -125,15 +128,21 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
 
   def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map())): List[B] = {
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+        implicit resources: Resources): List[B] = {
+    result(params, offset, limit, orderBy, extraFilterAndParams).toList
+  }
+  def result[B <: DTO: Manifest](params: Map[String, Any],
+      offset: Int = 0, limit: Int = 0, orderBy: String = null,
+      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+        implicit resources: Resources): CloseableResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilterAndParams)
-    list(q, p)
+    result(q, p)
   }
 
-
   def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
-      implicit mf: Manifest[B]): Option[B] = {
+      implicit mf: Manifest[B], resources: Resources): Option[B] = {
     // TODO do not use id and long, get key from tableDef
     val qualifier = baseFieldsQualifier(viewDef[B])
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
@@ -161,19 +170,25 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
       case x if x.isEmpty => mf.runtimeClass.newInstance.asInstanceOf[B]
       case defaultVals =>
         val query = defaultVals.mkString("{", ", ", "}")
-        fromRows(Query(query, params)).head
+        convertRow(Query(query, params).head)
     }
   }
 
-  private def list[B <: DTO: Manifest](
-    queryStringAndParams: (String, Map[String, Any])): List[B] =
-    list(queryStringAndParams._1, queryStringAndParams._2)
+  def list[B <: DTO: Manifest](query: String, params: Map[String, Any])(
+    implicit resources: Resources) =
+    result(query, params).toList
+  def result[B <: DTO: Manifest](query: String, params: Map[String, Any])(
+      implicit resources: Resources): CloseableResult[B] =
+    new Iterator[B] with AutoCloseable {
+      private val result = Query(query, params)
+      override def hasNext = result.hasNext
+      override def next = convertRow[B](result.next)
+      override def close = result.close
+    }
 
-  def list[B <: DTO: Manifest](query: String, params: Map[String, Any]) =
-    fromRows(Query(query, params))
-
-  def delete[B <: DTO: Manifest](instance: B, filterAndParams: (String, Map[String, Any]) = null) = {
-    val view = viewDef[B]
+  def delete[B <: DTO](instance: B, filterAndParams: (String, Map[String, Any]) = null)(
+    implicit resources: Resources) = {
+    val view = viewDef(ManifestFactory.classType(instance.getClass))
     val keyMap = this.keyMap(instance)
     val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
