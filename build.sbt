@@ -16,8 +16,8 @@ resolvers ++= Seq(
   "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
-val tresqlV = "8.0-SNAPSHOT"
-val mojozV = "0.4-SNAPSHOT"
+val tresqlV = "8.2-SNAPSHOT"
+val mojozV = "0.6-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
@@ -64,6 +64,8 @@ sourceGenerators in Test += Def.task {
     val viewDefs = YamlViewDefLoader(tableMd, yamlMd,
       new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs, null))).viewDefs
     object ScalaBuilder extends ScalaClassWriter {
+      override def scalaClassName(name: String) = Naming.camelize(name)
+      override def scalaFieldName(name: String) = Naming.camelizeLower(name)
       override def scalaClassTraits(viewDef: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]]) =
         if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))
           List("DtoWithId")

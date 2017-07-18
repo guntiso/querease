@@ -13,7 +13,6 @@ import mojoz.metadata.ViewDef.ViewDefBase
 
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import mojoz.metadata.Naming.{dbName => xsdNameToDbName}
 import mojoz.metadata._
 
 trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
@@ -23,6 +22,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
+  def xsdNameToDbName(name: String) = name
   def pojoToMap(pojo: Any): Map[String, _] = {
     def propName(m: java.lang.reflect.Method) = {
       val mName = m.getName

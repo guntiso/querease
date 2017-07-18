@@ -289,6 +289,8 @@ object QuereaseTests {
     override lazy val viewDefs = YamlViewDefLoader(
       tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
         .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
+    override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
+      Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
   }
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")

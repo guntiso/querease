@@ -45,5 +45,5 @@ trait QuereaseMetadata {
     viewDefOption(viewName[T]).getOrElse(sys.error(s"View definition for type $mf not found"))
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
-    Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
+    mf.runtimeClass.getSimpleName
 }
