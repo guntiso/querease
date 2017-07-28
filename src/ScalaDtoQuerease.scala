@@ -164,9 +164,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
        ||
        field.saveTo != null
      )
-
-    //creating map from object
-    def toSaveableMap: Map[String, Any] = {
+    protected val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
       // FIXME child handling, do we rely on metadata or method list?
       val view = viewDef(ManifestFactory.classType(getClass))
       val saveToMulti = view.saveTo != null && view.saveTo.size > 0
@@ -289,15 +287,14 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
           resolvers.map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
         }
       }
-      val keysValues = (setters.toList.flatMap { m =>
-        val methodName = m._1
-        val fieldName = propToDbName(methodName)
-        scala.util.Try(getClass.getMethod(methodName).invoke(this)).toOption.map {
+      propName => {
+        val fieldName = propToDbName(propName)
+        val saveableValueFunc: PartialFunction[Any, List[(String, Any)]] = {
           case Nil => view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
             .filter(isChildTableField)
             .map(f => viewDefOption(f.type_.name).map(v => tablesTo(v) + f.options).get -> Nil)
-            .orElse(Some("*" + methodName -> Nil)) // prefix * to avoid clashes
+            .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
             .toList
           case s: Seq[_] =>
             val options = view.fields
@@ -334,24 +331,31 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
                   }.getOrElse(childTableName)
               key + f.options -> d.toSaveableMap
             }
-            .orElse(Some("*" + methodName -> d.toSaveableMap)) // prefix * to avoid clashes
+            .orElse(Some("*" + propName -> d.toSaveableMap)) // prefix * to avoid clashes
             .toList
           case x => view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
             .filter(isSaveableField)
             .map(f => saveableKeys(f).map(_ -> x))
-            .orElse(Some(List("*" + methodName -> x))) // prefix * to avoid clashes
+            .orElse(Some(List("*" + propName -> x))) // prefix * to avoid clashes
             .toList.flatten
-        } getOrElse Nil
-      })
-      //child objects from different lists can be put into one table
-      keysValues groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } flatMap {
+        }
+        saveableValueFunc
+      }
+    }
+    //creating map from object
+    def toSaveableMap: Map[String, Any] = (setters.toList.flatMap { m =>
+      val propName = m._1
+      scala.util.Try(getClass.getMethod(propName).invoke(this)).toOption.map {
+        saveableValue(propName)(_)
+      } getOrElse Nil
+    }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } //child objects from different lists can be put into one table
+      .flatMap {
         case ("s", seq) =>
           seq.asInstanceOf[Seq[(String, Seq[_])]] groupBy (_._1) map {
             t => t.copy(_2 = t._2.flatMap(_._2))
           }
         case (_, kv) => kv
-      }
     }
   }
 
