@@ -2,10 +2,12 @@ name := "querease"
 
 organization := "org.mojoz"
 
-scalaVersion := "2.12.2"
+val scalaV = "2.12.3"
+
+scalaVersion := scalaV
 
 crossScalaVersions := Seq(
-  "2.12.2",
+  scalaV,
   "2.11.11",
   "2.10.6"
 )
