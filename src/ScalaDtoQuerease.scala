@@ -286,7 +286,9 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
               s"Failed to imply resolver for ${view.name}.$alias")
           }
           val fSaveTo = Option(f.saveTo) getOrElse name
-          resolvers.map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
+          resolvers
+            .map(transformResolver(view, f, _))
+            .map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
         }
       }
       val keysValues = (setters.toList.flatMap { m =>
