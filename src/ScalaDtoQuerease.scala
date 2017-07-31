@@ -149,7 +149,10 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
 
     private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
     private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
-
+    def identifier(s: String) = s match {
+      case IdentifierExtractor(ident, _) => ident
+      case _ => ""
+    }
     protected def isSavableField(field: FieldDef, view: ViewDef, saveToMulti: Boolean, saveToTableNames: Seq[String]) =
       (!field.isExpression &&
         !field.type_.isComplexType &&
@@ -164,18 +167,11 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
        ||
        field.saveTo != null
      )
+    protected lazy val view = viewDef(ManifestFactory.classType(getClass))
+    protected lazy val saveToMulti = view.saveTo != null && view.saveTo.size > 0
+    protected lazy val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
+    protected lazy val saveToTableNames = saveTo.map(identifier)
     protected lazy val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
-      // FIXME child handling, do we rely on metadata or method list?
-      val view = viewDef(ManifestFactory.classType(getClass))
-      val saveToMulti = view.saveTo != null && view.saveTo.size > 0
-      val saveTo =
-        if (!saveToMulti) Seq(view.table)
-        else view.saveTo
-      def identifier(s: String) = s match {
-        case IdentifierExtractor(ident, _) => ident
-        case _ => ""
-      }
-      val saveToTableNames = saveTo.map(identifier)
       def isForInsert = this match {
         case o: DtoWithId => o.id == null
         case _ => sys.error(s"isForInsert() for ${getClass.getName} not supported yet") // TODO isForInsert
