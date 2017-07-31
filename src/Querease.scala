@@ -38,6 +38,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this:
       Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
     else viewDef.saveTo
 
+  protected def transformResolver(view: ViewDef, field: FieldDef, resolver: String): String =
+    resolver
+
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save[B <: DTO](
     pojo: B,
