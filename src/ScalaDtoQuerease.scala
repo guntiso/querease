@@ -164,7 +164,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
        ||
        field.saveTo != null
      )
-    protected val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
+    protected lazy val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
       // FIXME child handling, do we rely on metadata or method list?
       val view = viewDef(ManifestFactory.classType(getClass))
       val saveToMulti = view.saveTo != null && view.saveTo.size > 0
