@@ -172,6 +172,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo { this: Querease =>
     protected lazy val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
     protected lazy val saveToTableNames = saveTo.map(identifier)
     protected lazy val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
+      // FIXME child handling, do we rely on metadata or method list?
       def isForInsert = this match {
         case o: DtoWithId => o.id == null
         case _ => sys.error(s"isForInsert() for ${getClass.getName} not supported yet") // TODO isForInsert
