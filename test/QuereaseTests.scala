@@ -249,23 +249,45 @@ class QuereaseTests extends FlatSpec with Matchers {
       "(person[p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
       "(person[id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
     )
+    qe.queryStringAndParams(qe.viewDefs("ref_expression_test_person_2b"), Map.empty)._1 should be(
+      "person p2 {" +
+      "p2.id, " +
+      "(person[person.id = p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+    )
+    qe.queryStringAndParams(qe.viewDefs("ref_expression_test_person_2c"), Map.empty)._1 should be(
+      "person p2 {" +
+      "p2.id, " +
+      "(person[person.id = p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+    )
     qe.queryStringAndParams(qe.viewDefs("resolver_test_person_3"), Map.empty)._1 should be(
       "person p3 {" +
       "p3.id, " +
       "(person[p3.mother_id = id + 3] {person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
-      "(person[p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
+      "(person[person.id = p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDefs("resolver_test_person_5"), Map.empty)._1 should be(
       "person p5 {" +
       "p5.id, " +
       "(person[p5.mother_id = id + 5] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
-      "(person[p5.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+      "(person[person.id = p5.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDefs("resolver_test_person_6"), Map.empty)._1 should be(
       "person p6 {" +
       "p6.id, " +
-      "(person[p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
-      "(person[p6.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+      "(person[person.id = p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
+      "(person[person.id = p6.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+    )
+    qe.queryStringAndParams(qe.viewDefs("ref_test_bank_2"), Map.empty)._1 should be(
+      "bank {" +
+      "bank.name, " +
+      "(country[country.code = bank.country_code] {country.code || ' - ' || country.name c2_and_name}) country}"
+    )
+    qe.queryStringAndParams(qe.viewDefs("ref_test_bank_3"), Map.empty)._1 should be(
+      "bank b3 {" +
+      "b3.name, " +
+      "(country c3[c3.code = b3.country_code] {c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
     )
   }
 }

@@ -42,3 +42,25 @@ table: bank
 fields:
 - id
 - name -> = _ || ' saved'
+
+name: country_choice_2
+table: country
+fields:
+ - c2_and_name = code || ' - ' || name
+
+name: country_choice_3
+table: country c3
+fields:
+ - c3_and_name = code3 || ' - ' || name
+
+name: ref_test_bank_2
+table: bank
+fields:
+- name
+- country = ^country_choice_2.c2_and_name
+
+name: ref_test_bank_3
+table: bank b3
+fields:
+- name
+- country_c3_and_name = ^country_choice_3.c3_and_name

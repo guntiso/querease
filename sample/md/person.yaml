@@ -146,6 +146,20 @@ fields:
 - father = ^person_choice_without_resolver.full_name[id = p2.father_id] -> father_id
 - empty_expression_test =
 
+name: ref_expression_test_person_2b
+table: person p2
+fields:
+- id
+- mother = ^person_choice_without_resolver.full_name -> mother_id
+- father = ^person_choice_without_resolver.full_name -> father_id
+
+name: ref_expression_test_person_2c
+table: person p2
+fields:
+- id
+- mother = ^person_choice_without_resolver.full_name
+- father = ^person_choice_without_resolver.full_name
+
 # resolver reuse
 name: resolver_test_person_3
 table: person p3

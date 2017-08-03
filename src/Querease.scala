@@ -354,8 +354,45 @@ trait QueryStringBuilder { this: Querease =>
                   s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
               }
             val filter = Option(refFilter).map(_.trim).filter(_ != "") getOrElse {
-              // FIXME
-              s"${Option(view.tableAlias).getOrElse(view.table)}.${f.saveTo}"
+              val table = view.table
+              val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
+              val viewName = view.name
+              val tableDef = tableMetadata.tableDef(table)
+              val refTable = refViewDef.table
+              val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
+              val joinCol = f.saveTo
+              val refs =
+                if (joinCol != null)
+                  tableDef.refs
+                    .filter(_.refTable == refViewDef.table)
+                    .filter(_.cols.contains(joinCol))
+                else {
+                  val allRefsTo = tableDef.refs
+                    .filter(_.refTable == refViewDef.table)
+                  val bestFitRefsTo =
+                    if (allRefsTo.size == 1)
+                      allRefsTo
+                    else
+                      allRefsTo.filter(_.defaultRefTableAlias == alias)
+                  if (bestFitRefsTo.size == 1)
+                    bestFitRefsTo
+                  else
+                    allRefsTo
+                }
+              def refErrorMessage(prefix: String) =
+                s"$prefix from ${table}${Option(joinCol).map("." + _) getOrElse ""}" +
+                  s" to $refTable (of $refViewName referenced from $viewName.$alias)" +
+                  ", please provide filter explicitly"
+              refs.size match {
+                case 0 =>
+                  throw new RuntimeException(refErrorMessage("No ref found"))
+                case 1 =>
+                  refs(0).cols.zip(refs(0).refCols).map {
+                    case (col, refCol) => s"$refTableOrAlias.$refCol = $tableOrAlias.$col"
+                  }.mkString(" & ")
+                case _ =>
+                  throw new RuntimeException(refErrorMessage("Ambiguous refs"))
+              }
             }
             "(" + queryString(refViewDef, refFieldDef, filter) + ")"
         }
