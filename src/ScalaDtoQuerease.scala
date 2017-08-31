@@ -204,7 +204,6 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
           }
           val fSaveTo = Option(f.saveTo) getOrElse name
           resolvers
-            .map(transformResolver(view, f, _))
             .map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
         }
       }

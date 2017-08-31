@@ -5,7 +5,12 @@ import org.tresql.QueryParser.Ident
 import org.tresql.QueryParser.Variable
 
 trait QuereaseResolvers { this: Querease =>
-        def allResolvers(view: ViewDef, f: FieldDef) = {
+
+        def allResolvers(view: ViewDef, f: FieldDef) =
+          allResolversRaw(view, f)
+            .map(transformResolver(view, f, _))
+
+        def allResolversRaw(view: ViewDef, f: FieldDef) = {
 
           val name = f.name
           val alias = Option(f.alias).getOrElse(f.name)
