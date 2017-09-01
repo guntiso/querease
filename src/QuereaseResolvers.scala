@@ -54,6 +54,19 @@ trait QuereaseResolvers { this: Querease =>
                 s"$refTable[$expression = _]{$refCol}"
               }
           }
+          def impliedSelfResolvers(f: FieldDef) = {
+            val fSaveTo = Option(f.saveTo) getOrElse name
+            saveTo
+              .map(tableMetadata.tableDef)
+              .filter(_.cols.exists(_.name == fSaveTo))
+              .filter(t =>
+                t.pk.exists(_.cols == Seq(fSaveTo)) ||
+                t.uk.exists(_.cols == Seq(fSaveTo)))
+              .map { t =>
+                val expression = Option(f.expression).getOrElse(name)
+                s"${t.name}[$expression = _]{$fSaveTo}"
+              }
+          }
           def impliedRefResolvers(f: FieldDef, refFieldDef: FieldDef) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
@@ -88,8 +101,13 @@ trait QuereaseResolvers { this: Querease =>
                     .orElse(Option(impliedResolvers(refFieldDef, false)).filter(_.size > 0))
                     .getOrElse(impliedRefResolvers(f, refFieldDef))
               }
-          explicitResolvers(f)
-            .orElse(referencedResolvers)
-            .getOrElse(impliedResolvers(f, true))
+
+          if (f.saveTo != null || f.resolver != null)
+            explicitResolvers(f)
+              .orElse(referencedResolvers)
+              .orElse(Option(impliedResolvers(f, true)).filter(_.size > 0))
+              .getOrElse(impliedSelfResolvers(f))
+          else
+            Nil
         }
 }
