@@ -3,7 +3,7 @@ package test
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 
-import querease.FilterResolver
+import querease.FilterTransformer
 
 class FilterResolverTests extends FlatSpec with Matchers {
   private val Identifiers = "blah some_ident1".split("\\s+").toSet
@@ -11,7 +11,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d", "a<<")
 
-  def resolve(f: String, b: String = null) = FilterResolver.resolve(f, b)
+  val transformer = new FilterTransformer {}
+  def resolve(f: String, b: String = null) = transformer.transformFilter(f, null, b)
   private val b = "base"
 
   "filter sugar syntax" should "work properly for identifiers" in {

@@ -1,6 +1,8 @@
 package querease;
 
-object FilterResolver {
+import mojoz.metadata._
+
+trait FilterTransformer {
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val qualifiedIdent = s"$ident(\\.$ident)*"
@@ -26,7 +28,7 @@ object FilterResolver {
   private def parName(name: String) =
     (if (name.contains("_.")) name.substring(name.lastIndexOf("_.") + 2) else name)
       .replace(".", "_")
-  def resolve(filter: String, baseTableAlias: String) = {
+  def transformFilter(filter: String, view: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]], baseTableAlias: String) = {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)
     filter match {
@@ -44,4 +46,10 @@ object FilterResolver {
       case x => x
     }
   }
+}
+
+@deprecated("use FilterTransformer", "querease 1.4-SNAPSHOT")
+object FilterResolver extends FilterTransformer {
+  def resolve(filter: String, baseTableAlias: String) =
+    transformFilter(filter, null, baseTableAlias)
 }

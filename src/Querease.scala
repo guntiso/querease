@@ -27,7 +27,7 @@ import mojoz.metadata._
 
 class NotFoundException(msg: String) extends Exception(msg)
 
-abstract class Querease extends QueryStringBuilder with QuereaseMetadata { this: QuereaseIo =>
+abstract class Querease extends QueryStringBuilder with QuereaseMetadata with FilterTransformer { this: QuereaseIo =>
 
   private[querease] def regex(pattern: String) = ("^" + pattern + "$").r
   private[querease] val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
@@ -596,7 +596,7 @@ trait QueryStringBuilder { this: Querease =>
   def where(view: ViewDef, extraFilter: String) =
     (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
       .filter(_ != null).filter(_ != "")
-      .map(FilterResolver.resolve(_, baseFieldsQualifier(view)))
+      .map(transformFilter(_, view, baseFieldsQualifier(view)))
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
 
   def order(view: ViewDef, orderBy: String) =
