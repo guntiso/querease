@@ -29,9 +29,9 @@ class NotFoundException(msg: String) extends Exception(msg)
 
 abstract class Querease extends QueryStringBuilder with QuereaseMetadata with FilterTransformer { this: QuereaseIo =>
 
-  private[querease] def regex(pattern: String) = ("^" + pattern + "$").r
-  private[querease] val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-  private[querease] val FieldRefRegexp = regex(s"\\^\\s*($ident)\\.($ident)\\s*(\\[(.*)\\])?")
+  private def regex(pattern: String) = ("^" + pattern + "$").r
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
 
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
