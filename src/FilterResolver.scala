@@ -6,7 +6,9 @@ trait FilterTransformer {
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val qualifiedIdent = s"$ident(\\.$ident)*"
+  private val fieldRef = "\\^" + ident
   private val s = "\\s*"
+  private val any = ".*"
   private val Rq = "(!)?"
   private val IntervalOps = "< <=".split("\\s+").toSet
   private val ComparisonOps = "!?in\\b|[<>=!~%$]+"
@@ -20,6 +22,7 @@ trait FilterTransformer {
     qualifiedIdent, ComparisonOps, Rq)
   private val IntervalFilterDef = regex(Rq, IntervalOps.mkString("|"),
     qualifiedIdent, IntervalOps.mkString("|"), Rq)
+  private val RefExpr = regex(fieldRef, any) // FIXME support ref[s] at any position
   private def opt(req: String) = if (req == "!") "" else "?"
   // TODO configure naming
   private def colName(name: String, baseTableAlias: String) =
@@ -42,6 +45,15 @@ trait FilterTransformer {
         val nameFrom = par(name + "_from") // TODO configure naming
         val nameTo = par(name + "_to") // TODO configure naming
         s":$nameFrom${opt(reqFrom)} $opFrom ${col(name)} $opTo :$nameTo${opt(reqTo)}"
+      case RefExpr(refIdent, expr) =>
+        // very basic support for field ref
+        // FIXME support all shortcuts above
+        // FIXME support ref[s] at any position
+        val name = refIdent.substring(1)
+        view.fields
+          .find(f => Option(f.alias).getOrElse(f.name) == name)
+          .map(f => Option(f.expression).getOrElse(f.name) + expr)
+          .getOrElse(filter)
       // cmp_i(ename, ?)        
       case x => x
     }
