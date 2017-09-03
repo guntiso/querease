@@ -5,11 +5,14 @@ import mojoz.metadata._
 trait FilterTransformer {
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private val ident2 = s"$ident\\.$ident"
   private val qualifiedIdent = s"$ident(\\.$ident)*"
   private val fieldRef = "\\^" + ident
   private val s = "\\s*"
   private val any = ".*"
   private val Rq = "(!)?"
+  private val Opt = "(\\?)?"
+  private val choiceRef = ":\\^" + ident2
   private val IntervalOps = "< <=".split("\\s+").toSet
   private val ComparisonOps = "!?in\\b|[<>=!~%$]+"
   private def toGroup(p: String) = if (p startsWith "(") p else s"($p)"
@@ -23,6 +26,8 @@ trait FilterTransformer {
   private val IntervalFilterDef = regex(Rq, IntervalOps.mkString("|"),
     qualifiedIdent, IntervalOps.mkString("|"), Rq)
   private val RefExpr = regex(fieldRef, any) // FIXME support ref[s] at any position
+  // ! ChoiceRefExpr syntax is experimental
+  private val ChoiceRefExpr = regex(qualifiedIdent, "=", choiceRef, Opt)
   private def opt(req: String) = if (req == "!") "" else "?"
   // TODO configure naming
   private def colName(name: String, baseTableAlias: String) =
@@ -54,7 +59,9 @@ trait FilterTransformer {
           .find(f => Option(f.alias).getOrElse(f.name) == name)
           .map(f => Option(f.expression).getOrElse(f.name) + expr)
           .getOrElse(filter)
-      // cmp_i(ename, ?)        
+      case ChoiceRefExpr(name, _, _, choiceRef, opt) =>
+        // TODO ChoiceRefExpr syntax is experimental, not implemented here yet
+        s"/* TODO - CHOICE REF FOUND - $name, $choiceRef, $opt */true"
       case x => x
     }
   }
