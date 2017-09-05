@@ -77,16 +77,14 @@ trait FilterTransformer {
     def resolveFieldRefs(filterExpr: String): String = {
       import parser._
       transformer {
-        case iexpr @ Ident(List(ident)) =>
-          if (ident startsWith "^") {
-            val name = ident.substring(1)
-            Seq(view).filter(_ != null)
-              .flatMap(_.fields)
-              .find(f => Option(f.alias).getOrElse(f.name) == name)
-              .map(f => parse(Option(f.expression).getOrElse(
-                 Option(f.tableAlias).orElse(Option(baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
-              .getOrElse(iexpr)
-          } else iexpr
+        case iexpr @ Ident(List(ident)) if ident startsWith "^" =>
+          val name = ident.substring(1)
+          Seq(view).filter(_ != null)
+            .flatMap(_.fields)
+            .find(f => Option(f.alias).getOrElse(f.name) == name)
+            .map(f => parse(Option(f.expression).getOrElse(
+               Option(f.tableAlias).orElse(Option(baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
+            .getOrElse(iexpr)
       } (parse(filterExpr)).tresql
     }
     filter match {
