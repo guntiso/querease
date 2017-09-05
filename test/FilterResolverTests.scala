@@ -109,6 +109,10 @@ class FilterResolverTests extends FlatSpec with Matchers {
       resolveBlah(s"$fieldRef!", b) should be(s"base.$ident = :$ident")
       resolveBlah(s"$fieldRef !", b) should be(s"base.$ident = :$ident")
       //
+      resolveBlahA(fieldRef) should be(s"ba.$ident = :$ident?")
+      resolveBlahA(s"$fieldRef!") should be(s"ba.$ident = :$ident")
+      resolveBlahA(s"$fieldRef !") should be(s"ba.$ident = :$ident")
+      //
       resolveBlahA(fieldRef, b) should be(s"ba.$ident = :$ident?")
       resolveBlahA(s"$fieldRef!", b) should be(s"ba.$ident = :$ident")
       resolveBlahA(s"$fieldRef !", b) should be(s"ba.$ident = :$ident")
