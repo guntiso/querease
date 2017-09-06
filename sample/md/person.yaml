@@ -131,6 +131,16 @@ fields:
 - name
 - full_name = name || ' ' || surname || ' (#6)' -> id = person[name || ' ' || surname || ' (#7)' = _]{id}
 
+name: person_multitable_choice_resolver_implied_1
+table: person
+fields:
+- full_name = name || ' ' || surname || ' of ' || father.name || ' (#7)'
+
+name: person_multitable_choice_resolver_implied_2
+table: person p1
+fields:
+- full_name = name || ' ' || surname || ' of ' || father.name || ' (#8)'
+
 name: resolver_test_person_1
 table: person
 fields:
@@ -191,3 +201,14 @@ fields:
 - id
 - mother = ^person_multifield_choice_resolver_implied.full_name -> mother_id = 3
 - father = ^person_multifield_choice_resolver_provided.full_name -> father_id = 4
+
+# refarenced resolver with multiple table expression
+name: resolver_test_person_7
+table: person p7
+fields:
+- mother = ^person_multitable_choice_resolver_implied_1.full_name ->
+
+name: resolver_test_person_8
+table: person p8
+fields:
+- mother = ^person_multitable_choice_resolver_implied_2.full_name ->

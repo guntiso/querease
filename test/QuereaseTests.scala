@@ -223,11 +223,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       "mother->mother_id=person[name || surname = _]{id}"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson2) should be(List(
-      "father->father_id=person[name || ' ' || surname || ' (#1)' = _]{id}"
+      "father->father_id=person[name || ' ' || surname || ' (#1)' = _] {person.id}"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson3) should be(List(
       "father->father_id=person[name || ' ' || surname || ' (#4)' = _]{id}",
-      "mother->mother_id=person[name || ' ' || surname || ' (#2)' = _]{id}"
+      "mother->mother_id=person[name || ' ' || surname || ' (#2)' = _] {person.id}"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson4) should be(List(
       "father->father_id=2",
@@ -235,11 +235,17 @@ class QuereaseTests extends FlatSpec with Matchers {
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson5) should be(List(
       "father->father_id=person[name || ' ' || surname || ' (#7)' = _]{id}",
-      "mother->mother_id=person[name || ' ' || surname || ' (#5)' = _]{id}"
+      "mother->mother_id=person[name || ' ' || surname || ' (#5)' = _] {person.id}"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson6) should be(List(
       "father->father_id=4",
       "mother->mother_id=3"
+    ).mkString("; "))
+    resolverKeys(new ResolverTestPerson7) should be(List(
+      "mother->mother_id=person; person[person.father_id father?] person[name || ' ' || surname || ' of ' || father.name || ' (#7)' = _] {person.id}"
+    ).mkString("; "))
+    resolverKeys(new ResolverTestPerson8) should be(List(
+      "mother->mother_id=person p1; p1[p1.father_id father?] person[name || ' ' || surname || ' of ' || father.name || ' (#8)' = _] {p1.id}"
     ).mkString("; "))
   }
   "querease" should "select referenced fields correctly" in {
@@ -279,6 +285,14 @@ class QuereaseTests extends FlatSpec with Matchers {
       "(person[person.id = p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
       "(person[person.id = p6.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
     )
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_7"), Map.empty)._1 should be(
+      "person p7 {" +
+      "(person; person[person.father_id father?] person[person.id = p7.mother_id] {person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
+    )
+    qe.queryStringAndParams(qe.viewDefs("resolver_test_person_8"), Map.empty)._1 should be(
+      "person p8 {" +
+      "(person p1; p1[p1.father_id father?] person[p1.id = p8.mother_id] {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+    )
     qe.queryStringAndParams(qe.viewDefs("ref_test_bank_2"), Map.empty)._1 should be(
       "bank {" +
       "bank.name, " +
@@ -301,6 +315,9 @@ object QuereaseTests {
       .replace("_4", "4") // no underscore before 4 in our database names
       .replace("_5", "5") // no underscore before 5 in our database names
       .replace("_6", "6") // no underscore before 6 in our database names
+      .replace("_7", "7") // no underscore before 7 in our database names
+      .replace("_8", "8") // no underscore before 8 in our database names
+      .replace("_9", "9") // no underscore before 9 in our database names
 
   val qe = new Querease with ScalaDtoQuereaseIo {
 

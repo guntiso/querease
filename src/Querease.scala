@@ -267,8 +267,8 @@ trait QueryStringBuilder { this: Querease =>
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
-  private def queryString(view: ViewDefBase[FieldDefBase[Type]], field: FieldDefBase[Type], filter: String): String = {
-    val (from, pathToAlias) = this.fromAndPathToAlias(view, Seq(field))
+  def queryString(view: ViewDefBase[FieldDefBase[Type]], field: FieldDefBase[Type], exprField: FieldDefBase[Type], filter: String): String = {
+    val (from, pathToAlias) = this.fromAndPathToAlias(view, Seq(field, exprField).filter(_ != null))
     val where = Option(filter).filter(_ != "")
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
     val groupBy = this.groupBy(view)
@@ -398,7 +398,7 @@ trait QueryStringBuilder { this: Querease =>
                   throw new RuntimeException(refErrorMessage("Ambiguous refs"))
               }
             }
-            "(" + queryString(refViewDef, refFieldDef, filter) + ")"
+            "(" + queryString(refViewDef, refFieldDef, null, filter) + ")"
         }
       } else {
        qualify(view, f.expression, pathToAlias)

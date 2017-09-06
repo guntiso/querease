@@ -67,7 +67,7 @@ trait QuereaseResolvers { this: Querease =>
                 s"${t.name}[$expression = _]{$fSaveTo}"
               }
           }
-          def impliedRefResolvers(f: FieldDef, refFieldDef: FieldDef) = {
+          def impliedRefResolvers(f: FieldDef, refViewDef: ViewDef, refFieldDef: FieldDef) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
               .map(tableMetadata.tableDef)
@@ -78,6 +78,11 @@ trait QuereaseResolvers { this: Querease =>
                 val refCol = ref.refCols(0)
                 val expression = Option(refFieldDef.expression).getOrElse(refFieldDef.name)
                 s"$refTable[$expression = _]{$refCol}"
+                // TODO check refTable in view tables?
+                val refColField =
+                  (new mojoz.metadata.FieldDef(refCol))
+                    .copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias)
+                queryString(refViewDef, refColField, refFieldDef, s"$expression = _")
               }
           }
           def referencedResolvers =
@@ -99,7 +104,7 @@ trait QuereaseResolvers { this: Querease =>
                     }
                   explicitResolvers(refFieldDef)
                     .orElse(Option(impliedResolvers(refFieldDef, false)).filter(_.size > 0))
-                    .getOrElse(impliedRefResolvers(f, refFieldDef))
+                    .getOrElse(impliedRefResolvers(f, refViewDef, refFieldDef))
               }
 
           if (f.saveTo != null || f.resolver != null)
