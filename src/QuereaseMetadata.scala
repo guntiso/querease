@@ -2,6 +2,8 @@ package querease
 
 import org.tresql.Result
 import org.tresql.RowLike
+import org.tresql.compiling.CompilerFunctions
+import org.tresql.compiling.Functions
 import mojoz.metadata._
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
@@ -28,7 +30,10 @@ trait QuereaseMetadata {
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
   lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs)
-  lazy val tresqlMetadata = new TresqlMetadata(tableMetadata.tableDefs, null)
+  lazy val functionSignaturesClass: Class[_] = classOf[Functions]
+  lazy val tresqlMetadata = new TresqlMetadata(tableMetadata.tableDefs, null) with CompilerFunctions {
+    override def compilerFunctions = functionSignaturesClass
+  }
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefs: Map[String, ViewDef] =
