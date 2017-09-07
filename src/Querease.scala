@@ -17,6 +17,8 @@ import org.tresql.Query
 import org.tresql.QueryParser
 import org.tresql.QueryParser.Ident
 import org.tresql.QueryParser.Null
+import org.tresql.QueryParser.Traverser
+import org.tresql.QueryParser.{ traverser, parseExp }
 
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
@@ -227,6 +229,14 @@ trait QueryStringBuilder { this: Querease =>
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
+  private def unusedName(name: String, usedNames: collection.Set[String]): String = {
+    @tailrec
+    def unusedName(index: Int): String =
+      // FIXME ensure max identifier length for db is not exceeded!
+      if (!(usedNames contains (name + "_" + index))) name + "_" + index
+      else unusedName(index + 1)
+    if (!usedNames.contains(name)) name else unusedName(2)
+  }
   def baseFieldsQualifier(view: ViewDefBase[FieldDefBase[Type]]): String = {
     // TODO do not parse multiple times!
     def parsedJoins =
@@ -357,13 +367,19 @@ trait QueryStringBuilder { this: Querease =>
                 throw new RuntimeException(
                   s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
               }
-            val filter = Option(refFilter).map(_.trim).filter(_ != "") getOrElse {
+            def queryColExpr(filter: String) =
+              queryString(refViewDef, refFieldDef, null, filter)
+            Option(refFilter).map(_.trim).filter(_ != "").map(_ => "(" + queryColExpr(refFilter) + ")").getOrElse {
               val table = view.table
               val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
-              val viewName = view.name
-              val tableDef = tableMetadata.tableDef(table)
               val refTable = refViewDef.table
               val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
+              if (table == null || refTable == null)
+                throw new RuntimeException(
+                  s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
+                    " can not be joined because table not specified")
+              val viewName = view.name
+              val tableDef = tableMetadata.tableDef(table)
               val joinCol = f.saveTo
               val refs =
                 if (joinCol != null)
@@ -391,14 +407,37 @@ trait QueryStringBuilder { this: Querease =>
                 case 0 =>
                   throw new RuntimeException(refErrorMessage("No ref found"))
                 case 1 =>
-                  refs(0).cols.zip(refs(0).refCols).map {
+                  val colsRefCols = refs(0).cols.zip(refs(0).refCols)
+                  def joinFilter(tableOrAlias: String) = colsRefCols.map {
                     case (col, refCol) => s"$refTableOrAlias.$refCol = $tableOrAlias.$col"
                   }.mkString(" & ")
+                  def usedNamesExtractor: Traverser[Set[String]] = {
+                    names => { case i: Ident => names + i.ident.head }
+                  }
+                  val usedNames =
+                    traverser(usedNamesExtractor)(Set.empty)(parseExp(queryColExpr("true")))
+                  if (usedNames contains tableOrAlias) {
+                    val fixedTableAlias = unusedName(tableOrAlias, usedNames)
+                    val colsString = colsRefCols.map(_._1).mkString(", ")
+                    val qColsString = colsRefCols.map { case (col, refCol) => s"$tableOrAlias.$col" }.mkString(", ")
+                    // FIXME pk may be missing; no need for helper select and helperJoin, use values instead!
+                    if (tableDef.pk == null || tableDef.pk.isEmpty || tableDef.pk.get.cols.size == 0)
+                      throw new RuntimeException(
+                        s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
+                          s" can not be joined because of name clash - $tableOrAlias - and missing primary key")
+                    val helperJoin =
+                      tableDef.pk.get.cols
+                        .map(col => s"$fixedTableAlias.$col = $tableOrAlias.$col")
+                        .mkString(" & ")
+                    s"($fixedTableAlias(# $colsString) {$table $fixedTableAlias[$helperJoin]{$qColsString}}" +
+                      s" $fixedTableAlias [${joinFilter(fixedTableAlias)}] ${queryColExpr(null)})"
+                  } else {
+                    "(" + queryColExpr(joinFilter(tableOrAlias)) + ")"
+                  }
                 case _ =>
                   throw new RuntimeException(refErrorMessage("Ambiguous refs"))
               }
             }
-            "(" + queryString(refViewDef, refFieldDef, null, filter) + ")"
         }
       } else {
        qualify(view, f.expression, pathToAlias)
@@ -552,14 +591,9 @@ trait QueryStringBuilder { this: Querease =>
         aliasToTable += (baseQualifier -> view.table)
     }
     aliasToTable ++= joinAliasToTable
-    @tailrec
-    def unusedName(name: String, index: Int): String =
-      // FIXME ensure max identifier length for db is not exceeded!
-      if (!(usedNames contains (name + "_" + index))) name + "_" + index
-      else unusedName(name, index + 1)
     missing foreach { path =>
       val name = (path takeRight 1).head
-      val alias = if (usedNames contains name) unusedName(name, 2) else name
+      val alias = unusedName(name, usedNames)
       pathToAlias += path -> alias
       usedNames += alias
     }

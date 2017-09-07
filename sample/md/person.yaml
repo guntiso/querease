@@ -212,3 +212,19 @@ name: resolver_test_person_8
 table: person p8
 fields:
 - mother = ^person_multitable_choice_resolver_implied_2.full_name ->
+
+# test alias clash resolvement in implicit resolver joins
+name: resolver_alias_clash_test_person_7_a
+table: person
+fields:
+- mother = ^person_multitable_choice_resolver_implied_1.full_name ->
+
+name: resolver_alias_clash_test_person_8_a
+table: person p1
+fields:
+- mother = ^person_multitable_choice_resolver_implied_2.full_name ->
+
+name: resolver_alias_clash_test_person_8_b
+table: person father
+fields:
+- mother = ^person_multitable_choice_resolver_implied_2.full_name ->
