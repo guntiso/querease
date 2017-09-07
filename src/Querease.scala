@@ -435,7 +435,7 @@ trait QueryStringBuilder { this: Querease =>
                       tableDef.pk.get.cols
                         .map(col => s"$fixedTableAlias.$col = $tableOrAlias.$col")
                         .mkString(" & ")
-                    s"($fixedTableAlias(# $colsString) {$table $fixedTableAlias[$helperJoin]{$qColsString}}" +
+                    s"($fixedTableAlias(# $colsString) {{$qColsString}}" +
                       s" $fixedTableAlias [${joinFilter(fixedTableAlias)}] ${queryColExpr(null)})"
                   } else {
                     "(" + queryColExpr(joinFilter(tableOrAlias)) + ")"
