@@ -320,6 +320,18 @@ class QuereaseTests extends FlatSpec with Matchers {
       "(father_2(# mother_id) {person father_2[father_2.id = father.id]{father.mother_id}} father_2 [p1.id = father_2.mother_id] person p1;" +
       " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
+
+    // test implied join to self
+    qe.queryStringAndParams(qe.viewDefs("self_ref_test_person_1"), Map.empty)._1 should be(
+      "person {" +
+      "(person_2(# id) {person person_2[person_2.id = person.id]{person.id}} person_2 [p1.id = person_2.id] person p1;" +
+      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDefs("self_ref_test_person_2"), Map.empty)._1 should be(
+      "person p1 {" +
+      "(p1_2(# id) {person p1_2[p1_2.id = p1.id]{p1.id}} p1_2 [p1.id = p1_2.id] person p1;" +
+      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) full_name}"
+    )
   }
 }
 

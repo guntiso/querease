@@ -49,3 +49,4 @@ columns:
 - sex                  ! 1   (M F)
 - mother.id              person.id
 - father.id              person.id
+pk: id

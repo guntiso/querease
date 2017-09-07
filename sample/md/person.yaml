@@ -228,3 +228,13 @@ name: resolver_alias_clash_test_person_8_b
 table: person father
 fields:
 - mother = ^person_multitable_choice_resolver_implied_2.full_name ->
+
+name: self_ref_test_person_1
+table: person
+fields:
+- full_name = ^person_multitable_choice_resolver_implied_2.full_name
+
+name: self_ref_test_person_2
+table: person p1
+fields:
+- full_name = ^person_multitable_choice_resolver_implied_2.full_name

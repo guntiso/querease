@@ -380,6 +380,7 @@ trait QueryStringBuilder { this: Querease =>
                     " can not be joined because table not specified")
               val viewName = view.name
               val tableDef = tableMetadata.tableDef(table)
+              val hasPk = tableDef.pk != null && tableDef.pk.isDefined && tableDef.pk.get.cols.size > 0
               val joinCol = f.saveTo
               val refs =
                 if (joinCol != null)
@@ -396,6 +397,11 @@ trait QueryStringBuilder { this: Querease =>
                       allRefsTo.filter(_.defaultRefTableAlias == alias)
                   if (bestFitRefsTo.size == 1)
                     bestFitRefsTo
+                  else if (table == refTable && hasPk)
+                    Seq(TableDef.Ref(
+                      tableDef.name, tableDef.pk.get.cols,
+                      tableDef.name, tableDef.pk.get.cols,
+                      null, null, null, null))
                   else
                     allRefsTo
                 }
@@ -421,7 +427,7 @@ trait QueryStringBuilder { this: Querease =>
                     val colsString = colsRefCols.map(_._1).mkString(", ")
                     val qColsString = colsRefCols.map { case (col, refCol) => s"$tableOrAlias.$col" }.mkString(", ")
                     // FIXME pk may be missing; no need for helper select and helperJoin, use values instead!
-                    if (tableDef.pk == null || tableDef.pk.isEmpty || tableDef.pk.get.cols.size == 0)
+                    if (!hasPk)
                       throw new RuntimeException(
                         s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
                           s" can not be joined because of name clash - $tableOrAlias - and missing primary key")
