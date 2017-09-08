@@ -444,15 +444,6 @@ trait QueryStringBuilder { this: Querease =>
                     val fixedTableAlias = unusedName(tableOrAlias, usedNames)
                     val colsString = colsRefCols.map(_._1).mkString(", ")
                     val qColsString = colsRefCols.map { case (col, refCol) => s"$tableOrAlias.$col" }.mkString(", ")
-                    // FIXME pk may be missing; no need for helper select and helperJoin, use values instead!
-                    if (key == null)
-                      throw new RuntimeException(
-                        s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
-                          s" can not be joined because of name clash - $tableOrAlias - and missing key")
-                    val helperJoin =
-                      tableDef.pk.get.cols
-                        .map(col => s"$fixedTableAlias.$col = $tableOrAlias.$col")
-                        .mkString(" & ")
                     s"($fixedTableAlias(# $colsString) {{$qColsString}}" +
                       s" $fixedTableAlias [${joinFilter(fixedTableAlias)}] ${queryColExpr(null)})"
                   } else {
