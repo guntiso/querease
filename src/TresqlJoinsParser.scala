@@ -9,6 +9,7 @@ import mojoz.metadata.in.JoinsParser
 import mojoz.metadata.ColumnDef
 import mojoz.metadata.Type
 
+import scala.collection.immutable.Seq
 import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {

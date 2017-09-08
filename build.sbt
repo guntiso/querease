@@ -19,7 +19,7 @@ resolvers ++= Seq(
 )
 
 val tresqlV = "8.2-SNAPSHOT"
-val mojozV = "0.6-SNAPSHOT"
+val mojozV = "0.7-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
@@ -61,7 +61,7 @@ sourceGenerators in Test += Def.task {
     import mojoz.metadata._
     import mojoz.metadata.in._
     import mojoz.metadata.out._
-    val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toSeq
+    val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
     val viewDefs = YamlViewDefLoader(tableMd, yamlMd,
       new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs, null))).viewDefs

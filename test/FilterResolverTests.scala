@@ -3,6 +3,7 @@ package test
 import mojoz.metadata._
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
+import scala.collection.immutable.Seq
 
 import querease.FilterTransformer
 
