@@ -5,6 +5,7 @@ columns:
 - bank.id              !               : Bankas ID, sasaiste ar Klasifikatori:Bankas.
 - billing_account      ! 64            : Norēķinu konts.
 - last_modified        ! dateTime      : Pēdējo izmaiņu datums un laiks.
+pk: id
 
 table:   account_currency
 comment: Kontam pieejamās norēķinu valūtas - sistēmā konfigurētās valūtas pret kontu

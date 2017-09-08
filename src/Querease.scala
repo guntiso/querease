@@ -369,46 +369,64 @@ trait QueryStringBuilder { this: Querease =>
               }
             def queryColExpr(filter: String) =
               queryString(refViewDef, refFieldDef, null, filter)
-            Option(refFilter).map(_.trim).filter(_ != "").map(_ => "(" + queryColExpr(refFilter) + ")").getOrElse {
-              val table = view.table
-              val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
-              val refTable = refViewDef.table
-              val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
+            val table = view.table
+            val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
+            val refTable = refViewDef.table
+            val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
+            val tableDefOpt = Option(table).map(tableMetadata.tableDef)
+            val key = tableDefOpt
+              .map(_.pk).filter(_ != null).filter(_.isDefined).map(_.get)
+              .getOrElse(tableDefOpt
+                .map(_.uk).filter(_ != null).map(_.filter(_ != null)).filter(_.size > 0).map(_.head)
+                .orNull)
+            val allRefs = tableDefOpt.map { tableDef =>
+              if (table == refTable && key != null)
+                tableDef.refs :+
+                  TableDef.Ref(
+                    tableDef.name, key.cols,
+                    tableDef.name, key.cols,
+                    null, "this", null, null)
+               else
+                 tableDef.refs
+            } getOrElse Nil
+            val filterOrResolver = Option(refFilter).map(_.trim).filter(_ != "").orNull
+            val resolverIsRefTableAlias =
+              filterOrResolver != null &&
+                (filterOrResolver == "this" || allRefs.exists(_.defaultRefTableAlias == filterOrResolver))
+            if (filterOrResolver == null || resolverIsRefTableAlias) {
               if (table == null || refTable == null)
                 throw new RuntimeException(
                   s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
                     " can not be joined because table not specified")
               val viewName = view.name
-              val tableDef = tableMetadata.tableDef(table)
-              val hasPk = tableDef.pk != null && tableDef.pk.isDefined && tableDef.pk.get.cols.size > 0
+              val tableDef = tableDefOpt.get
               val joinCol = f.saveTo
-              val refs =
-                if (joinCol != null)
-                  tableDef.refs
-                    .filter(_.refTable == refViewDef.table)
-                    .filter(_.cols.contains(joinCol))
-                else {
-                  val allRefsTo = tableDef.refs
-                    .filter(_.refTable == refViewDef.table)
-                  val bestFitRefsTo =
-                    if (allRefsTo.size == 1)
-                      allRefsTo
-                    else
-                      allRefsTo.filter(_.defaultRefTableAlias == alias)
-                  if (bestFitRefsTo.size == 1)
-                    bestFitRefsTo
-                  else if (table == refTable && hasPk)
-                    Seq(TableDef.Ref(
-                      tableDef.name, tableDef.pk.get.cols,
-                      tableDef.name, tableDef.pk.get.cols,
-                      null, null, null, null))
-                  else
-                    allRefsTo
+              val allRefsTo = allRefs.filter(_.refTable == refViewDef.table)
+              val refs = Option(allRefsTo)
+                .map { refs =>
+                  if (resolverIsRefTableAlias) {
+                    refs.filter(_.defaultRefTableAlias == filterOrResolver)
+                  } else refs
                 }
+                .map { refs =>
+                  if (refs.size > 1) {
+                    Option(refs.filter(_.defaultRefTableAlias == alias))
+                      .filter(_.size > 0)
+                      .getOrElse(refs)
+                  } else refs
+                }
+                .map { refs =>
+                  if (refs.size > 1) {
+                    Option(refs.filter(_.cols.contains(joinCol)))
+                      .filter(_.size > 0)
+                      .getOrElse(refs)
+                  } else refs
+                }
+                .get
               def refErrorMessage(prefix: String) =
-                s"$prefix from ${table}${Option(joinCol).map("." + _) getOrElse ""}" +
+                s"$prefix from ${table}" +
                   s" to $refTable (of $refViewName referenced from $viewName.$alias)" +
-                  ", please provide filter explicitly"
+                  ", please provide resolver or filter explicitly"
               refs.size match {
                 case 0 =>
                   throw new RuntimeException(refErrorMessage("No ref found"))
@@ -427,10 +445,10 @@ trait QueryStringBuilder { this: Querease =>
                     val colsString = colsRefCols.map(_._1).mkString(", ")
                     val qColsString = colsRefCols.map { case (col, refCol) => s"$tableOrAlias.$col" }.mkString(", ")
                     // FIXME pk may be missing; no need for helper select and helperJoin, use values instead!
-                    if (!hasPk)
+                    if (key == null)
                       throw new RuntimeException(
                         s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
-                          s" can not be joined because of name clash - $tableOrAlias - and missing primary key")
+                          s" can not be joined because of name clash - $tableOrAlias - and missing key")
                     val helperJoin =
                       tableDef.pk.get.cols
                         .map(col => s"$fixedTableAlias.$col = $tableOrAlias.$col")
@@ -443,6 +461,8 @@ trait QueryStringBuilder { this: Querease =>
                 case _ =>
                   throw new RuntimeException(refErrorMessage("Ambiguous refs"))
               }
+            } else {
+              "(" + queryColExpr(refFilter) + ")"
             }
         }
       } else {

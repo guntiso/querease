@@ -229,12 +229,12 @@ table: person father
 fields:
 - mother = ^person_multitable_choice_resolver_implied_2.full_name ->
 
-name: self_ref_test_person_1
-table: person
-fields:
-- full_name = ^person_multitable_choice_resolver_implied_2.full_name
-
-name: self_ref_test_person_2
+# test ambiguity resolver - using default ref table alias or 'this'
+name: ambiguity_resolver_test_person_1
 table: person p1
 fields:
-- full_name = ^person_multitable_choice_resolver_implied_2.full_name
+- this_name = ^person_choice_without_resolver.full_name [ this ]
+- fath_name = ^person_choice_without_resolver.full_name [father]
+- moth_name = ^person_choice_without_resolver.full_name [mother]
+- mother    = ^person_choice_without_resolver.full_name -> father_id
+- ma        = ^person_choice_without_resolver.full_name -> mother_id

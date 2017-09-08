@@ -11,6 +11,10 @@ fields:
 - bank.code
 - bank.name
 
+name: account_choice
+extends: account
+fields:
+- name = bank.code || ', ' || bank.name || ', ' || id
 
 name: resolver_test_account_1
 table: account
@@ -29,3 +33,13 @@ table: account_currency
 fields:
 - account = account.billing_account -> account_id
 - currency.name -> currency_code
+
+name: self_ref_test_account_1
+table: account
+fields:
+- full_name = ^account_choice.name
+
+name: self_ref_test_account_2
+table: account a1
+fields:
+- full_name = ^account_choice.name

@@ -322,15 +322,22 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
 
     // test implied join to self
-    qe.queryStringAndParams(qe.viewDefs("self_ref_test_person_1"), Map.empty)._1 should be(
-      "person {" +
-      "(person_2(# id) {{person.id}} person_2 [p1.id = person_2.id] person p1;" +
-      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) full_name}"
+    qe.queryStringAndParams(qe.viewDefs("self_ref_test_account_1"), Map.empty)._1 should be(
+      "account {(account_2(# id) {{account.id}} account_2 [account.id = account_2.id] account;" +
+      " account/bank? {bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
     )
-    qe.queryStringAndParams(qe.viewDefs("self_ref_test_person_2"), Map.empty)._1 should be(
+    qe.queryStringAndParams(qe.viewDefs("self_ref_test_account_2"), Map.empty)._1 should be(
+      "account a1 {(account; account/bank?[account.id = a1.id] {bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
+    )
+
+    // test ambiguity resolver
+    qe.queryStringAndParams(qe.viewDefs("ambiguity_resolver_test_person_1"), Map.empty)._1 should be(
       "person p1 {" +
-      "(p1_2(# id) {{p1.id}} p1_2 [p1.id = p1_2.id] person p1;" +
-      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) full_name}"
+      "(person[person.id = p1.id] {person.name || ' ' || person.surname || ' (#1)' full_name}) this_name, " +
+      "(person[person.id = p1.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) fath_name, " +
+      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) moth_name, " +
+      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) ma}"
     )
   }
 }
