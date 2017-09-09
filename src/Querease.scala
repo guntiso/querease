@@ -5,6 +5,7 @@ import scala.language.existentials
 import scala.language.postfixOps
 import scala.collection.mutable
 import scala.util.Try
+import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
 
 import org.tresql.Resources
@@ -536,6 +537,12 @@ trait QueryStringBuilder { this: Querease =>
   def fromAndPathToAlias(view: ViewDefBase[FieldDefBase[Type]]): (String, Map[List[String], String]) =
     fromAndPathToAlias(view, view.fields)
   private def fromAndPathToAlias(view: ViewDefBase[FieldDefBase[Type]], view_fields: Seq[FieldDefBase[Type]]): (String, Map[List[String], String]) = {
+    try fromAndPathToAliasUnhandled(view, view_fields)
+    catch {
+      case NonFatal(ex) => throw new RuntimeException("Failed to build query for " + view.name, ex)
+    }
+  }
+  private def fromAndPathToAliasUnhandled(view: ViewDefBase[FieldDefBase[Type]], view_fields: Seq[FieldDefBase[Type]]): (String, Map[List[String], String]) = {
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
     def isExpressionOrPath(f: FieldDefBase[Type]) =
