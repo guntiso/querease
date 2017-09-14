@@ -135,7 +135,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
   }
 
   "expression substitution" should "work properly for field refs" in {
-    def filterExpr(s: String) = s"transform_me($s) = :'mypar'"
+    def filterExpr(s: String) = s"transform_me($s) = :mypar"
     val fieldName = fBlah.name
     val fieldRef = FieldRefs.head
     val fieldExpr = fBlahExpr.expression

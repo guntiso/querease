@@ -2,9 +2,9 @@ package querease
 
 import java.io.File
 
-import org.tresql.compiling.CompilerFunctions
-import org.tresql.compiling.CompilerMetaDataFactory
-import org.tresql.MetaData
+import org.tresql.compiling.CompilerFunctionMetadata
+import org.tresql.compiling.CompilerMetadataFactory
+import org.tresql.Metadata
 import org.tresql.metadata.Col
 import org.tresql.metadata.Key
 import org.tresql.metadata.{ Ref => TresqlRef }
@@ -19,8 +19,8 @@ import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
-  val procedureMetadata: MetaData)
-  extends MetaData with TypeMapper {
+  val procedureMetadata: Metadata)
+  extends Metadata with TypeMapper {
 
   val tables = tableDefs.map { td =>
     def toTresqlCol(c: ColumnDef[Type]) = {
@@ -69,17 +69,18 @@ class TresqlMetadata(
   }
 }
 
-class TresqlMetadataFactory extends CompilerMetaDataFactory {
+class TresqlMetadataFactory extends CompilerMetadataFactory {
   /** Creates tresql compiler metadata by loading table metadata (as produced by
    *  [[querease.TresqlMetadata.tableMetadataString]]) and instantiating
    *  function signatures class.
    *
    *  Expects "tableMetadataFile" and "functions" keys in conf parameter.
-   *  Defaults to "tresql-table-metadata.yaml" and "org.tresql.compiling.Functions"
+   *  Defaults to "tresql-table-metadata.yaml" and "org.tresql.compiling.TresqlFunctionSignatures"
    */
   override def create(conf: Map[String, String]) = {
     val tableMetadataFileName = conf.getOrElse("tableMetadataFile", "tresql-table-metadata.yaml")
-    val functionSignaturesClassName = conf.getOrElse("functions", "org.tresql.compiling.Functions")
+    val functionSignaturesClassName =
+      conf.getOrElse("functions", "org.tresql.compiling.TresqlFunctionSignatures")
     val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions).tableDefs
@@ -88,8 +89,8 @@ class TresqlMetadataFactory extends CompilerMetaDataFactory {
       new TresqlMetadata(tableDefs, procedureMetadata)
     else {
       val f = Class.forName(functionSignaturesClassName)
-      new TresqlMetadata(tableDefs, procedureMetadata) with CompilerFunctions {
-        override def compilerFunctions = f
+      new TresqlMetadata(tableDefs, procedureMetadata) with CompilerFunctionMetadata {
+        override def compilerFunctionSignatures = f
       }
     }
   }

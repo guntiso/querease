@@ -207,7 +207,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     ).mkString("; "))
     keys(new ResolverTestAccount2) should be(List(
       "code->",
-      "code->bank_id=bank[code = :'code->' && :'some_other_variable']{id}",
+      "code->bank_id=bank[code = :'code->' && :some_other_variable]{id}",
       "id"
     ).mkString("; "))
     resolverKeys(new ResolverTestBank1) should be("name->name='My bank'")
@@ -377,7 +377,7 @@ object QuereaseTests {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
     Env.logger = (msg, level) => println(msg)
-    Env.metaData = new TresqlMetadata(qe.tableMetadata.tableDefs, null)
+    Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs, null)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
   }

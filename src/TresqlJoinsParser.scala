@@ -14,8 +14,8 @@ import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val oldMetadata = Env.metaData
-    Env.metaData = tresqlMetadata
+    val oldMetadata = Env.metadata
+    Env.metadata = tresqlMetadata
    try {
     val joinsStr = (Option(baseTable).toList ++ joins).mkString("; ")
     //prefix joins with [] so that compiler knows that it is a join not division operation
@@ -68,7 +68,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
      case x => exprNotSupportedException(x)
     }
    } finally {
-      Env.metaData = oldMetadata
+      Env.metadata = oldMetadata
    }
   }
 }
