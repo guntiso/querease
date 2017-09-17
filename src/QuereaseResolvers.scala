@@ -51,7 +51,7 @@ trait QuereaseResolvers { this: Querease =>
                   else
                     Option(f.expression)
                 val expression = expressionOpt.getOrElse(name)
-                s"$refTable[$expression = _]{$refCol}"
+                s"$refTable[$expression = _]{$refCol}" // FIXME use queryString(...)
               }
           }
           def impliedSelfResolvers(f: FieldDef) = {
@@ -63,8 +63,11 @@ trait QuereaseResolvers { this: Querease =>
                 t.pk.exists(_.cols == Seq(fSaveTo)) ||
                 t.uk.exists(_.cols == Seq(fSaveTo)))
               .map { t =>
+                val saveToField =
+                  (new mojoz.metadata.FieldDef(fSaveTo))
+                    .copy(table = t.name /* TODO?  tableAlias = refViewDef.tableAlias*/)
                 val expression = Option(f.expression).getOrElse(name)
-                s"${t.name}[$expression = _]{$fSaveTo}"
+                queryString(view, saveToField, f, s"$expression = _")
               }
           }
           def impliedRefResolvers(f: FieldDef, refViewDef: ViewDef, refFieldDef: FieldDef) = {

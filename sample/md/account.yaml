@@ -28,6 +28,12 @@ fields:
 - id
 - code = -> bank_id = bank[code = :code && :some_other_variable]{id}
 
+name: resolver_test_account_self_ref_1
+table: account
+fields:
+- name = bank.code || ', ' || bank.name || ', ' || account.id -> id
+# name = bank.code || ', ' || bank.name || ', ' ||         id -> id   # FIXME! Table alias for id?
+
 name: resolver_test_account_currency_1
 table: account_currency
 fields:
