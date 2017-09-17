@@ -103,7 +103,6 @@ trait QuereaseResolvers { this: Querease =>
                         s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
                     }
                   explicitResolvers(refFieldDef)
-                    .orElse(Option(impliedResolvers(refFieldDef, false)).filter(_.size > 0))
                     .getOrElse(impliedRefResolvers(f, refViewDef, refFieldDef))
               }
 
