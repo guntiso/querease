@@ -25,7 +25,7 @@ trait QuereaseResolvers { this: Querease =>
             Option(f.resolver)
               .map(QueryParser.parseExp)
               .map(QueryParser.transformer {
-                case v@Variable(a, _, _, _) if a == alias =>
+                case v@Variable(a, _, _) if a == alias =>
                   v.copy(variable = alias + "->")
               })
               .map(_.tresql)
