@@ -80,7 +80,6 @@ trait QuereaseResolvers { this: Querease =>
                 val refTable = ref.refTable
                 val refCol = ref.refCols(0)
                 val expression = Option(refFieldDef.expression).getOrElse(refFieldDef.name)
-                s"$refTable[$expression = _]{$refCol}"
                 // TODO check refTable in view tables?
                 val refColField =
                   (new mojoz.metadata.FieldDef(refCol))
