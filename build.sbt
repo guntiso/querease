@@ -2,14 +2,14 @@ name := "querease"
 
 organization := "org.mojoz"
 
-val scalaV = "2.12.3"
+val scalaV = "2.12.4"
 
 scalaVersion := scalaV
 
 crossScalaVersions := Seq(
   scalaV,
-  "2.11.11",
-  "2.10.6"
+  "2.11.12",
+  "2.10.7"
 )
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
