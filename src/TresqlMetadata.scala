@@ -14,17 +14,19 @@ import org.tresql.metadata.TypeMapper
 import mojoz.metadata.io._
 import mojoz.metadata.in._
 import mojoz.metadata.Type
+import mojoz.metadata.TypeDef
 import mojoz.metadata.TypeMetadata
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
-  val procedureMetadata: Metadata)
+  val procedureMetadata: Metadata,
+  val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs)
   extends Metadata with TypeMapper {
 
   val simpleTypeNameToXsdSimpleTypeName =
-    TypeMetadata.customizedTypeDefs
+    typeDefs
       .map(td => td.name -> td.targetNames.get("xsd").orNull)
       .filter(_._2 != null)
       .toMap
