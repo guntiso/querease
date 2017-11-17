@@ -16,7 +16,6 @@ import mojoz.metadata._
 import mojoz.metadata.in._
 import mojoz.metadata.io.MdConventions
 import mojoz.metadata.io.SimplePatternMdConventions
-import mojoz.metadata.out.ScalaClassWriter
 import mojoz.metadata.TableDef.TableDefBase
 import mojoz.metadata.ColumnDef.ColumnDefBase
 

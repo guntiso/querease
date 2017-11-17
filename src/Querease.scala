@@ -692,8 +692,8 @@ trait QueryStringBuilder { this: Querease =>
     Option(view.table)
       .map(_ + Option(view.tableAlias).map(" " + _).getOrElse(""))
       .orNull
-  def joinsParser: JoinsParser =
-    new TresqlJoinsParser(new TresqlMetadata(tableMetadata.tableDefs, null))
+  lazy val joinsParser: JoinsParser =
+    tresqlJoinsParser
 /*
   val values = if (filter == null) Map[String, Any]() else filter.map(f => {
     val v = f._2.Value

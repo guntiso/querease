@@ -16,6 +16,7 @@ import mojoz.metadata.in._
 import mojoz.metadata.Type
 import mojoz.metadata.TypeDef
 import mojoz.metadata.TypeMetadata
+import mojoz.metadata.YamlLoadInfo
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
@@ -55,12 +56,11 @@ class TresqlMetadata(
   override def procedureOption(name: String) =
     if (procedureMetadata != null) procedureMetadata.procedureOption(name)
     else None
-
   lazy val tableMetadataString = {
     def colToString(col: ColumnDef[Type]) =
       col.name +
         (if (!col.nullable) " !" else "") +
-        " " + col.type_.name
+        " " + simpleTypeNameToXsdSimpleTypeName.getOrElse(col.type_.name, col.type_.name) // XXX
     def refToString(cols: Seq[String], refTableName: String, refCols: Seq[String]) =
       cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions
@@ -93,13 +93,14 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
       conf.getOrElse("functions", "org.tresql.compiling.TresqlFunctionSignatures")
     val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
-    val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions).tableDefs
+    val typeDefs = TypeMetadata.defaultTypeDefs // XXX
+    val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
     val procedureMetadata = null // TODO?
     if (functionSignaturesClassName == null)
-      new TresqlMetadata(tableDefs, procedureMetadata)
+      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs = Nil)
     else {
       val f = Class.forName(functionSignaturesClassName)
-      new TresqlMetadata(tableDefs, procedureMetadata) with CompilerFunctionMetadata {
+      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs = Nil) with CompilerFunctionMetadata {
         override def compilerFunctionSignatures = f
       }
     }

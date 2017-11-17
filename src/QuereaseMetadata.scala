@@ -11,6 +11,7 @@ import mojoz.metadata.TableDef.TableDefBase
 import mojoz.metadata.ColumnDef.ColumnDefBase
 import mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
+import scala.collection.immutable.Seq
 
 trait QuereaseMetadata {
 
@@ -28,16 +29,17 @@ trait QuereaseMetadata {
 
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
+  lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
-    new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs)
+    new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
   lazy val functionSignaturesClass: Class[_] = classOf[TresqlFunctionSignatures]
-  lazy val tresqlMetadata = new TresqlMetadata(tableMetadata.tableDefs, null) with CompilerFunctionMetadata {
+  lazy val tresqlMetadata = new TresqlMetadata(tableMetadata.tableDefs, null, typeDefs) with CompilerFunctionMetadata {
     override def compilerFunctionSignatures = functionSignaturesClass
   }
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefs: Map[String, ViewDef] =
-    YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
+    YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
       .extendedViewDefs.asInstanceOf[Map[String, ViewDef]]
   lazy val viewNameToFieldOrdering = viewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
 
