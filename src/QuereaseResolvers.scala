@@ -1,11 +1,8 @@
 package querease
 
-import org.tresql.QueryParser
-import org.tresql.QueryParser.Ident
-import org.tresql.QueryParser.Variable
-
 trait QuereaseResolvers { this: Querease =>
 
+        import parser._
         def allResolvers(view: ViewDef, f: FieldDef) =
           allResolversRaw(view, f)
             .map(transformResolver(view, f, _))
@@ -23,8 +20,8 @@ trait QuereaseResolvers { this: Querease =>
           // TODO support some qualifiers in expression?
           def explicitResolvers(f: FieldDef) =
             Option(f.resolver)
-              .map(QueryParser.parseExp)
-              .map(QueryParser.transformer {
+              .map(parse)
+              .map(transformer {
                 case v@Variable(a, _, _) if a == alias =>
                   v.copy(variable = alias + "->")
               })
@@ -42,8 +39,8 @@ trait QuereaseResolvers { this: Querease =>
                 val expressionOpt =
                   if (doRebaseTable)
                     Option(f.expression)
-                    .map(QueryParser.parseExp)
-                    .map(QueryParser.transformer {
+                    .map(parse)
+                    .map(transformer {
                       case i: Ident =>
                         if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i
                     })
