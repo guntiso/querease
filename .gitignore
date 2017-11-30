@@ -9,3 +9,4 @@ lib_managed
 .settings
 *.blame
 *.log
+.idea
