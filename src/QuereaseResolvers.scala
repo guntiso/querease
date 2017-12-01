@@ -1,5 +1,9 @@
 package querease
 
+import mojoz.metadata.FieldDef.FieldDefBase
+import mojoz.metadata.ViewDef.ViewDefBase
+import mojoz.metadata.Type
+
 trait QuereaseResolvers { this: Querease =>
 
         import parser._
@@ -64,7 +68,7 @@ trait QuereaseResolvers { this: Querease =>
                   (new mojoz.metadata.FieldDef(fSaveTo))
                     .copy(table = t.name /* TODO?  tableAlias = refViewDef.tableAlias*/)
                 val expression = Option(f.expression).getOrElse(name)
-                queryString(view, saveToField, f, s"$expression = _")
+                queryString(view, Seq(saveToField), Seq(f), s"$expression = _")
               }
           }
           def impliedRefResolvers(f: FieldDef, refViewDef: ViewDef, refFieldDef: FieldDef) = {
@@ -81,7 +85,7 @@ trait QuereaseResolvers { this: Querease =>
                 val refColField =
                   (new mojoz.metadata.FieldDef(refCol))
                     .copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias)
-                queryString(refViewDef, refColField, refFieldDef, s"$expression = _")
+                queryString(refViewDef, Seq(refColField), Seq(refFieldDef), s"$expression = _")
               }
           }
           def referencedResolvers =
@@ -113,4 +117,7 @@ trait QuereaseResolvers { this: Querease =>
           else
             Nil
         }
+
+        protected def transformResolver(view: ViewDefBase[FieldDefBase[Type]], field: FieldDef, resolver: String): String =
+          transformExpression(resolver, view, field, "resolver")
 }

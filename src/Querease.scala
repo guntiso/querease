@@ -34,7 +34,7 @@ import mojoz.metadata.ViewDef.ViewDefBase
 
 class NotFoundException(msg: String) extends Exception(msg)
 
-abstract class Querease extends QueryStringBuilder with QuereaseMetadata with FilterTransformer { this: QuereaseIo =>
+abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseExpressions with FilterTransformer { this: QuereaseIo =>
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
@@ -44,9 +44,6 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Fi
     if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
       Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
     else viewDef.saveTo
-
-  protected def transformResolver(view: ViewDef, field: FieldDef, resolver: String): String =
-    resolver
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save[B <: DTO](
@@ -278,14 +275,18 @@ trait QueryStringBuilder { this: Querease =>
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
-  def queryString(view: ViewDefBase[FieldDefBase[Type]], field: FieldDefBase[Type], exprField: FieldDefBase[Type], filter: String): String = {
-    val (from, pathToAlias) = this.fromAndPathToAlias(view, Seq(field, exprField).filter(_ != null))
+  def queryString(view: ViewDefBase[FieldDefBase[Type]], fields: Seq[FieldDefBase[Type]], exprFields: Seq[FieldDefBase[Type]], filter: String): String = {
+    val (from, pathToAlias) = this.fromAndPathToAlias(view, (fields ++ exprFields).filter(_ != null))
     val where = Option(filter).filter(_ != "")
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
     val groupBy = this.groupBy(view)
     val having = this.having(view)
-    val cols = "{" + queryColExpression(view, field, pathToAlias) +
-      Option(queryColAlias(field)).map(" " + _).getOrElse("") + "}"
+    val cols = "{" +
+      (fields.map(field =>
+        queryColExpression(view, field, pathToAlias) +
+        Option(queryColAlias(field)).map(" " + _).getOrElse(""))
+      ).mkString(", ") +
+    "}"
     from + where + " " + cols + groupBy + having
   }
 
@@ -369,7 +370,7 @@ trait QueryStringBuilder { this: Querease =>
                   s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
               }
             def queryColExpr(filter: String) =
-              queryString(refViewDef, refFieldDef, null, filter)
+              queryString(refViewDef, Seq(refFieldDef), Nil, filter)
             val table = view.table
             val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
             val refTable = refViewDef.table

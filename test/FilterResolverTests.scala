@@ -5,7 +5,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 import scala.collection.immutable.Seq
 
-import querease.FilterTransformer
+import querease._
 
 class FilterResolverTests extends FlatSpec with Matchers {
   private val Identifiers = "blah some_ident1".split("\\s+").toSet
@@ -14,7 +14,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d", "a<<")
 
-  val transformer = new FilterTransformer {}
+  val transformer = new Querease with ScalaDtoQuereaseIo
+
   def resolve(f: String, b: String = null) = transformer.transformFilter(f, null, b)
   def resolveBlah(f: String, b: String = null) = transformer.transformFilter(f, viewBlah, b)
   def resolveBlahA(f: String, b: String = null) = transformer.transformFilter(f, viewBlahA, b)
