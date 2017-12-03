@@ -113,7 +113,7 @@ trait QuereaseExpressions { this: Querease =>
     import parser._
     lazy val expressionTransformer: Transformer /* -WithState? */ = transformer {
       case initialQ @ Query(tables, filter, cols, group, order, offset, limit) =>
-        val q = initialQ.copy(
+        val q = initialQ/*.copy(
           tables = initialQ.tables.map(t => t.copy(
             obj = expressionTransformer(t.obj),
             join = Option(t.join).map(_.copy(expr = expressionTransformer(t.join.expr))).orNull
@@ -124,7 +124,9 @@ trait QuereaseExpressions { this: Querease =>
             c.copy(col = expressionTransformer(c.col))))
           // group, orer, offset, limit
         )
+        */
         val resolvableVarOpt = traverser(variableExtractor)(Nil)(q).reverse.headOption
+        val resolvableName = Option(fieldName).orElse(resolvableVarOpt.map(_.variable)).orNull
 
         val isViewRef = tables.size == 1 && tables.head.tresql.startsWith("^")
         val isResolver = // TODO query is resolver?
@@ -151,6 +153,7 @@ trait QuereaseExpressions { this: Querease =>
               .map(colName => new mojoz.metadata.FieldDef(colName))
               .map(_.copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias))
           def fieldRefExtractor: Traverser[List[String]] = { fieldRefs => {
+            case nestedQ: Query => fieldRefs
             case iexpr @ Ident(List(ident)) if ident startsWith "^" =>
               ident :: fieldRefs
             }
@@ -170,7 +173,7 @@ trait QuereaseExpressions { this: Querease =>
           val transformedFilterString = transformFilter(q.filter.filters.map(_.tresql).mkString, refViewDef, refViewDefBaseTableAlias)
           val resolvedQueryString = queryString(refViewDef, colFields, refFields, transformedFilterString)
           if (isResolver) {
-            val errorMessage = resolverErrorMessageExpression(viewName, fieldName, contextName)
+            val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, contextName)
             transformer {
               case Ident(List("_")) if resolvableVarOpt.isDefined =>
                 resolvableVarOpt.get
@@ -179,7 +182,7 @@ trait QuereaseExpressions { this: Querease =>
             parse(resolvedQueryString)
           }
         } else if (isResolver) {
-          val errorMessage = resolverErrorMessageExpression(viewName, fieldName, contextName)
+          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, contextName)
           parse(resolverExpression(withLimitQ(q), errorMessage))
         } else {
           q
