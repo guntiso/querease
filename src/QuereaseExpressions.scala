@@ -112,6 +112,8 @@ trait QuereaseExpressions { this: Querease =>
     val viewName = Option(viewDef).map(_.name).orNull
     import parser._
     lazy val expressionTransformer: Transformer /* -WithState? */ = transformer {
+      case w: With =>
+        w
       case initialQ @ Query(tables, filter, cols, group, order, offset, limit) =>
         val q = initialQ/*.copy(
           tables = initialQ.tables.map(t => t.copy(
@@ -132,7 +134,7 @@ trait QuereaseExpressions { this: Querease =>
         val isResolver = // TODO query is resolver?
           (contextName == "filter" || contextName == "resolver") &&
           //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore
-          cols.cols.size == 1
+          Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
         def fullContextName =
           s"$contextName of ${viewName}${Option(fieldName).map("." + _).getOrElse("")}"
         def withLimitQ(q: Query) =
@@ -148,7 +150,9 @@ trait QuereaseExpressions { this: Querease =>
           // val alias = fieldAliasOrName
           val refViewDefBaseTableAlias = null // FIXME refViewDefBaseTableAlias?
           val colFields =
-            cols.cols
+            Option(cols)
+              .map(_.cols)
+              .getOrElse(Nil)
               .map(_.tresql)
               .map(colName => new mojoz.metadata.FieldDef(colName))
               .map(_.copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias))
