@@ -230,7 +230,7 @@ trait QuereaseExpressions { this: Querease =>
           .getOrElse(iexpr)
       case o @ Obj(b: Braces, _, null, _, _) =>
         o.copy(obj = expTransformer(ctx)(b))
-      case x if ctx.transformerContext == EqOpCtx =>
+      case x if ctx.transformerContext == RootCtx || ctx.transformerContext == EqOpCtx =>
         expTransformer(ctx.copy(transformerContext = OtherOpCtx))(x)
     }
     expTransformer
