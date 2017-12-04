@@ -9,6 +9,15 @@ import org.tresql.parsing.{ QueryParsers, ExpTransformer }
 import scala.util.parsing.input.CharSequenceReader
 
 object QuereaseExpressions {
+  sealed trait MdContext { val name: String }
+  case object Filter extends MdContext { override val name: String = "filter" }
+  case object Resolver extends MdContext { override val name: String = "resolver" }
+  sealed trait TransformerContext
+  case object RootCtx extends TransformerContext
+  case object EqOpCtx extends TransformerContext
+  case object OtherOpCtx extends TransformerContext
+  case class Context(mdContext: MdContext, transformerContext: TransformerContext)
+
   trait Parser extends QueryParsers with ExpTransformer {
     def parse(expr: String): Exp
   }
@@ -26,7 +35,7 @@ object QuereaseExpressions {
             case Success(r, _) => r
             case x => sys.error(x.toString)
           }
-          cache.map(_.put(expr, e))
+          cache.foreach(_.put(expr, e))
           e
         } finally intermediateResults.get.clear
       }
@@ -88,14 +97,14 @@ trait QuereaseExpressions { this: Querease =>
     * @param expression  expression to be transformed
     * @param viewDef     view this expression is from
     * @param fieldDef    field this expression is from or null
-    * @param contextName "filter" or "resolver" for now
+    * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
     */
   protected def transformExpression(
-      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldDef: FieldDefBase[Type], contextName: String,
+      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldDef: FieldDefBase[Type], mdContext: MdContext,
       baseTableAlias: String = null): String = {
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
-    transformExpression(expression, viewDef, fieldName, contextName, baseTableAlias)
+    transformExpression(expression, viewDef, fieldName, mdContext, baseTableAlias)
   }
 
   /** Returns transformed expression
@@ -103,15 +112,35 @@ trait QuereaseExpressions { this: Querease =>
     * @param expression  expression to be transformed
     * @param viewDef     view this expression is from
     * @param fieldName   field name this expression is from or null
-    * @param contextName "filter" or "resolver" for now
+    * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
     */
   protected def transformExpression(
-      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, contextName: String,
+      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
       baseTableAlias: String): String = {
+    expressionTransformer(expression, viewDef, fieldName, mdContext, baseTableAlias)(Context(mdContext, RootCtx))(
+      parser.parse(expression)
+    ).tresql
+  }
+
+  /** Returns transformed expression
+    *
+    * @param expression  expression to be transformed
+    * @param viewDef     view this expression is from
+    * @param fieldName   field name this expression is from or null
+    * @param mdContext   yaml section this expression is from
+    * @param baseTableAlias base table alias for filter transformation
+    */
+  protected def expressionTransformer(
+      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
+      baseTableAlias: String): parser.TransformerWithState[Context] = {
     val viewName = Option(viewDef).map(_.name).orNull
     import parser._
-    lazy val expressionTransformer: Transformer /* -WithState? */ = transformer {
+
+    lazy val expTransformer: TransformerWithState[Context] = ctx => transformer {
+      case BinOp("=", lop, rop) =>
+        val nctx = ctx.copy(transformerContext = EqOpCtx)
+        BinOp("=", expTransformer(nctx)(lop), expTransformer(nctx)(rop))
       case w: With =>
         w
       case initialQ @ Query(tables, filter, cols, group, order, offset, limit) =>
@@ -131,12 +160,14 @@ trait QuereaseExpressions { this: Querease =>
         val resolvableName = Option(fieldName).orElse(resolvableVarOpt.map(_.variable)).orNull
 
         val isViewRef = tables.size == 1 && tables.head.tresql.startsWith("^")
-        val isResolver = // TODO query is resolver?
-          (contextName == "filter" || contextName == "resolver") &&
+        val isResolver =
+          ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
+          // OR
+          (ctx.mdContext == Filter || ctx.mdContext == Resolver) &&
           //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore
           Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
         def fullContextName =
-          s"$contextName of ${viewName}${Option(fieldName).map("." + _).getOrElse("")}"
+          s"${ctx.mdContext.name} of $viewName${Option(fieldName).map("." + _).getOrElse("")}"
         def withLimitQ(q: Query) =
           (if (q.limit == null) q.copy(limit = Const(2)) else q).tresql
         // TODO transform all fieldrefs of this query
@@ -166,9 +197,7 @@ trait QuereaseExpressions { this: Querease =>
           val refFields = fieldRefs
             .map(_.substring(1))
             .map { refFieldName =>
-              refViewDef.fields
-                .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
-                .headOption
+              refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
                 .getOrElse {
                   throw new RuntimeException(
                     s"Field $refViewName.$refFieldName referenced from $fullContextName is not found")
@@ -177,7 +206,7 @@ trait QuereaseExpressions { this: Querease =>
           val transformedFilterString = transformFilter(q.filter.filters.map(_.tresql).mkString, refViewDef, refViewDefBaseTableAlias)
           val resolvedQueryString = queryString(refViewDef, colFields, refFields, transformedFilterString)
           if (isResolver) {
-            val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, contextName)
+            val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name)
             transformer {
               case Ident(List("_")) if resolvableVarOpt.isDefined =>
                 resolvableVarOpt.get
@@ -186,7 +215,7 @@ trait QuereaseExpressions { this: Querease =>
             parse(resolvedQueryString)
           }
         } else if (isResolver) {
-          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, contextName)
+          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name)
           parse(resolverExpression(withLimitQ(q), errorMessage))
         } else {
           q
@@ -199,7 +228,11 @@ trait QuereaseExpressions { this: Querease =>
           .map(f => parse(Option(f.expression).getOrElse(
              Option(f.tableAlias).orElse(Option(baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)
+      case o @ Obj(b: Braces, _, null, _, _) =>
+        o.copy(obj = expTransformer(ctx)(b))
+      case x if ctx.transformerContext == EqOpCtx =>
+        expTransformer(ctx.copy(transformerContext = OtherOpCtx))(x)
     }
-    expressionTransformer(parse(expression)).tresql
+    expTransformer
   }
 }

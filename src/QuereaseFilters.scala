@@ -1,12 +1,8 @@
-package querease;
+package querease
 
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.Type
-
-import org.tresql.{ CacheBase, SimpleCacheBase }
-import org.tresql.parsing.{ QueryParsers, ExpTransformer }
-import scala.util.parsing.input.CharSequenceReader
 
 trait FilterTransformer { this: QuereaseExpressions =>
   // TODO resolve names like in views (maybe strip prefix etc.)
@@ -41,7 +37,7 @@ trait FilterTransformer { this: QuereaseExpressions =>
      else if (name startsWith "^") name.substring(1)
      else name)
       .replace(".", "_")
-  def transformFilter(filter: String, view: ViewDefBase[FieldDefBase[Type]], baseTableAlias: String) = {
+  def transformFilter(filter: String, view: ViewDefBase[FieldDefBase[Type]], baseTableAlias: String): String = {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)
     val transformedFilter = filter match {
@@ -57,6 +53,6 @@ trait FilterTransformer { this: QuereaseExpressions =>
         s":$nameFrom${opt(reqFrom)} $opFrom ${col(name)} $opTo :$nameTo${opt(reqTo)}"
       case x => x
     }
-    transformExpression(transformedFilter, view, null: String, "filter", baseTableAlias)
+    transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias)
   }
 }

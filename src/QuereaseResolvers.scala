@@ -7,15 +7,15 @@ import mojoz.metadata.Type
 trait QuereaseResolvers { this: Querease =>
 
         import parser._
-        def allResolvers(view: ViewDef, f: FieldDef) =
+        def allResolvers(view: ViewDef, f: FieldDef): Seq[String] =
           allResolversRaw(view, f)
             .map(transformResolver(view, f, _))
 
-        def allResolversRaw(view: ViewDef, f: FieldDef) = {
+        def allResolversRaw(view: ViewDef, f: FieldDef): Seq[String] = {
 
           val name = f.name
           val alias = Option(f.alias).getOrElse(f.name)
-          val saveToMulti = view.saveTo != null && view.saveTo.size > 0
+          val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
           val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
 
           // TODO view validation - validate f.saveTo and resolvers!
@@ -65,7 +65,7 @@ trait QuereaseResolvers { this: Querease =>
                 t.uk.exists(_.cols == Seq(fSaveTo)))
               .map { t =>
                 val saveToField =
-                  (new mojoz.metadata.FieldDef(fSaveTo))
+                  new mojoz.metadata.FieldDef(fSaveTo)
                     .copy(table = t.name /* TODO?  tableAlias = refViewDef.tableAlias*/)
                 val expression = Option(f.expression).getOrElse(name)
                 queryString(view, Seq(saveToField), Seq(f), s"$expression = _")
@@ -83,7 +83,7 @@ trait QuereaseResolvers { this: Querease =>
                 val expression = Option(refFieldDef.expression).getOrElse(refFieldDef.name)
                 // TODO check refTable in view tables?
                 val refColField =
-                  (new mojoz.metadata.FieldDef(refCol))
+                  new mojoz.metadata.FieldDef(refCol)
                     .copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias)
                 queryString(refViewDef, Seq(refColField), Seq(refFieldDef), s"$expression = _")
               }
@@ -98,9 +98,7 @@ trait QuereaseResolvers { this: Querease =>
                       throw new RuntimeException(
                         s"View $refViewName referenced from ${view.name}.$alias is not found")
                     }
-                  val refFieldDef = refViewDef.fields
-                    .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
-                    .headOption
+                  val refFieldDef = refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
                     .getOrElse {
                       throw new RuntimeException(
                         s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
@@ -112,12 +110,12 @@ trait QuereaseResolvers { this: Querease =>
           if (f.saveTo != null || f.resolver != null)
             explicitResolvers(f)
               .orElse(referencedResolvers)
-              .orElse(Option(impliedResolvers(f, true)).filter(_.size > 0))
+              .orElse(Option(impliedResolvers(f, doRebaseTable = true)).filter(_.nonEmpty))
               .getOrElse(impliedSelfResolvers(f))
           else
             Nil
         }
 
         protected def transformResolver(view: ViewDefBase[FieldDefBase[Type]], field: FieldDef, resolver: String): String =
-          transformExpression(resolver, view, field, "resolver")
+          transformExpression(resolver, view, field, QuereaseExpressions.Resolver)
 }
