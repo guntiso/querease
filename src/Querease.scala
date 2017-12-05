@@ -284,7 +284,8 @@ trait QueryStringBuilder { this: Querease =>
     val cols = "{" +
       fields.map(field =>
         queryColExpression(view, field, pathToAlias) +
-          Option(queryColAlias(field)).map(" " + _).getOrElse("")).mkString(", ") +
+          Option(queryColAlias(field)).map(" " + _).getOrElse("")
+      ).mkString(", ") +
     "}"
     from + where + " " + cols + groupBy + having
   }
