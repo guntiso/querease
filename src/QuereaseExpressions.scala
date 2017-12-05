@@ -136,7 +136,6 @@ trait QuereaseExpressions { this: Querease =>
       baseTableAlias: String): parser.TransformerWithState[Context] = {
     val viewName = Option(viewDef).map(_.name).orNull
     import parser._
-
     lazy val expTransformer: TransformerWithState[Context] = ctx => transformer {
       case BinOp("=", lop, rop) =>
         val nctx = ctx.copy(transformerContext = EqOpCtx)
@@ -163,15 +162,16 @@ trait QuereaseExpressions { this: Querease =>
         val isResolver =
           ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
           // OR
+          ctx.transformerContext == EqOpCtx &&
           (ctx.mdContext == Filter || ctx.mdContext == Resolver) &&
-          //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore
+          //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore or query result
           Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
         def fullContextName =
           s"${ctx.mdContext.name} of $viewName${Option(fieldName).map("." + _).getOrElse("")}"
         def withLimitQ(q: Query) =
           (if (q.limit == null) q.copy(limit = Const(2)) else q).tresql
         // TODO transform all fieldrefs of this query
-        if (isViewRef) {
+        val resolvedQuery = if (!isViewRef) q else {
           val refViewName = tables.head.tresql.substring(1)
           val refViewDef = viewDefOption(refViewName)
             .getOrElse{
@@ -205,20 +205,25 @@ trait QuereaseExpressions { this: Querease =>
             }
           val transformedFilterString = transformFilter(q.filter.filters.map(_.tresql).mkString, refViewDef, refViewDefBaseTableAlias)
           val resolvedQueryString = queryString(refViewDef, colFields, refFields, transformedFilterString)
-          if (isResolver) {
-            val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name)
-            transformer {
-              case Ident(List("_")) if resolvableVarOpt.isDefined =>
-                resolvableVarOpt.get
-            } (parse(resolverExpression(resolvedQueryString, errorMessage)))
-          } else {
-            parse(resolvedQueryString)
+          parse(resolvedQueryString) match {
+            case q: Query => q
+            case x =>
+              sys.error("Unexpected query class: " + Option(x).map(_.getClass.getName).orNull +
+                s" in $fullContextName parsed from: $resolvedQueryString")
           }
-        } else if (isResolver) {
+        }
+        if (isResolver) {
           val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name)
-          parse(resolverExpression(withLimitQ(q), errorMessage))
+          val parsed = parse(resolverExpression(withLimitQ(resolvedQuery), errorMessage))
+          if (ctx.mdContext == Resolver && ctx.transformerContext == RootCtx)
+            parsed
+          else
+            transformer {
+              case Ident(List("_")) | Obj(Ident(List("_")), null, null, null, _) if resolvableVarOpt.isDefined =>
+                resolvableVarOpt.get
+            } (parsed)
         } else {
-          q
+          resolvedQuery
         }
       case iexpr @ Ident(List(ident)) if ident.startsWith("^") => // FIXME needs current context view, so, transformWithState?
         val name = ident.substring(1)

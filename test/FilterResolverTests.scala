@@ -146,6 +146,18 @@ class FilterResolverTests extends FlatSpec with Matchers {
     resolveBlahExpr(filterExpr(fieldRef)) should be(filterExpr(fieldExpr))
   }
 
+  "expression substitution" should "imply resolver in filter correctly" in {
+    def filterExpr(s: String) = s"transform_me($s) = :mypar"
+    val fieldName = null
+    val fieldRef = FieldRefs.head
+    val fieldExpr = fBlahExpr.expression
+
+    resolve("exists(person[name = :name?]{id})") should be("exists(person[name = :name?]{id})")
+    resolve("person_id in(person[name = :name?]{id})") should be("person_id in(person[name = :name?]{id})")
+    resolve("person_id = person[name = :name?]{id}") should be(
+      "person_id = checked_resolve(:name?, array(person[name = :name?]{id}@(2)), 'Failed to identify value of \"name\" (from null) - ' || :name?)")
+  }
+
   "filter sugar syntax" should "handle naming correctly" in {
     resolve(s"blah <") should be(s"blah < :blah?")
     resolve(s"blah < !") should be(s"blah < :blah")

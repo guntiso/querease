@@ -252,7 +252,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person? father[name || ' ' || surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2)), 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || _)"
     ).mkString("; "))
     resolverKeys(new NestedResolverTest1) should be(List(
-      "mother->mother_id=checked_resolve(:'mother->', array(person[[name || ' ' || surname || ' of ' || father.name || ' (#7)' = :'mother->' & father_id = checked_resolve(:other_field, array(person p1[[:other_field = name || ' ' || surname || ' of ' || father.name || ' (#8)']]{p1.id}), 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || :other_field)]]{person.id}), 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || :'mother->')"
+      "mother->mother_id=checked_resolve(_, array(person[[name || ' ' || surname || ' of ' || father.name || ' (#7)' = :'mother->' & father_id = checked_resolve(:other_field, array(person p1[[:other_field = name || ' ' || surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2)), 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || :other_field)]]{person.id}@(2)), 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || _)"
     ).mkString("; "))
   }
   "querease" should "select referenced fields correctly" in {
