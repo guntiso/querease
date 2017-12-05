@@ -219,7 +219,7 @@ trait QuereaseExpressions { this: Querease =>
             parsed
           else
             transformer {
-              case Ident(List("_")) | Obj(Ident(List("_")), null, null, null, _) if resolvableVarOpt.isDefined =>
+              case Ident(List("_")) if resolvableVarOpt.isDefined =>
                 resolvableVarOpt.get
             } (parsed)
         } else {
