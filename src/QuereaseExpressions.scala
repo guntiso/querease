@@ -115,7 +115,7 @@ trait QuereaseExpressions { this: Querease =>
     * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
     */
-  protected def transformExpression(
+  def transformExpression(
       expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
       baseTableAlias: String): String = {
     expressionTransformer(viewDef, fieldName, baseTableAlias)(Context(mdContext, RootCtx))(
