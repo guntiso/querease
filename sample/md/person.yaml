@@ -245,3 +245,10 @@ table: person
 fields:
 - other_field =
 - mother = ^person_multitable_choice_resolver_implied_1.full_name -> = ^person_multitable_choice_resolver_implied_1[^full_name = :mother & father_id = ^person_multitable_choice_resolver_implied_2[:other_field = ^full_name]{id}]{id}
+
+name: filter_with_resolver_test_1
+table: person
+fields:
+- name
+filter:
+- mother_id = ^resolver_test_person_1[^mother = :mother?]{id}

@@ -188,12 +188,14 @@ trait QuereaseExpressions { this: Querease =>
               .map(colName => new mojoz.metadata.FieldDef(colName))
               .map(_.copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias))
           def fieldRefExtractor: Traverser[List[String]] = { fieldRefs => {
-            case nestedQ: Query => fieldRefs
+            case nestedQ: Query =>
+              // TODO allow field refs from deeper nested queries?
+              fieldRefs
             case iexpr @ Ident(List(ident)) if ident startsWith "^" =>
               ident :: fieldRefs
             }
           }
-          val fieldRefs = traverser(fieldRefExtractor)(Nil)(q).reverse
+          val fieldRefs = traverser(fieldRefExtractor)(Nil)(q.filter).reverse
           val refFields = fieldRefs
             .map(_.substring(1))
             .map { refFieldName =>
