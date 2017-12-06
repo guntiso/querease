@@ -118,21 +118,19 @@ trait QuereaseExpressions { this: Querease =>
   protected def transformExpression(
       expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
       baseTableAlias: String): String = {
-    expressionTransformer(expression, viewDef, fieldName, mdContext, baseTableAlias)(Context(mdContext, RootCtx))(
+    expressionTransformer(viewDef, fieldName, baseTableAlias)(Context(mdContext, RootCtx))(
       parser.parse(expression)
     ).tresql
   }
 
-  /** Returns transformed expression
+  /** Returns expression transformer
     *
-    * @param expression  expression to be transformed
     * @param viewDef     view this expression is from
     * @param fieldName   field name this expression is from or null
-    * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
     */
   protected def expressionTransformer(
-      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
+      viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String,
       baseTableAlias: String): parser.TransformerWithState[Context] = {
     val viewName = Option(viewDef).map(_.name).orNull
     import parser._
