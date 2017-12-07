@@ -129,11 +129,11 @@ trait QuereaseExpressions { this: Querease =>
   }
 
   /** Returns expression transformer */
-  protected def expressionTransformer: parser.TransformerWithState[Context] = ctx => {
+  protected def expressionTransformer: parser.TransformerWithState[Context] = parser.transformerWithState { ctx =>
     import ctx._
     val viewName = Option(ctx.viewDef).map(_.name).orNull
     import parser._
-    transformer {
+    {
       case BinOp("=", lop, rop) =>
         val nctx = ctx.copy(transformerContext = EqOpCtx)
         BinOp("=", expressionTransformer(nctx)(lop), expressionTransformer(nctx)(rop))
