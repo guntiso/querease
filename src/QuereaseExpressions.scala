@@ -16,7 +16,12 @@ object QuereaseExpressions {
   case object RootCtx extends TransformerContext
   case object EqOpCtx extends TransformerContext
   case object OtherOpCtx extends TransformerContext
-  case class Context(mdContext: MdContext, transformerContext: TransformerContext)
+  case class Context(
+    viewDef: ViewDefBase[FieldDefBase[Type]],
+    fieldName: String,
+    baseTableAlias: String,
+    mdContext: MdContext,
+    transformerContext: TransformerContext)
 
   trait Parser extends QueryParsers with ExpTransformer {
     def parse(expr: String): Exp
@@ -118,26 +123,20 @@ trait QuereaseExpressions { this: Querease =>
   def transformExpression(
       expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
       baseTableAlias: String): String = {
-    expressionTransformer(viewDef, fieldName, baseTableAlias)(Context(mdContext, RootCtx))(
+    expressionTransformer(Context(viewDef, fieldName, baseTableAlias, mdContext, RootCtx))(
       parser.parse(expression)
     ).tresql
   }
 
-  /** Returns expression transformer
-    *
-    * @param viewDef     view this expression is from
-    * @param fieldName   field name this expression is from or null
-    * @param baseTableAlias base table alias for filter transformation
-    */
-  protected def expressionTransformer(
-      viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String,
-      baseTableAlias: String): parser.TransformerWithState[Context] = {
-    val viewName = Option(viewDef).map(_.name).orNull
+  /** Returns expression transformer */
+  protected def expressionTransformer: parser.TransformerWithState[Context] = ctx => {
+    import ctx._
+    val viewName = Option(ctx.viewDef).map(_.name).orNull
     import parser._
-    lazy val expTransformer: TransformerWithState[Context] = ctx => transformer {
+    transformer {
       case BinOp("=", lop, rop) =>
         val nctx = ctx.copy(transformerContext = EqOpCtx)
-        BinOp("=", expTransformer(nctx)(lop), expTransformer(nctx)(rop))
+        BinOp("=", expressionTransformer(nctx)(lop), expressionTransformer(nctx)(rop))
       case w: With =>
         w
       case initialQ @ Query(tables, filter, cols, group, order, offset, limit) =>
@@ -227,17 +226,16 @@ trait QuereaseExpressions { this: Querease =>
         }
       case iexpr @ Ident(List(ident)) if ident.startsWith("^") => // FIXME needs current context view, so, transformWithState?
         val name = ident.substring(1)
-        Seq(viewDef).filter(_ != null)
+        Seq(ctx.viewDef).filter(_ != null)
           .flatMap(_.fields)
           .find(f => Option(f.alias).getOrElse(f.name) == name)
           .map(f => parse(Option(f.expression).getOrElse(
              Option(f.tableAlias).orElse(Option(baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)
       case o @ Obj(b: Braces, _, null, _, _) =>
-        o.copy(obj = expTransformer(ctx)(b))
+        o.copy(obj = expressionTransformer(ctx)(b))
       case x if ctx.transformerContext == RootCtx || ctx.transformerContext == EqOpCtx =>
-        expTransformer(ctx.copy(transformerContext = OtherOpCtx))(x)
+        expressionTransformer(ctx.copy(transformerContext = OtherOpCtx))(x)
     }
-    expTransformer
   }
 }
