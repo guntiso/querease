@@ -116,6 +116,6 @@ trait QuereaseResolvers { this: Querease =>
             Nil
         }
 
-        protected def transformResolver(view: ViewDefBase[FieldDefBase[Type]], field: FieldDef, resolver: String): String =
+        protected def transformResolver(view: ViewDef, field: FieldDef, resolver: String): String =
           transformExpression(resolver, view, field, QuereaseExpressions.Resolver)
 }

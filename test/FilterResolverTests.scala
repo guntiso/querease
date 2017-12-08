@@ -1,10 +1,12 @@
 package test
 
+import mojoz.metadata.FieldDef.FieldDefBase
+import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata._
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
-import scala.collection.immutable.Seq
 
+import scala.collection.immutable.Seq
 import querease._
 
 class FilterResolverTests extends FlatSpec with Matchers {
@@ -14,7 +16,10 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d", "a<<")
 
-  val transformer = new Querease with ScalaDtoQuereaseIo
+  val transformer = new Querease with ScalaDtoQuereaseIo {
+    type FieldDef = FieldDefBase[Type]
+    type ViewDef = ViewDefBase[FieldDef]
+  }
 
   def resolve(f: String, b: String = null) = transformer.transformFilter(f, null, b)
   def resolveBlah(f: String, b: String = null) = transformer.transformFilter(f, viewBlah, b)

@@ -41,7 +41,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
 
   private def tablesToSaveTo(viewDef: ViewDef) =
-    if (viewDef.saveTo == null || viewDef.saveTo.size == 0)
+    if (viewDef.saveTo == null || viewDef.saveTo.isEmpty)
       Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
     else viewDef.saveTo
 
@@ -253,7 +253,7 @@ trait QueryStringBuilder { this: Querease =>
             if (baseTableJoinsList.exists(_.alias == "b")) "b" else null
         })
   }
-  def queryStringAndParams(view: ViewDefBase[FieldDefBase[Type]], params: Map[String, Any],
+  def queryStringAndParams(view: ViewDef, params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
     countAll: Boolean = false): (String, Map[String, Any]) = {
@@ -362,9 +362,7 @@ trait QueryStringBuilder { this: Querease =>
                 throw new RuntimeException(
                   s"View $refViewName referenced from ${view.name}.$alias is not found")
               }
-            val refFieldDef = refViewDef.fields
-              .filter(f => Option(f.alias).getOrElse(f.name) == refFieldName)
-              .headOption
+            val refFieldDef = refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
               .getOrElse {
                 throw new RuntimeException(
                   s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
@@ -379,7 +377,7 @@ trait QueryStringBuilder { this: Querease =>
             val key = tableDefOpt
               .map(_.pk).filter(_ != null).filter(_.isDefined).map(_.get)
               .getOrElse(tableDefOpt
-                .map(_.uk).filter(_ != null).map(_.filter(_ != null)).filter(_.size > 0).map(_.head)
+                .map(_.uk).filter(_ != null).map(_.filter(_ != null)).filter(_.nonEmpty).map(_.head)
                 .orNull)
             val allRefs = tableDefOpt.map { tableDef =>
               if (table == refTable && key != null)
@@ -413,14 +411,14 @@ trait QueryStringBuilder { this: Querease =>
                 .map { refs =>
                   if (refs.size > 1) {
                     Option(refs.filter(_.defaultRefTableAlias == alias))
-                      .filter(_.size > 0)
+                      .filter(_.nonEmpty)
                       .getOrElse(refs)
                   } else refs
                 }
                 .map { refs =>
                   if (refs.size > 1) {
                     Option(refs.filter(_.cols.contains(joinCol)))
-                      .filter(_.size > 0)
+                      .filter(_.nonEmpty)
                       .getOrElse(refs)
                   } else refs
                 }
@@ -656,7 +654,7 @@ trait QueryStringBuilder { this: Querease =>
       " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
     .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
   */
-  def where(view: ViewDefBase[FieldDefBase[Type]], extraFilter: String) =
+  def where(view: ViewDef, extraFilter: String) =
     (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
       .filter(_ != null).filter(_ != "")
       .map(transformFilter(_, view, baseFieldsQualifier(view)))

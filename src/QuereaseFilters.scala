@@ -4,7 +4,7 @@ import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.Type
 
-trait FilterTransformer { this: QuereaseExpressions =>
+trait FilterTransformer { this: Querease =>
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val ident2 = s"$ident\\.$ident"
@@ -37,7 +37,7 @@ trait FilterTransformer { this: QuereaseExpressions =>
      else if (name startsWith "^") name.substring(1)
      else name)
       .replace(".", "_")
-  def transformFilter(filter: String, view: ViewDefBase[FieldDefBase[Type]], baseTableAlias: String): String = {
+  def transformFilter(filter: String, view: ViewDef, baseTableAlias: String): String = {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)
     val transformedFilter = filter match {

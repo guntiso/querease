@@ -16,12 +16,6 @@ object QuereaseExpressions {
   case object RootCtx extends TransformerContext
   case object EqOpCtx extends TransformerContext
   case object OtherOpCtx extends TransformerContext
-  case class Context(
-    viewDef: ViewDefBase[FieldDefBase[Type]],
-    fieldName: String,
-    baseTableAlias: String,
-    mdContext: MdContext,
-    transformerContext: TransformerContext)
 
   trait Parser extends QueryParsers with ExpTransformer {
     def parse(expr: String): Exp
@@ -53,6 +47,12 @@ object QuereaseExpressions {
 
 import QuereaseExpressions._
 trait QuereaseExpressions { this: Querease =>
+  case class Context(
+    viewDef: ViewDef,
+    fieldName: String,
+    baseTableAlias: String,
+    mdContext: MdContext,
+    transformerContext: TransformerContext)
   val parser: Parser = DefaultParser
   /** Returns error message expression string for resolver
     *
@@ -106,7 +106,7 @@ trait QuereaseExpressions { this: Querease =>
     * @param baseTableAlias base table alias for filter transformation
     */
   protected def transformExpression(
-      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldDef: FieldDefBase[Type], mdContext: MdContext,
+      expression: String, viewDef: ViewDef, fieldDef: FieldDef, mdContext: MdContext,
       baseTableAlias: String = null): String = {
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
     transformExpression(expression, viewDef, fieldName, mdContext, baseTableAlias)
@@ -121,7 +121,7 @@ trait QuereaseExpressions { this: Querease =>
     * @param baseTableAlias base table alias for filter transformation
     */
   def transformExpression(
-      expression: String, viewDef: ViewDefBase[FieldDefBase[Type]], fieldName: String, mdContext: MdContext,
+      expression: String, viewDef: ViewDef, fieldName: String, mdContext: MdContext,
       baseTableAlias: String): String = {
     expressionTransformer(Context(viewDef, fieldName, baseTableAlias, mdContext, RootCtx))(
       parser.parse(expression)
