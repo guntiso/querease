@@ -5,14 +5,14 @@ import java.sql.Connection
 import java.sql.DriverManager
 
 import scala.io.Source
-
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 import org.tresql.Env
 import org.tresql.dialects.HSQLDialect
-
 import dto._
 import mojoz.metadata._
+import mojoz.metadata.{FieldDef => MojozFieldDef}
+import mojoz.metadata.{ViewDef => MojozViewDef}
 import mojoz.metadata.TableMetadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
@@ -372,6 +372,12 @@ class QuereaseTests extends FlatSpec with Matchers {
       " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' || :mother?)" +
       "] {person.name}"
     )
+    qe.queryStringAndParams(qe.viewDefs("filter_with_resolver_test_2"), Map("mother" -> "mother"))._1 should be(
+      "person" +
+      "[person[mother_id = checked_resolve(:mother?, array(person[[name || ' ' || surname || ' (#1)' = :mother?]]{person.id}@(2))," +
+      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' || :mother?)]{1}" +
+      "] {person.name}"
+    )
   }
 }
 
@@ -389,6 +395,9 @@ object QuereaseTests {
       .replace("_9", "9") // no underscore before 9 in our database names
 
   val qe = new Querease with ScalaDtoQuereaseIo {
+
+    type FieldDef = MojozFieldDef[Type]
+    type ViewDef = MojozViewDef[FieldDef]
 
     override type DTO = Dto
 

@@ -139,19 +139,7 @@ trait QuereaseExpressions { this: Querease =>
         BinOp("=", expressionTransformer(nctx)(lop), expressionTransformer(nctx)(rop))
       case w: With =>
         w
-      case initialQ @ Query(tables, filter, cols, group, order, offset, limit) =>
-        val q = initialQ/*.copy(
-          tables = initialQ.tables.map(t => t.copy(
-            obj = expressionTransformer(t.obj),
-            join = Option(t.join).map(_.copy(expr = expressionTransformer(t.join.expr))).orNull
-          )),
-          filter = initialQ.filter.copy(filters = initialQ.filter.filters.map(f =>
-            f.copy(elements = f.elements.map(expressionTransformer)))),
-          cols = initialQ.cols.copy(cols = initialQ.cols.cols.map(c =>
-            c.copy(col = expressionTransformer(c.col))))
-          // group, orer, offset, limit
-        )
-        */
+      case q @ Query(tables, filter, cols, group, order, offset, limit) =>
         val resolvableVarOpt = traverser(variableExtractor)(Nil)(q).reverse.headOption
         val resolvableName = Option(fieldName).orElse(resolvableVarOpt.map(_.variable)).orNull
 
@@ -168,7 +156,18 @@ trait QuereaseExpressions { this: Querease =>
         def withLimitQ(q: Query) =
           (if (q.limit == null) q.copy(limit = Const(2)) else q).tresql
         // TODO transform all fieldrefs of this query
-        val resolvedQuery = if (!isViewRef) q else {
+        val resolvedQuery = if (!isViewRef) {
+          val nctx = if (ctx.transformerContext == OtherOpCtx) ctx else ctx.copy(transformerContext = OtherOpCtx)
+          Query(
+            tables = tables.map(t => expressionTransformer(nctx)(t).asInstanceOf[Obj]),
+            filter = expressionTransformer(nctx)(filter).asInstanceOf[Filters],
+            cols = expressionTransformer(nctx)(cols).asInstanceOf[Cols],
+            group = expressionTransformer(nctx)(group).asInstanceOf[Grp],
+            order = expressionTransformer(nctx)(order).asInstanceOf[Ord],
+            limit = expressionTransformer(nctx)(limit),
+            offset = expressionTransformer(nctx)(offset)
+          )
+        } else {
           val refViewName = tables.head.tresql.substring(1)
           val refViewDef = viewDefOption(refViewName)
             .getOrElse{
