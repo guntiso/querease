@@ -24,12 +24,6 @@ trait QuereaseResolvers { this: Querease =>
           // TODO support some qualifiers in expression?
           def explicitResolvers(f: FieldDef) =
             Option(f.resolver)
-              .map(parse)
-              .map(transformer {
-                case v@Variable(a, _, _) if a == alias =>
-                  v.copy(variable = alias + "->")
-              })
-              .map(_.tresql)
               .map(r => Seq(r))
           def impliedResolvers(f: FieldDef, doRebaseTable: Boolean) = {
             val fSaveTo = Option(f.saveTo) getOrElse name

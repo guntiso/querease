@@ -189,12 +189,12 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
         !field.isExpression &&
           field.type_.isComplexType &&
           viewDefOption(field.type_.name).map(tablesTo).orNull != null
-      def saveableKeys(f: FieldDef): Seq[String] = {
+      def saveableEntries(f: FieldDef, v: Any): Seq[(String, Any)] = {
         // TODO various mixes of options and params etc?
         val name = f.name
         def alias = Option(f.alias).getOrElse(f.name)
         if (f.saveTo == null && f.resolver == null)
-          Seq(name + Option(f.options).getOrElse(""))
+          Seq(name + Option(f.options).getOrElse("") -> v)
         else {
           val resolvers = allResolvers(view, f)
           if (resolvers.size == 0) {
@@ -203,7 +203,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
           }
           val fSaveTo = Option(f.saveTo) getOrElse name
           resolvers
-            .map(alias + "->" + fSaveTo + "=" + _) ++ Seq(alias + "->")
+            .map(r => (alias + "->") -> (fSaveTo + "=" + r)) ++ Seq(alias -> v)
         }
       }
       propName => {
@@ -255,7 +255,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
           case x => view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
             .filter(isSaveableField)
-            .map(f => saveableKeys(f).map(_ -> x))
+            .map(f => saveableEntries(f, x))
             .orElse(Some(List("*" + propName -> x))) // prefix * to avoid clashes
             .toList.flatten
         }
