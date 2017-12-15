@@ -5,7 +5,6 @@ import java.lang.reflect.ParameterizedType
 import scala.collection.JavaConverters._
 import scala.language.postfixOps
 
-import org.tresql.Result
 import org.tresql.RowLike
 
 import mojoz.metadata.FieldDef.FieldDefBase
@@ -41,13 +40,13 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     else pojo.getClass.getMethods filter (m =>
       m.getName.startsWith("get") && m.getName != "getClass"
         || m.getName.startsWith("is")) filter (m =>
-      m.getParameterTypes.size == 0) map (m =>
+      m.getParameterTypes.length == 0) map (m =>
       propName(m) -> (m.invoke(pojo) match {
         case null => null
         case x: String => x
         case c: Class[_] => c
         case x: XMLGregorianCalendar => x.toGregorianCalendar.getTime
-        case x if (isPrimitive(x)) => x
+        case x if isPrimitive(x) => x
         case b: Array[Byte] => new java.io.ByteArrayInputStream(b)
         case l: Seq[_] => l map pojoToMap
         case l: Array[_] => l map pojoToMap
@@ -87,22 +86,20 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     pojo.getClass.getMethods.filter(m =>
       m.getName.startsWith("get") &&
         classOf[java.util.Collection[_]].isAssignableFrom(m.getReturnType) &&
-        m.getParameterTypes.size == 0)
+        m.getParameterTypes.length == 0)
       .foreach { m =>
         val propName = m.getName.drop(3) //property name
         val genericType = getCollectionType(m.getGenericReturnType)
-        map.get(xsdNameToDbName(propName)).foreach { mapElement =>
-          mapElement match {
-            case list: List[_] =>
-              val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
-              collection.clear
-              list.foreach { data =>
-                val child = genericType.newInstance.asInstanceOf[B]
-                mapToPojo(data.asInstanceOf[Map[String, _]], child)
-                collection.add(child)
-              }
-            case _ =>
-          }
+        map.get(xsdNameToDbName(propName)).foreach {
+          case list: List[_] =>
+            val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
+            collection.clear
+            list.foreach { data =>
+              val child = genericType.newInstance.asInstanceOf[B]
+              mapToPojo(data.asInstanceOf[Map[String, _]], child)
+              collection.add(child)
+            }
+          case _ =>
         }
       }
     pojo
@@ -155,9 +152,9 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
           l.toString
         else l
       }
-      case x if (t == classOf[java.math.BigInteger] && x != null) =>
+      case x if t == classOf[java.math.BigInteger] && x != null =>
         new java.math.BigInteger(x.toString)
-      case x: java.util.Date if (t == classOf[XMLGregorianCalendar]) => {
+      case x: java.util.Date if t == classOf[XMLGregorianCalendar] => {
         val gc = new java.util.GregorianCalendar()
         gc.setTime(x)
         XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
@@ -168,9 +165,9 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
         mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance.asInstanceOf[B])
       case Nil => null
       //may be exact collection which is used in xsd generated pojos must be used?
-      case Seq() if (classOf[java.util.Collection[_]].isAssignableFrom(t)) =>
+      case Seq() if classOf[java.util.Collection[_]].isAssignableFrom(t) =>
         t.newInstance.asInstanceOf[java.util.Collection[_]]
-      case s: Seq[_] if (classOf[java.util.Collection[_]].isAssignableFrom(t)) => {
+      case s: Seq[_] if classOf[java.util.Collection[_]].isAssignableFrom(t) => {
         val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
           .map(mapToPojo(_, Class.forName(itemClassName).newInstance.asInstanceOf[B])).asJava
         col

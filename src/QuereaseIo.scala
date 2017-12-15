@@ -1,6 +1,5 @@
 package querease
 
-import org.tresql.Result
 import org.tresql.RowLike
 
 trait QuereaseIo { this: Querease =>

@@ -16,7 +16,6 @@ import mojoz.metadata.in._
 import mojoz.metadata.Type
 import mojoz.metadata.TypeDef
 import mojoz.metadata.TypeMetadata
-import mojoz.metadata.YamlLoadInfo
 import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
 
@@ -70,8 +69,8 @@ class TresqlMetadata(
         "table: " + table.name,
         "columns:",
         mojozTable.cols.map("- " + colToString(_)),
-        (if (table.key.cols.size > 0) "pk: " + table.key.cols.mkString(", ") else Nil),
-        (if (table.rfs.size > 0) "refs:" else Nil),
+        if (table.key.cols.size > 0) "pk: " + table.key.cols.mkString(", ") else Nil,
+        if (table.rfs.size > 0) "refs:" else Nil,
         table.rfs.toSeq.flatMap(tr =>
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")

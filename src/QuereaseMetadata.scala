@@ -1,7 +1,5 @@
 package querease
 
-import org.tresql.Result
-import org.tresql.RowLike
 import org.tresql.compiling.CompilerFunctionMetadata
 import org.tresql.compiling.TresqlFunctionSignatures
 import mojoz.metadata._
@@ -20,7 +18,7 @@ trait QuereaseMetadata {
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
-      nameToIndex.get(x).getOrElse(999) - nameToIndex.get(y).getOrElse(999)
+      nameToIndex.getOrElse(x, 999) - nameToIndex.getOrElse(y, 999)
   }
   object FieldOrdering {
     def apply(view: ViewDef) =

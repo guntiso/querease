@@ -1,7 +1,6 @@
 package querease
 
 import scala.collection.immutable.TreeMap
-import scala.collection.JavaConversions._
 import scala.language.existentials
 import scala.language.implicitConversions
 import scala.language.postfixOps
@@ -9,15 +8,8 @@ import scala.reflect.ManifestFactory
 import scala.util.Try
 
 import org.tresql.Column
-import org.tresql.Result
 import org.tresql.RowLike
 
-import mojoz.metadata._
-import mojoz.metadata.in._
-import mojoz.metadata.io.MdConventions
-import mojoz.metadata.io.SimplePatternMdConventions
-import mojoz.metadata.TableDef.TableDefBase
-import mojoz.metadata.ColumnDef.ColumnDefBase
 
 trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Querease =>
 
@@ -42,7 +34,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
     //filling in object from RowLike
     private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
       (for (
-        m <- getClass.getMethods;
+        m <- getClass.getMethods
         if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
       ) yield {
         val name = m.getName.dropRight(4)
@@ -50,7 +42,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
       }).toMap
     //end filling in object from RowLike
     def fill(r: RowLike): this.type = {
-      for (i <- 0 to (r.columnCount - 1)) r.column(i) match {
+      for (i <- 0 until r.columnCount) r.column(i) match {
         case Column(_, name, _) if name != null => set(name, r)
         case _ =>
       }
@@ -62,12 +54,12 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
         if (s._2._2 != null) { //child result
           val m: Manifest[_ <: Dto] = s._2._2
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Dto](rowLikeToDto _,
+          s._1.invoke(this, childResult.list[Dto](rowLikeToDto,
             m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
         } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
           val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
           val childResult = r.result(dbName)
-          s._1.invoke(this, childResult.list[Dto](rowLikeToDto _,
+          s._1.invoke(this, childResult.list[Dto](rowLikeToDto,
             m.asInstanceOf[Manifest[Dto]]).headOption.orNull.asInstanceOf[Object])
         } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
         s /*return setter used*/
@@ -101,9 +93,9 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
       ManifestFactory.classType(clazz)
     }
 
-    private def toUnorderedMap: Map[String, Any] = (setters.flatMap { m =>
+    private def toUnorderedMap: Map[String, Any] = setters.flatMap { m =>
       scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-        case s: Seq[_] => m._1 ->  s.map{
+        case s: Seq[_] => m._1 -> s.map {
           case dto: Dto => dto.toMap
           case str: String => str
           case i: java.lang.Integer => i
@@ -111,7 +103,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
         case c: Dto => m._1 -> c.toMap
         case x => m._1 -> x
       }
-    } toMap)
+    } toMap
     def toMap: Map[String, Any] = fieldOrderingOption(ManifestFactory.classType(getClass))
       .map(toMap).getOrElse(toUnorderedMap)
     def toMap(fieldOrdering: Ordering[String]): Map[String, Any] =
@@ -197,7 +189,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
           Seq(name + Option(f.options).getOrElse("") -> v)
         else {
           val resolvers = allResolvers(view, f)
-          if (resolvers.size == 0) {
+          if (resolvers.isEmpty) {
             throw new RuntimeException(
               s"Failed to imply resolver for ${view.name}.$alias")
           }
@@ -263,12 +255,12 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
       }
     }
     //creating map from object
-    def toSaveableMap: Map[String, Any] = (setters.toList.flatMap { m =>
+    def toSaveableMap: Map[String, Any] = setters.toList.flatMap { m =>
       val propName = m._1
       scala.util.Try(getClass.getMethod(propName).invoke(this)).toOption.map {
         saveableValue(propName)(_)
       } getOrElse Nil
-    }).groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } //child objects from different lists can be put into one table
+    }.groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } //child objects from different lists can be put into one table
       .flatMap {
         case ("s", seq) =>
           seq.asInstanceOf[Seq[(String, Seq[_])]] groupBy (_._1) map {

@@ -2,7 +2,6 @@ package querease
 
 import org.tresql.Env
 import org.tresql.QueryCompiler._
-import org.tresql.QueryCompiler.{ Join => QCJoin }
 
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser

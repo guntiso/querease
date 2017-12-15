@@ -1,9 +1,5 @@
 package querease
 
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.Type
-
 trait QuereaseResolvers { this: Querease =>
 
         import parser._
@@ -33,7 +29,7 @@ trait QuereaseResolvers { this: Querease =>
               .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
               .map { ref =>
                 val refTable = ref.refTable
-                val refCol = ref.refCols(0)
+                val refCol = ref.refCols.head
                 val expressionOpt =
                   if (doRebaseTable)
                     Option(f.expression)

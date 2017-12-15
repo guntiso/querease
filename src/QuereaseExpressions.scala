@@ -1,8 +1,4 @@
-package querease;
-
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.Type
+package querease
 
 import org.tresql.{ CacheBase, SimpleCacheBase }
 import org.tresql.parsing.{ QueryParsers, ExpTransformer }

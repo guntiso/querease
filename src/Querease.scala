@@ -9,7 +9,6 @@ import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
 
 import org.tresql.Resources
-import org.tresql.Env
 import org.tresql.DeleteResult
 import org.tresql.InsertResult
 import org.tresql.ArrayResult
@@ -21,12 +20,8 @@ import org.tresql.QueryParser.Null
 import org.tresql.QueryParser.Traverser
 import org.tresql.QueryParser.{ traverser, parseExp }
 
-import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
-import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
-import mojoz.metadata.TableDef.Ref
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
-import mojoz.metadata._
 import mojoz.metadata._
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
@@ -90,8 +85,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
       val result =
-        if (tables.size == 1)
-          ORT.insert(tables(0), transf(propMap),
+        if (tables.lengthCompare(1) == 0)
+          ORT.insert(tables.head, transf(propMap),
             Option(filterAndParams).map(_._1) orNull)
         else
           ORT.insertMultiple(transf(propMap), tables: _*)(
@@ -107,7 +102,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
         s"Record not inserted into table(s): ${tables.mkString(",")}")
       else id.asInstanceOf[Long]
     } else {
-      val updatedRowCount = if (tables.size == 1)
+      val updatedRowCount = if (tables.lengthCompare(1) == 0)
         ORT.update(tables(0), transf(propMap),
           Option(filterAndParams).map(_._1) orNull)
       else
@@ -164,7 +159,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     val (q, p) = queryStringAndParams(viewDef[B],
       Map("id" -> id), 0, 2, "", (extraQ, extraP))
     val result = list(q, p)
-    if (result.size > 1)
+    if (result.lengthCompare(1) > 0)
       sys.error("Too many rows returned by query for get method for " + mf)
     result.headOption
   }
@@ -340,8 +335,8 @@ trait QueryStringBuilder { this: Querease =>
       // do not transform subqueries (skip deeper analysis)
       case q: QueryParser.Query => q
       case Ident(i) =>
-        if (i.size == 1)
-          if (tableMetadata.col(view.table, i(0)).isDefined)
+        if (i.lengthCompare(1) == 0)
+          if (tableMetadata.col(view.table, i.head).isDefined)
             Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
           else Ident(i) // no-arg function or unknown pseudo-col
         else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
@@ -375,7 +370,7 @@ trait QueryStringBuilder { this: Querease =>
             val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
             val tableDefOpt = Option(table).map(tableMetadata.tableDef)
             val key = tableDefOpt
-              .map(_.pk).filter(_ != null).filter(_.isDefined).map(_.get)
+              .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
               .getOrElse(tableDefOpt
                 .map(_.uk).filter(_ != null).map(_.filter(_ != null)).filter(_.nonEmpty).map(_.head)
                 .orNull)
@@ -409,14 +404,14 @@ trait QueryStringBuilder { this: Querease =>
                   } else refs
                 }
                 .map { refs =>
-                  if (refs.size > 1) {
+                  if (refs.lengthCompare(1) > 0) {
                     Option(refs.filter(_.defaultRefTableAlias == alias))
                       .filter(_.nonEmpty)
                       .getOrElse(refs)
                   } else refs
                 }
                 .map { refs =>
-                  if (refs.size > 1) {
+                  if (refs.lengthCompare(1) > 0) {
                     Option(refs.filter(_.cols.contains(joinCol)))
                       .filter(_.nonEmpty)
                       .getOrElse(refs)
@@ -424,14 +419,14 @@ trait QueryStringBuilder { this: Querease =>
                 }
                 .get
               def refErrorMessage(prefix: String) =
-                s"$prefix from ${table}" +
+                s"$prefix from $table" +
                   s" to $refTable (of $refViewName referenced from $viewName.$alias)" +
                   ", please provide resolver or filter explicitly"
               refs.size match {
                 case 0 =>
                   throw new RuntimeException(refErrorMessage("No ref found"))
                 case 1 =>
-                  val colsRefCols = refs(0).cols.zip(refs(0).refCols)
+                  val colsRefCols = refs.head.cols.zip(refs.head.refCols)
                   def joinFilter(tableOrAlias: String) = colsRefCols.map {
                     case (col, refCol) => s"$refTableOrAlias.$refCol = $tableOrAlias.$col"
                   }.mkString(" & ")
@@ -530,7 +525,7 @@ trait QueryStringBuilder { this: Querease =>
     .map(_ mkString ", ")
     .filter(_ != "").map(g => s"($g)") getOrElse ""
   def having(view: ViewDefBase[FieldDefBase[Type]]) = Option(view.having)
-    .map(hl => if (hl.size > 1) hl.map(h => s"($h)") else hl)
+    .map(hl => if (hl.lengthCompare(1) > 0) hl.map(h => s"($h)") else hl)
     .map(_ mkString " & ")
     .filter(_ != "").map(h => s"^($h)") getOrElse ""
   def fromAndPathToAlias(view: ViewDefBase[FieldDefBase[Type]]): (String, Map[List[String], String]) =
@@ -546,8 +541,8 @@ trait QueryStringBuilder { this: Querease =>
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
     def isExpressionOrPath(f: FieldDefBase[Type]) =
       (f.isExpression || f.expression != null) &&
-        Option(f.expression).map(expr =>
-          !FieldRefRegexp.pattern.matcher(expr).matches).getOrElse(true)
+        Option(f.expression).forall(expr =>
+          !FieldRefRegexp.pattern.matcher(expr).matches)
     val (needsBaseTable, parsedJoins) =
       Option(view.joins)
         .map(joins =>
@@ -580,16 +575,15 @@ trait QueryStringBuilder { this: Querease =>
       .map(QueryParser.parseExp)
       // do not collect identifiers from subqueries (skip deeper analysis)
       .map(QueryParser.transformer({ case q: QueryParser.Query => Null }))
-      .map(x => QueryParser.traverser(IdentifierExtractor)(Nil)(x))
-      .flatten
-      .filter(_.size > 1)
+      .flatMap(x => QueryParser.traverser(IdentifierExtractor)(Nil)(x))
+      .filter(_.lengthCompare(1) > 0)
       .map(_ dropRight 1)
       .toSet
     val used = usedInFields ++ usedInExpr
     def tailists[B](l: List[B]): List[List[B]] =
-      if (l.size == 0) Nil else l :: tailists(l.tail)
+      if (l.isEmpty) Nil else l :: tailists(l.tail)
     val usedAndPrepaths =
-      used.map(u => tailists(u.reverse).reverse.map(_.reverse)).flatten
+      used.flatMap(u => tailists(u.reverse).reverse.map(_.reverse))
     val baseTableOrAlias = Option(baseQualifier) getOrElse view.table
     val missing =
       (usedAndPrepaths -- joined.map(List(_)) - List(baseTableOrAlias))
@@ -600,7 +594,7 @@ trait QueryStringBuilder { this: Querease =>
       if (view.tableAlias != null && !needsBaseTable &&
         parsedJoins.exists(_.alias == view.tableAlias)) null
       else if (view.tableAlias == null && !needsBaseTable &&
-        parsedJoins.size > 0) null // TODO ?
+        parsedJoins.lengthCompare(0) > 0) null // TODO ?
       else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
     val pathToAlias = mutable.Map[List[String], String]()
     pathToAlias ++= joined.map(j => List(j) -> j).toMap
@@ -622,7 +616,7 @@ trait QueryStringBuilder { this: Querease =>
     }
     val autoJoins = missing.map { path =>
       val (contextTable, contextTableOrAlias) =
-        if (path.size == 1) (view.table, baseTableOrAlias)
+        if (path.lengthCompare(1) == 0) (view.table, baseTableOrAlias)
         else {
           val contextTableOrAlias = pathToAlias(path dropRight 1)
           val contextTable = aliasToTable(contextTableOrAlias)

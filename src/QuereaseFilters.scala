@@ -1,9 +1,5 @@
 package querease
 
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.Type
-
 trait FilterTransformer { this: Querease =>
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
