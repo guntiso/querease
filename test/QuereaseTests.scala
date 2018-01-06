@@ -401,9 +401,6 @@ object QuereaseTests {
 
   val qe = new Querease with ScalaDtoQuereaseIo {
 
-    type FieldDef = MojozFieldDef[Type]
-    type ViewDef = MojozViewDef[FieldDef]
-
     override type DTO = Dto
 
     private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))

@@ -13,8 +13,8 @@ import scala.collection.immutable.Seq
 
 trait QuereaseMetadata {
 
-  type FieldDef <: FieldDefBase[Type]
-  type ViewDef <: ViewDefBase[FieldDef]
+  type FieldDef = mojoz.metadata.FieldDef[Type]
+  type ViewDef = mojoz.metadata.ViewDef[FieldDef]
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
