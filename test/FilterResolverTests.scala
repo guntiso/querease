@@ -1,7 +1,5 @@
 package test
 
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata._
 import org.scalatest.FlatSpec
 import org.scalatest.Matchers

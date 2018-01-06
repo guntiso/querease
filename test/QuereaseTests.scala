@@ -11,8 +11,6 @@ import org.tresql.Env
 import org.tresql.dialects.HSQLDialect
 import dto._
 import mojoz.metadata._
-import mojoz.metadata.{FieldDef => MojozFieldDef}
-import mojoz.metadata.{ViewDef => MojozViewDef}
 import mojoz.metadata.TableMetadata
 import mojoz.metadata.in.I18nRules
 import mojoz.metadata.in.YamlMd
@@ -22,7 +20,6 @@ import mojoz.metadata.out.SqlWriter
 import querease.Querease
 import querease.TresqlMetadata
 import querease.ScalaDtoQuereaseIo
-import querease.TresqlJoinsParser
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._

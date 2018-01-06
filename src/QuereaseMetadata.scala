@@ -3,8 +3,6 @@ package querease
 import org.tresql.compiling.CompilerFunctionMetadata
 import org.tresql.compiling.TresqlFunctionSignatures
 import mojoz.metadata._
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.TableDef.TableDefBase
 import mojoz.metadata.ColumnDef.ColumnDefBase
 import mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}

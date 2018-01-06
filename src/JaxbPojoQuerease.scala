@@ -7,17 +7,10 @@ import scala.language.postfixOps
 
 import org.tresql.RowLike
 
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
-import mojoz.metadata._
 
 trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
-
-  type FieldDef = FieldDefBase[Type]
-  type ViewDef = ViewDefBase[FieldDef]
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 

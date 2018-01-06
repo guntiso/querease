@@ -23,9 +23,6 @@ import org.tresql.QueryParser.{ traverser, parseExp }
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 import mojoz.metadata._
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-
 
 class NotFoundException(msg: String) extends Exception(msg)
 
@@ -230,7 +227,7 @@ trait QueryStringBuilder { this: Querease =>
       else unusedName(index + 1)
     if (!usedNames.contains(name)) name else unusedName(2)
   }
-  def baseFieldsQualifier(view: ViewDefBase[FieldDefBase[Type]]): String = {
+  def baseFieldsQualifier(view: ViewDef): String = {
     // TODO do not parse multiple times!
     def parsedJoins =
       Option(view.joins).map(joinsParser(tableAndAlias(view), _))
@@ -270,7 +267,7 @@ trait QueryStringBuilder { this: Querease =>
     // TODO param name?
     (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
-  def queryString(view: ViewDefBase[FieldDefBase[Type]], fields: Seq[FieldDefBase[Type]], exprFields: Seq[FieldDefBase[Type]], filter: String): String = {
+  def queryString(view: ViewDef, fields: Seq[FieldDef], exprFields: Seq[FieldDef], filter: String): String = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view, (fields ++ exprFields).filter(_ != null))
     val where = Option(filter).filter(_ != "")
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
@@ -319,17 +316,17 @@ trait QueryStringBuilder { this: Querease =>
   val preferRu = languagePreferences(0) == "ru"
   def isRu(f: FieldDef) = preferRu && f.isI18n
   */
-  private def isI18n(f: FieldDefBase[Type]) = false // f.isI18n
-  def queryColTableAlias(view: ViewDefBase[FieldDefBase[Type]], f: FieldDefBase[Type]) =
+  private def isI18n(f: FieldDef) = false // f.isI18n
+  def queryColTableAlias(view: ViewDef, f: FieldDef) =
     Option(f.tableAlias) getOrElse
       (if (f.table == view.table) baseFieldsQualifier(view) else f.table)
 
-  private def getChildViewDef(viewDef: ViewDefBase[FieldDefBase[Type]], fieldDef: FieldDefBase[Type]) =
+  private def getChildViewDef(viewDef: ViewDef, fieldDef: FieldDef) =
     scala.util.Try(this.viewDef(fieldDef.type_.name)).toOption.getOrElse(
       sys.error("Child viewDef not found: " + fieldDef.type_.name +
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
-  def qualify(view: ViewDefBase[FieldDefBase[Type]], expression: String,
+  def qualify(view: ViewDef, expression: String,
     pathToAlias: Map[List[String], String]) = {
     QueryParser.transformTresql(expression, {
       // do not transform subqueries (skip deeper analysis)
@@ -342,7 +339,7 @@ trait QueryStringBuilder { this: Querease =>
         else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
     })
   }
-  def queryColExpression(view: ViewDefBase[FieldDefBase[Type]], f: FieldDefBase[Type],
+  def queryColExpression(view: ViewDef, f: FieldDef,
       pathToAlias: Map[List[String], String]) = {
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
@@ -499,7 +496,7 @@ trait QueryStringBuilder { this: Querease =>
     else qName
   }
 
-  def queryColAlias(f: FieldDefBase[Type]) =
+  def queryColAlias(f: FieldDef) =
     Option(f.alias) getOrElse {
       if (f.isExpression && f.expression != null || isI18n(f)) f.name
       else if (f.type_ != null && f.type_.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
@@ -507,11 +504,11 @@ trait QueryStringBuilder { this: Querease =>
       else null
     }
 
-  def queryColName(view: ViewDefBase[FieldDefBase[Type]], f: FieldDefBase[Type]) =
+  def queryColName(view: ViewDef, f: FieldDef) =
     Option(f.alias).getOrElse(
       if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
-  def cols(view: ViewDefBase[FieldDefBase[Type]], countAll: Boolean,
+  def cols(view: ViewDef, countAll: Boolean,
     pathToAlias: Map[List[String], String]) =
     if (countAll) " {count(*)}"
     else view.fields
@@ -521,25 +518,25 @@ trait QueryStringBuilder { this: Querease =>
       .map(f => queryColExpression(view, f, pathToAlias)
         + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
       .mkString(" {", ", ", "}")
-  def groupBy(view: ViewDefBase[FieldDefBase[Type]]) = Option(view.groupBy)
+  def groupBy(view: ViewDef) = Option(view.groupBy)
     .map(_ mkString ", ")
     .filter(_ != "").map(g => s"($g)") getOrElse ""
-  def having(view: ViewDefBase[FieldDefBase[Type]]) = Option(view.having)
+  def having(view: ViewDef) = Option(view.having)
     .map(hl => if (hl.lengthCompare(1) > 0) hl.map(h => s"($h)") else hl)
     .map(_ mkString " & ")
     .filter(_ != "").map(h => s"^($h)") getOrElse ""
-  def fromAndPathToAlias(view: ViewDefBase[FieldDefBase[Type]]): (String, Map[List[String], String]) =
+  def fromAndPathToAlias(view: ViewDef): (String, Map[List[String], String]) =
     fromAndPathToAlias(view, view.fields)
-  private def fromAndPathToAlias(view: ViewDefBase[FieldDefBase[Type]], view_fields: Seq[FieldDefBase[Type]]): (String, Map[List[String], String]) = {
+  private def fromAndPathToAlias(view: ViewDef, view_fields: Seq[FieldDef]): (String, Map[List[String], String]) = {
     try fromAndPathToAliasUnhandled(view, view_fields)
     catch {
       case NonFatal(ex) => throw new RuntimeException("Failed to build query for " + view.name, ex)
     }
   }
-  private def fromAndPathToAliasUnhandled(view: ViewDefBase[FieldDefBase[Type]], view_fields: Seq[FieldDefBase[Type]]): (String, Map[List[String], String]) = {
+  private def fromAndPathToAliasUnhandled(view: ViewDef, view_fields: Seq[FieldDef]): (String, Map[List[String], String]) = {
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
-    def isExpressionOrPath(f: FieldDefBase[Type]) =
+    def isExpressionOrPath(f: FieldDef) =
       (f.isExpression || f.expression != null) &&
         Option(f.expression).forall(expr =>
           !FieldRefRegexp.pattern.matcher(expr).matches)
@@ -654,7 +651,7 @@ trait QueryStringBuilder { this: Querease =>
       .map(transformFilter(_, view, baseFieldsQualifier(view)))
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
 
-  def order(view: ViewDefBase[FieldDefBase[Type]], orderBy: String) =
+  def order(view: ViewDef, orderBy: String) =
     Option(orderBy).orElse(Option(view.orderBy).map(_ mkString ", "))
     .filter(_ != "").map(o => s"#($o)") getOrElse ""
 
@@ -681,7 +678,7 @@ trait QueryStringBuilder { this: Querease =>
       (query + "@(? ?)", Array(offset, limit))
   }
 
-  def tableAndAlias(view: ViewDefBase[FieldDefBase[Type]]) =
+  def tableAndAlias(view: ViewDef) =
     Option(view.table)
       .map(_ + Option(view.tableAlias).map(" " + _).getOrElse(""))
       .orNull
