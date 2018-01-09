@@ -1,5 +1,24 @@
 package querease
 
+import scala.collection.immutable.Seq
+
+trait FilterType
+object FilterType {
+  case class BooleanFilter(filter: String) extends FilterType
+  case class IdentFilter(
+    col: String, name: String, opt: String
+  ) extends FilterType
+  case class ComparisonFilter(
+    col: String, operator: String, name: String, opt: String
+  ) extends FilterType
+  case class IntervalFilter(
+    leftName: String, leftOpt: String, leftOperator: String,
+    col: String,
+    rightOperator: String, rightName: String, rightOpt: String
+  ) extends FilterType
+  case class OtherFilter(filter: String) extends FilterType
+}
+
 trait FilterTransformer { this: Querease =>
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
@@ -50,5 +69,25 @@ trait FilterTransformer { this: Querease =>
       case x => x
     }
     transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias)
+  }
+  def analyzeFilter(filter: String, view: ViewDef, baseTableAlias: String): Seq[FilterType] = {
+    import FilterType._
+    def par(name: String) = parName(name)
+    def col(name: String) = colName(name, baseTableAlias)
+    val filterType = filter match {
+      case "true" | "false" =>
+        BooleanFilter(filter)
+      case IdentFilterDef(name, _, req) =>
+        IdentFilter(col(name), par(name), opt(req))
+      case ComparisonFilterDef(name, _, op, req) =>
+        ComparisonFilter(col(name), op, par(name), opt(req))
+      case IntervalFilterDef(reqFrom, opFrom, name, _, opTo, reqTo) =>
+        val nameFrom = par(name + "_from") // TODO configure naming
+        val nameTo = par(name + "_to") // TODO configure naming
+        IntervalFilter(nameFrom, opt(reqFrom), opFrom, col(name), opTo, nameTo, opt(reqTo))
+      case x => OtherFilter(x)
+    }
+    // TODO analyze deeper levels
+    List(filterType)
   }
 }
