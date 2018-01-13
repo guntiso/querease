@@ -9,6 +9,9 @@ import mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 import scala.collection.immutable.Seq
 
+case class ViewNotFoundException(message: String) extends Exception(message)
+case class FieldOrderingNotFoundException(message: String) extends Exception(message)
+
 trait QuereaseMetadata {
 
   type FieldDef = mojoz.metadata.FieldDef[Type]
@@ -34,23 +37,23 @@ trait QuereaseMetadata {
   }
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
-  lazy val viewDefs: Map[String, ViewDef] =
+  protected lazy val viewDefs: Map[String, ViewDef] =
     YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
       .extendedViewDefs.asInstanceOf[Map[String, ViewDef]]
-  lazy val viewNameToFieldOrdering = viewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
+  protected lazy val viewNameToFieldOrdering = viewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
-    .getOrElse(sys.error(s"Field ordering for view $viewName not found"))
+    .getOrElse(throw FieldOrderingNotFoundException(s"Field ordering for view $viewName not found"))
   def fieldOrderingOption[T <: AnyRef: Manifest]: Option[Ordering[String]] = fieldOrderingOption(viewName[T])
   def fieldOrdering[T <: AnyRef](implicit mf: Manifest[T]): Ordering[String] = fieldOrderingOption[T]
-    .getOrElse(sys.error(s"Field ordering for view $mf not found"))
+    .getOrElse(throw FieldOrderingNotFoundException(s"Field ordering for view $mf not found"))
   def viewDefOption(viewName: String): Option[ViewDef] = viewDefs.get(viewName)
   def viewDef(viewName: String) = viewDefOption(viewName)
-    .getOrElse(sys.error(s"View definition for $viewName not found"))
+    .getOrElse(throw ViewNotFoundException(s"View definition for $viewName not found"))
   def viewDefOption[T <: AnyRef: Manifest]: Option[ViewDef] = viewDefOption(viewName[T])
   def viewDef[T <: AnyRef](implicit mf: Manifest[T]): ViewDef =
-    viewDefOption[T].getOrElse(sys.error(s"View definition for type $mf not found"))
+    viewDefOption[T].getOrElse(throw ViewNotFoundException(s"View definition for type $mf not found"))
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
