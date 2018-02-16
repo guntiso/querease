@@ -465,8 +465,10 @@ trait QueryStringBuilder { this: Querease =>
               case q => q + "."
             }
             // preserve detail ordering
-            tableMetadata.tableDef(childViewDef).pk
-              .map(_.cols.map(prefix + _) mkString ", ").orNull
+            if (childViewDef.table != null)
+              tableMetadata.tableDef(childViewDef).pk
+                .map(_.cols.map(prefix + _) mkString ", ").orNull
+            else null
           case ord => ord mkString ", "
         }
         case "#" => null
@@ -488,7 +490,9 @@ trait QueryStringBuilder { this: Querease =>
             Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
         }
       */
-      if (view.name == childViewDef.name)
+      if (childViewDef.table == null)
+        s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
+      else if (view.name == childViewDef.name)
         s"(|$joinToParent)"
       else {
         val (tresqlQueryString, _) =
