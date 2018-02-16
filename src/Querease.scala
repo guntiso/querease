@@ -161,15 +161,29 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     result.headOption
   }
 
-  def create[B <: DTO](params: Map[String, Any] = Map.empty)(implicit mf: Manifest[B]): B = {
-    val viewDef = this.viewDef
-    viewDef.fields.collect { case f if f.default != null =>
-      f.default + " " + Option(queryColAlias(f)).getOrElse(queryColName(viewDef, f))
-    } match {
-      case x if x.isEmpty => mf.runtimeClass.newInstance.asInstanceOf[B]
-      case defaultVals =>
-        val query = defaultVals.mkString("{", ", ", "}")
-        convertRow(Query(query, params).head)
+  def create[B <: DTO](params: Map[String, Any] = Map.empty)(
+      implicit mf: Manifest[B], resources: Resources): B = {
+    val view = this.viewDef
+    if (view.fields.exists(_.default != null)) {
+      val query =
+        view.fields.map { f =>
+          val expr =
+            if (f.default != null)
+              f.default
+            else if (f.type_ != null && f.type_.isComplexType)
+              s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
+            else
+              "null"
+          expr + " " + Option(f.alias).getOrElse(f.name)
+        }.mkString("{", ", ", "}")
+      val result = list(query, params)
+      if (result.isEmpty)
+        sys.error("No rows returned by query for create method for " + mf)
+      if (result.lengthCompare(1) > 0)
+        sys.error("Too many rows returned by query for create method for " + mf)
+      result.head
+    } else {
+      mf.runtimeClass.newInstance.asInstanceOf[B]
     }
   }
 
