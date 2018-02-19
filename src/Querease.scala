@@ -164,12 +164,12 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def create[B <: DTO](params: Map[String, Any] = Map.empty)(
       implicit mf: Manifest[B], resources: Resources): B = {
     val view = this.viewDef
-    if (view.fields.exists(_.default != null)) {
+    if (view.fields.exists(_.initial != null)) {
       val query =
         view.fields.map { f =>
           val expr =
-            if (f.default != null)
-              f.default
+            if (f.initial != null)
+              f.initial
             else if (f.type_ != null && f.type_.isComplexType)
               s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
             else

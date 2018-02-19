@@ -35,7 +35,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
       saveTo = null,
       resolver = null,
       nullable = true,
-      default = null,
+      initial = null,
       isForcedCardinality = false,
       type_ = null,
       enum = null,
