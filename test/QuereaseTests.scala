@@ -396,7 +396,7 @@ object QuereaseTests {
       .replace("_8", "8") // no underscore before 8 in our database names
       .replace("_9", "9") // no underscore before 9 in our database names
 
-  val qe = new Querease with ScalaDtoQuereaseIo {
+  implicit val qe = new Querease with ScalaDtoQuereaseIo {
 
     override type DTO = Dto
 
