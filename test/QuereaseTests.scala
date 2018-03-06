@@ -193,7 +193,7 @@ class QuereaseTests extends FlatSpec with Matchers {
   }
   "objects" should "produce correct save-to maps" in {
     def asKeys(instance: Dto) =
-      instance.toSaveableMap.toList.sortBy(_._1).map {
+      qe.toSaveableMap(instance).toList.sortBy(_._1).map {
         case (k, v) if k endsWith "->" => k + v
         case (k, v) => k
       }

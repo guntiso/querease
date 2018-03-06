@@ -18,7 +18,8 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
-  override def toSaveableMap[B <: DTO](instance: B) = instance.toSaveableMap(this)
+  override def toSaveableMap[B <: DTO](instance: B) =
+    instance.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toSaveableMap(this)
   override def keyMap[B <: DTO](instance: B) = instance match {
     case o: DtoWithId @unchecked => Map("id" -> o.id)
     case x => sys.error( // TODO use viewDef to get key-values if defined
@@ -26,16 +27,17 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
   }
 
   //org.tresql.Converter[T]
-  implicit def rowLikeToDto[T <: Dto](r: RowLike, m: Manifest[T]): T =
-    m.runtimeClass.newInstance.asInstanceOf[T].fill(r)(this)
+  implicit def rowLikeToDto[T <: DTO](r: RowLike, m: Manifest[T]): T =
+    m.runtimeClass.newInstance.asInstanceOf[T{type QE = Querease with ScalaDtoQuereaseIo}].fill(r)(this)
 }
 
-trait Dto {
+trait Dto { self =>
 
-  protected type QE = Querease with ScalaDtoQuereaseIo
+  protected type QDto = Dto{type QE = self.QE}
+  protected type QE <: Querease with ScalaDtoQuereaseIo
 
   //filling in object from RowLike
-  private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
+  private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: QDto]))] =
     (for (
       m <- getClass.getMethods
       if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
@@ -54,16 +56,17 @@ trait Dto {
   protected def setters = _setters
   protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
+      def conv[T <: QDto](r: RowLike, m: Manifest[T]) = m.runtimeClass.newInstance.asInstanceOf[T].fill(r)(qe)
       if (s._2._2 != null) { //child result
-        val m: Manifest[_ <: Dto] = s._2._2
+        val m: Manifest[_ <: QDto] = s._2._2
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[Dto](qe.rowLikeToDto,
-          m.asInstanceOf[Manifest[Dto]]).asInstanceOf[Object])
+        s._1.invoke(this, childResult.list[QDto](conv,
+          m.asInstanceOf[Manifest[QDto]]).asInstanceOf[Object])
       } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
-        val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
+        val m: Manifest[_ <: QDto] = s._2._1.asInstanceOf[Manifest[_ <: QDto]]
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[Dto](qe.rowLikeToDto,
-          m.asInstanceOf[Manifest[Dto]]).headOption.orNull.asInstanceOf[Object])
+        s._1.invoke(this, childResult.list[QDto](conv,
+          m.asInstanceOf[Manifest[QDto]]).headOption.orNull.asInstanceOf[Object])
       } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       s /*return setter used*/
     }) getOrElse {
@@ -86,7 +89,7 @@ trait Dto {
       case java.lang.Double.TYPE => ManifestFactory.Double
       case java.lang.Boolean.TYPE => ManifestFactory.Boolean
     }) -> null
-  protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
+  protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: QDto] = {
     val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
     val clazz = parametrisedType.getActualTypeArguments()(0) match {
       case c: Class[_] => c
@@ -99,11 +102,11 @@ trait Dto {
   private def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.flatMap { m =>
     scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
       case s: Seq[_] => m._1 -> s.map {
-        case dto: Dto => dto.toMap
+        case dto: QDto => dto.toMap
         case str: String => str
         case i: java.lang.Integer => i
       }
-      case c: Dto => m._1 -> c.toMap
+      case c: QDto => m._1 -> c.toMap
       case x => m._1 -> x
     }
   } toMap
@@ -219,10 +222,10 @@ trait Dto {
             .filter(isChildTableField)
             .map(_.options) getOrElse ""
           //objects from one list can be put into different tables
-          s.asInstanceOf[Seq[Dto]] map { d =>
+          s.asInstanceOf[Seq[QDto]] map { d =>
             (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
-        case d: Dto => view.fields
+        case d: QDto => view.fields
           .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
           .filter(isChildTableField)
           .map { f =>
