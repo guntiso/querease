@@ -162,7 +162,7 @@ trait Dto {
       )
   protected lazy val saveableValue: QE => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
-    val saveToMulti = view.saveTo != null && view.saveTo.size > 0
+    val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
     val saveToTableNames = saveTo.map(identifier)
     // FIXME child handling, do we rely on metadata or method list?
@@ -177,7 +177,7 @@ trait Dto {
     def isSaveableField(field: QuereaseMetadata#FieldDef) =
       isSavableField(field, view, saveToMulti, saveToTableNames)
     def tablesTo(v: QuereaseMetadata#ViewDef) =
-      if (v.saveTo != null && v.saveTo.size > 0)
+      if (v.saveTo != null && v.saveTo.nonEmpty)
         v.saveTo.mkString("#")
       else if (v.table != null)
         v.table
@@ -217,8 +217,7 @@ trait Dto {
           val options = view.fields
             .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
             .filter(isChildTableField)
-            .map(_.options)
-            .headOption getOrElse ""
+            .map(_.options) getOrElse ""
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[Dto]] map { d =>
             (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
@@ -237,9 +236,7 @@ trait Dto {
                   ti._1.name != f.table, ti._2, // for priority (sorting)
                   ti._1, ti._1.refs.count(_.refTable == childTableName)))
                 .sortBy(x => "" + x._1 + x._2)
-                .map(x => x._3 -> x._4)
-                .filter(_._2 > 0)
-                .headOption // <--- FIXME what's this BS?
+                .map(x => x._3 -> x._4).find(_._2 > 0) // <--- FIXME what's this BS?
                 .map {
                 case (table, 1) => // TODO multi-col?
                   table.refs.find(_.refTable == childTableName).map(_.cols.head).get
