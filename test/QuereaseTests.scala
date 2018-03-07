@@ -409,7 +409,15 @@ object QuereaseTests {
         .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
     override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
       Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
+
+    class Proxy(viewDef: ViewDef) extends super.Proxy(viewDef) {
+      override protected def dbToPropName(name: String) =
+        mojoz.metadata.Naming.camelizeLower(name)
+      override protected def propToDbName(name: String) =
+        mojoz.metadata.Naming.dbName(name)
+    }
   }
+
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
