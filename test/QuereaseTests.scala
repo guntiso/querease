@@ -409,6 +409,7 @@ object QuereaseTests {
         .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
     override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
       Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
+    override val viewNameToClassMap = dto.DtoMapping.viewNameToClass
 
     class Proxy(viewDef: ViewDef) extends super.Proxy(viewDef) {
       override protected def dbToPropName(name: String) =
