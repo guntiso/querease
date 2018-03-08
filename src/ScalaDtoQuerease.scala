@@ -18,13 +18,15 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
-  override def toSaveableMap[B <: DTO](instance: B) =
-    instance.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toSaveableMap(this)
-  override def keyMap[B <: DTO](instance: B) = instance match {
+  override def toSaveableMap[B <: DTO](dto: B) =
+    dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toSaveableMap(this)
+  override def keyMap[B <: DTO](dto: B) = dto match {
     case o: DtoWithId => Map("id" -> o.id)
     case _ => sys.error( // TODO use viewDef to get key-values if defined
-      s"getting key map for ${instance.getClass.getName} not supported yet")
+      s"getting key map for ${dto.getClass.getName} not supported yet")
   }
+
+  def toMap[B <: DTO](dto: B) = dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toMap(this)
 
   //org.tresql.Converter[T]
   implicit def rowLikeToDto[T <: DTO](r: RowLike, m: Manifest[T]): T =
@@ -33,7 +35,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
 
 trait Dto { self =>
 
-  protected type QDto = Dto{type QE = self.QE}
+  protected type QDto >: Null <: Dto{type QE = self.QE}
   protected type QE <: Querease with ScalaDtoQuereaseIo
 
   //filling in object from RowLike
@@ -74,7 +76,7 @@ trait Dto { self =>
     }) getOrElse {
       setExtras(dbName, r)
     }
-  protected def setExtras(dbName: String, r: RowLike): AnyRef = {
+  protected def setExtras(dbName: String, r: RowLike)(implicit qe: QE): AnyRef = {
     throw new RuntimeException(s"Setter for '$dbName' not found")
   }
   protected def dbToPropName(name: String) = name // .toLowerCase
