@@ -77,21 +77,7 @@ sourceGenerators in Test += Def.task {
     val contents = ScalaBuilder.createScalaClassesString(
       List("package dto", "",
         "import test.{ Dto, DtoWithId }", ""), viewDefs, Nil)
-    val mapping = s"""
-                     |object Tables {
-                     |  ${tableMd.tableDefs.map(t => s"class ${ScalaBuilder.scalaClassName(t.name)} {}").mkString("\n  ")}
-                     |}
-                     |object DtoMapping {
-                     |  val viewNameToClass = Map[String, Class[_ <: Dto]](
-                     |    ${viewDefs.map(v => s""""${v.name}" -> classOf[${ScalaBuilder.scalaClassName(v.name)}]""").mkString(",\n    ")}
-                     |  )
-                     |  val viewClassToTableClass = Map[Class[_ <: Dto], Class[_]](
-                     |    ${viewDefs.filter(_.table != null).map(v => s"classOf[${ScalaBuilder.scalaClassName(v.name)}]" +
-      s" -> classOf[Tables.${ScalaBuilder.scalaClassName(v.table)}]").mkString(",\n    ")}
-                     |  )
-                     |}
-                     |""".stripMargin.trim
-    IO.write(file, contents + mapping)
+    IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
 }.taskValue
 

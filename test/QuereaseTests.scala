@@ -409,20 +409,7 @@ object QuereaseTests {
         .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
     override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
       Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
-    override val viewNameToClassMap = dto.DtoMapping.viewNameToClass
-
-    override def proxies: Map[Manifest[_ <: DTO], Proxy] = _qtproxies
-    protected lazy val _qtproxies: Map[Manifest[_ <: DTO], Proxy] =
-      _proxies.map { case (n, p) => n -> new Proxy(p.viewDef) }.toMap // why it returns list and toMap call is needed???
-
-    class Proxy(viewDef: ViewDef) extends super.Proxy(viewDef) {
-      override protected def dbToPropName(name: String) =
-        mojoz.metadata.Naming.camelizeLower(name)
-      override protected def propToDbName(name: String) =
-        mojoz.metadata.Naming.dbName(name)
-    }
   }
-
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
