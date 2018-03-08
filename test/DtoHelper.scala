@@ -2,7 +2,7 @@ package test
 
 trait Dto extends querease.Dto {
 
-  override type QE = QuereaseTests.qe.type
+  override type QE = QuereaseTests.TestQuerease.type
 
   override protected def dbToPropName(name: String) =
     mojoz.metadata.Naming.camelizeLower(name)

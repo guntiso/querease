@@ -396,20 +396,22 @@ object QuereaseTests {
       .replace("_8", "8") // no underscore before 8 in our database names
       .replace("_9", "9") // no underscore before 9 in our database names
 
-  implicit val qe = new Querease with ScalaDtoQuereaseIo {
+   object TestQuerease extends Querease with ScalaDtoQuereaseIo {
 
-    override type DTO = Dto
+     override type DTO = Dto
 
-    private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
-    override lazy val tableMetadata =
-      new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
-    override lazy val yamlMetadata = YamlMd.fromFiles(path = "sample/md")
-    override lazy val viewDefs = YamlViewDefLoader(
-      tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
-        .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
-    override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
-      Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
-  }
+     private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
+     override lazy val tableMetadata =
+       new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
+     override lazy val yamlMetadata = YamlMd.fromFiles(path = "sample/md")
+     override lazy val viewDefs = YamlViewDefLoader(
+       tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
+       .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
+     override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
+       Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
+   }
+
+  implicit val qe = TestQuerease
   val (url, user, password) = ("jdbc:hsqldb:mem:mymemdb", "SA", "")
   val nl = System.getProperty("line.separator")
   val dataPath = "test/data"
