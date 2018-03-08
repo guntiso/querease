@@ -46,19 +46,19 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
   def viewNameToClassMap: Map[String, Class[_ <: DTO]]
   def classToViewNameMap: Map[Class[_], String] = viewNameToClassMap.map(_.swap)
 
-  protected lazy val proxies: Map[Manifest[_ <: DTO], Proxy] = viewDefs.map { case (n, v) =>
-    ManifestFactory.classType(viewNameToClassMap(n)) -> new Proxy(v)
-  }
+  def proxies: Map[Manifest[_ <: DTO], Proxy] = _proxies
+  protected lazy val _proxies: Map[Manifest[_ <: DTO], Proxy] = viewDefs.map { case (n, v) =>
+    ManifestFactory.classType(viewNameToClassMap(n)) -> new Proxy(v) }
 
   /** Ensures viewDef corresponding Dto instance transformation i.e. filling from tresql row, converting to map and saveable map */
-  class Proxy(viewDef: ViewDef) {
+  class Proxy(val viewDef: ViewDef) {
     protected val clazz: Class[_ <: DTO] = viewNameToClassMap(viewDef.name)
     protected val setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: DTO]))] = {
       def manifest(name: String, clazz: Class[_]) =
         if (!clazz.isPrimitive)
           ManifestFactory.classType(clazz) ->
             (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
-              childManifest(getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
+              childManifest(this.clazz.getMethods.filter(_.getName == name).head.getGenericReturnType)
             } else null)
         else (clazz match {
           case java.lang.Integer.TYPE => ManifestFactory.Int
@@ -106,7 +106,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
       def isMisleading(s: String) =
         s.contains(" ") || s == "null" || s == "" || s(0).isDigit
       val kv: Seq[(String, Object)] = fieldNames.flatMap { name =>
-        Try(clazz.getMethod(name)).map(_.invoke(this) match {
+        Try(clazz.getMethod(name)).map(_.invoke(dto) match {
           case s: Seq[_] => name ->
             ("(" + (s map {
               case s: String => "\"" + s + "\""
@@ -118,7 +118,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
           case x => name -> x
         }).map(List(_)).toOption.getOrElse(Nil)
       }
-      s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}"
+      s"${clazz.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}}"
     }
 
     private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
@@ -145,19 +145,19 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
         field.saveTo != null
         )
 
-    protected lazy val saveableValue: String => PartialFunction[Any, List[(String, Any)]] = {
+    protected lazy val saveableValue: DTO => String => PartialFunction[Any, List[(String, Any)]] = dto => {
       val view = viewDef
       val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
       val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
       val saveToTableNames = saveTo.map(identifier)
       // FIXME child handling, do we rely on metadata or method list?
-      def isForInsert = this match {
+      def isForInsert = dto match {
         case o: DtoWithId => o.id == null
-        case _ => sys.error(s"isForInsert() for ${getClass.getName} not supported yet") // TODO isForInsert
+        case _ => sys.error(s"isForInsert() for ${clazz.getName} not supported yet") // TODO isForInsert
       }
-      def isForUpdate = this match {
+      def isForUpdate = dto match {
         case o: DtoWithId => o.id != null
-        case _ => sys.error(s"isForUpdate() for ${getClass.getName} not supported yet") // TODO isForUpdate
+        case _ => sys.error(s"isForUpdate() for ${clazz.getName} not supported yet") // TODO isForUpdate
       }
       def isSaveableField(field: QuereaseMetadata#FieldDef) =
         isSavableField(field, view, saveToMulti, saveToTableNames)
@@ -245,8 +245,8 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
     /** Creating saveable map from object for passing to tresql ort */
     def proxyToSaveableMap(dto: DTO): Map[String, Any] = setters.toList.flatMap { m =>
       val propName = m._1
-      scala.util.Try(getClass.getMethod(propName).invoke(dto)).toOption.map {
-        saveableValue(propName)(_)
+      scala.util.Try(clazz.getMethod(propName).invoke(dto)).toOption.map {
+        saveableValue(dto)(propName)(_)
       } getOrElse Nil
     }.groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } //child objects from different lists can be put into one table
       .flatMap {

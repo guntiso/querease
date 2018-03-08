@@ -411,6 +411,10 @@ object QuereaseTests {
       Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
     override val viewNameToClassMap = dto.DtoMapping.viewNameToClass
 
+    override def proxies: Map[Manifest[_ <: DTO], Proxy] = _qtproxies
+    protected lazy val _qtproxies: Map[Manifest[_ <: DTO], Proxy] =
+      _proxies.map { case (n, p) => n -> new Proxy(p.viewDef) }.toMap // why it returns list and toMap call is needed???
+
     class Proxy(viewDef: ViewDef) extends super.Proxy(viewDef) {
       override protected def dbToPropName(name: String) =
         mojoz.metadata.Naming.camelizeLower(name)
