@@ -1,6 +1,6 @@
 package test
 
-trait Dto extends querease.Dto {
+trait Dto extends querease.Dto { self =>
 
   override type QE = QuereaseTests.TestQuerease.type
 

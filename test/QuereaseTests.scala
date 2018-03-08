@@ -381,6 +381,16 @@ class QuereaseTests extends FlatSpec with Matchers {
       "] {person.name}"
     )
   }
+  "implicit querease" should "be found" in {
+    val pn = new dto.PersonName
+    pn.name = "Sigita"
+    val pi = new dto.PersonInfo
+    pi.name = "Gunzi"
+    pi.sex = "V"
+    pi.children = List(pn);
+    pi.toMap should be(
+      Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "children" -> List(Map("name" -> "Sigita")), "father" -> null, "motherName" -> null))
+  }
 }
 
 object QuereaseTests {

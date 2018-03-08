@@ -11,35 +11,36 @@ import org.tresql.Column
 import org.tresql.RowLike
 
 
-trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Querease =>
+trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Querease =>
 
   override type DTO <: Dto
   type DWI <: DTO with DtoWithId
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
-  override def toSaveableMap[B <: DTO](dto: B) =
-    dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toSaveableMap(this)
+  override def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
+    dto.asInstanceOf[B{type QE = self.type}].toSaveableMap(this)
   override def keyMap[B <: DTO](dto: B) = dto match {
     case o: DtoWithId => Map("id" -> o.id)
     case _ => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${dto.getClass.getName} not supported yet")
   }
 
-  def toMap[B <: DTO](dto: B) = dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toMap(this)
+  def toMap[B <: DTO](dto: B): Map[String, Any] =
+    dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo} /*self.type somehow does not work*/].toMap(this)
 
   //org.tresql.Converter[T]
-  implicit def rowLikeToDto[T <: DTO](r: RowLike, m: Manifest[T]): T =
-    m.runtimeClass.newInstance.asInstanceOf[T{type QE = Querease with ScalaDtoQuereaseIo}].fill(r)(this)
+  implicit def rowLikeToDto[B <: DTO](r: RowLike, m: Manifest[B]): B =
+    m.runtimeClass.newInstance.asInstanceOf[B{type QE = self.type}].fill(r)(this)
 }
 
 trait Dto { self =>
 
-  protected type QDto >: Null <: Dto{type QE = self.QE}
-  protected type QE <: Querease with ScalaDtoQuereaseIo
+  protected type QE <: Querease with ScalaDtoQuereaseIo { type DTO >: self.type }
+  protected type QDto >: Null <: Dto { type QE = self.QE }
 
   //filling in object from RowLike
-  private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: QDto]))] =
+  private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
     (for (
       m <- getClass.getMethods
       if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
@@ -60,17 +61,16 @@ trait Dto { self =>
   protected def setters = _setters
   protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
-      def conv[T <: QDto](r: RowLike, m: Manifest[T]) = m.runtimeClass.newInstance.asInstanceOf[T].fill(r)(qe)
       if (s._2._2 != null) { //child result
-        val m: Manifest[_ <: QDto] = s._2._2
+        val m: Manifest[_ <: Dto] = s._2._2
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[QDto](conv,
-          m.asInstanceOf[Manifest[QDto]]).asInstanceOf[Object])
+        s._1.invoke(this, childResult.list[self.type](qe.rowLikeToDto,
+          m.asInstanceOf[Manifest[self.type]]).asInstanceOf[Object])
       } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
-        val m: Manifest[_ <: QDto] = s._2._1.asInstanceOf[Manifest[_ <: QDto]]
+        val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[QDto](conv,
-          m.asInstanceOf[Manifest[QDto]]).headOption.orNull.asInstanceOf[Object])
+        s._1.invoke(this, childResult.list[self.type](qe.rowLikeToDto,
+          m.asInstanceOf[Manifest[self.type]]).headOption.orNull.asInstanceOf[Object])
       } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       s /*return setter used*/
     }) getOrElse {
@@ -93,7 +93,7 @@ trait Dto { self =>
       case java.lang.Double.TYPE => ManifestFactory.Double
       case java.lang.Boolean.TYPE => ManifestFactory.Boolean
     }) -> null
-  protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: QDto] = {
+  protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
     val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
     val clazz = parametrisedType.getActualTypeArguments()(0) match {
       case c: Class[_] => c
@@ -113,7 +113,7 @@ trait Dto { self =>
       case c: QDto @unchecked => m._1 -> c.toMap
       case x => m._1 -> x
     }
-  } toMap
+  }
   def toMap(implicit qe: QE): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
     .map(toMap).getOrElse(toUnorderedMap)
   def toMap(fieldOrdering: Ordering[String])(implicit qe: QE): Map[String, Any] =
