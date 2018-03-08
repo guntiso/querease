@@ -21,8 +21,8 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { this: Quere
   override def toSaveableMap[B <: DTO](instance: B) =
     instance.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo}].toSaveableMap(this)
   override def keyMap[B <: DTO](instance: B) = instance match {
-    case o: DtoWithId @unchecked => Map("id" -> o.id)
-    case x => sys.error( // TODO use viewDef to get key-values if defined
+    case o: DtoWithId => Map("id" -> o.id)
+    case _ => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${instance.getClass.getName} not supported yet")
   }
 
@@ -45,6 +45,7 @@ trait Dto { self =>
       val name = m.getName.dropRight(4)
       name -> (m -> manifest(name, m.getParameterTypes()(0)))
     }).toMap
+
   //end filling in object from RowLike
   def fill(r: RowLike)(implicit qe: QE): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
@@ -53,6 +54,7 @@ trait Dto { self =>
     }
     this
   }
+
   protected def setters = _setters
   protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
@@ -102,11 +104,11 @@ trait Dto { self =>
   private def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.flatMap { m =>
     scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
       case s: Seq[_] => m._1 -> s.map {
-        case dto: QDto => dto.toMap
+        case dto: QDto @unchecked => dto.toMap
         case str: String => str
         case i: java.lang.Integer => i
       }
-      case c: QDto => m._1 -> c.toMap
+      case c: QDto @unchecked => m._1 -> c.toMap
       case x => m._1 -> x
     }
   } toMap
@@ -123,7 +125,7 @@ trait Dto { self =>
     toString(fieldNames)
   }
 
-  protected def toString(fieldNames: Seq[String]): String = {
+  protected def toString(fieldNames: Seq[String])(implicit qe: QE): String = {
     def isMisleading(s: String) =
       s.contains(" ") || s == "null" || s == "" || s(0).isDigit
     val kv: Seq[(String, Object)] = fieldNames.flatMap{ name =>
@@ -131,13 +133,15 @@ trait Dto { self =>
         case s: Seq[_] => name ->
           ("(" + (s map {
             case s: String => "\"" + s + "\""
+            case d: QDto @unchecked => d.toString
             case o => o.toString
           }).mkString(", ") + ")")
         case s: String if isMisleading(s) => name -> ("\"" + s + "\"")
+        case d: QDto @unchecked => name -> d.toString
         case x => name -> x
       }).map(List(_)).toOption.getOrElse(Nil)
     }
-    s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}"
+    s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}}"
   }
 
   private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
@@ -225,7 +229,7 @@ trait Dto { self =>
           s.asInstanceOf[Seq[QDto]] map { d =>
             (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
-        case d: QDto => view.fields
+        case d: QDto @unchecked => view.fields
           .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
           .filter(isChildTableField)
           .map { f =>
