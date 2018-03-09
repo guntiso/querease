@@ -64,13 +64,21 @@ trait Dto { self =>
       if (s._2._2 != null) { //child result
         val m: Manifest[_ <: Dto] = s._2._2
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[self.type](qe.rowLikeToDto,
-          m.asInstanceOf[Manifest[self.type]]).asInstanceOf[Object])
+        s._1.invoke(
+          this,
+          childResult.list[self.type /*use self.type to satisfy compiler for qe.rowLikeToDto type since qe.DTO does not work
+            i.e. error - method with dependent type cannot be converted to function value */](
+            qe.rowLikeToDto, m.asInstanceOf[Manifest[self.type]]
+          ).asInstanceOf[Object])
       } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
         val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
         val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[self.type](qe.rowLikeToDto,
-          m.asInstanceOf[Manifest[self.type]]).headOption.orNull.asInstanceOf[Object])
+        s._1.invoke(
+          this,
+          childResult.list[self.type /*use self.type to satisfy compiler for qe.rowLikeToDto type since qe.DTO does not work
+            i.e. error - method with dependent type cannot be converted to function value */](
+            qe.rowLikeToDto, m.asInstanceOf[Manifest[self.type]]
+          ).headOption.orNull.asInstanceOf[Object])
       } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
       s /*return setter used*/
     }) getOrElse {
