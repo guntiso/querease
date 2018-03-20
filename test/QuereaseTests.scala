@@ -9,6 +9,7 @@ import org.scalatest.FlatSpec
 import org.scalatest.Matchers
 import org.tresql.Env
 import org.tresql.dialects.HSQLDialect
+import org.tresql.LogTopic
 import dto._
 import mojoz.metadata._
 import mojoz.metadata.TableMetadata
@@ -429,7 +430,7 @@ object QuereaseTests {
   def setEnv(conn: Connection = getConnection) = {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
-    Env.logger = (msg, level) => println(msg)
+    Env.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs, null)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
