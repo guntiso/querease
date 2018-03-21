@@ -134,7 +134,8 @@ trait QuereaseExpressions { this: Querease =>
         val nctx = ctx.copy(transformerContext = EqOpCtx)
         BinOp("=", expressionTransformer(nctx)(lop), expressionTransformer(nctx)(rop))
       case w: With =>
-        w
+        val nctx = ctx.copy(transformerContext = OtherOpCtx)
+        With(w.tables.map(expressionTransformer(nctx)).asInstanceOf[List[WithTable]], expressionTransformer(ctx)(w.query))
       case q @ Query(tables, filter, cols, group, order, offset, limit) =>
         val resolvableVarOpt = traverser(variableExtractor)(Nil)(q).reverse.headOption
         val resolvableName = Option(fieldName).orElse(resolvableVarOpt.map(_.variable)).orNull
