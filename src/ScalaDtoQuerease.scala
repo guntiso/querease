@@ -116,8 +116,8 @@ trait Dto { self =>
     }
   }
   def toMap(implicit qe: QE): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
-    .map(toMap).getOrElse(toUnorderedMap)
-  def toMap(fieldOrdering: Ordering[String])(implicit qe: QE): Map[String, Any] =
+    .map(toMapWithOrdering).getOrElse(toUnorderedMap)
+  def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QE): Map[String, Any] =
     TreeMap[String, Any]()(fieldOrdering) ++ toUnorderedMap
 
   def containsField(fieldName: String) = setters.contains(fieldName)
