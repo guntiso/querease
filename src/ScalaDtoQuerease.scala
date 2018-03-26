@@ -216,25 +216,25 @@ trait Dto { self =>
     }
     propName => {
       val fieldName = propToDbName(propName)
+      val propFieldDefOpt = view.fields
+        .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+      val childTableFieldDefOpt = propFieldDefOpt
+        .filter(isChildTableField)
       val saveableValueFunc: PartialFunction[Any, List[(String, Any)]] = {
-        case Nil => view.fields
-          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
-          .filter(isChildTableField)
+        case Nil => childTableFieldDefOpt
           .map(f => qe.viewDefOption(f.type_.name).map(v => tablesTo(v) + f.options).get -> Nil)
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
         case s: Seq[_] =>
-          val options = view.fields
-            .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
-            .filter(isChildTableField)
+          val options = childTableFieldDefOpt
             .map(_.options) getOrElse ""
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[QDto]] map { d =>
             (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
-        case d: QDto @unchecked => view.fields
-          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
-          .filter(isChildTableField)
+        case d if childTableFieldDefOpt.isDefined =>
+          val value = Option(d).map { case x: QDto @unchecked => x.toSaveableMap }.orNull
+          childTableFieldDefOpt
           .map { f =>
             val tables = saveToTableNames.map(qe.tableMetadata.tableDef)
             val childTableName = qe.viewDefOption(f.type_.name).map(tablesTo).get
@@ -253,12 +253,11 @@ trait Dto { self =>
                 case (table, n) => // FIXME analyze aliases and/or joins?
                   f.name + "_id"
               }.getOrElse(childTableName)
-            key + f.options -> d.toSaveableMap
+            key + f.options -> value
           }
-          .orElse(Some("*" + propName -> d.toSaveableMap)) // prefix * to avoid clashes
+          .orElse(Some("*" + propName -> value)) // prefix * to avoid clashes
           .toList
-        case x => view.fields
-          .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+        case x => propFieldDefOpt
           .filter(isSaveableField)
           .map(f => saveableEntries(f, x))
           .orElse(Some(List("*" + propName -> x))) // prefix * to avoid clashes
