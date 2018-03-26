@@ -107,11 +107,11 @@ trait Dto { self =>
   private def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.flatMap { m =>
     scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
       case s: Seq[_] => m._1 -> s.map {
-        case dto: QDto @unchecked => dto.toMap
+        case dto: Dto => dto.asInstanceOf[QDto].toMap
         case str: String => str
         case i: java.lang.Integer => i
       }
-      case c: QDto @unchecked => m._1 -> c.toMap
+      case c: Dto => m._1 -> c.asInstanceOf[QDto].toMap
       case x => m._1 -> x
     }
   }
@@ -136,11 +136,11 @@ trait Dto { self =>
         case s: Seq[_] => name ->
           ("(" + (s map {
             case s: String => "\"" + s + "\""
-            case d: QDto @unchecked => d.toString
+            case d: Dto => d.asInstanceOf[QDto].toString
             case o => o.toString
           }).mkString(", ") + ")")
         case s: String if isMisleading(s) => name -> ("\"" + s + "\"")
-        case d: QDto @unchecked => name -> d.toString
+        case d: Dto => name -> d.asInstanceOf[QDto].toString
         case x => name -> x
       }).map(List(_)).toOption.getOrElse(Nil)
     }
@@ -233,7 +233,7 @@ trait Dto { self =>
             (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
         case d if childTableFieldDefOpt.isDefined =>
-          val value = Option(d).map { case x: QDto @unchecked => x.toSaveableMap }.orNull
+          val value = Option(d).map { case x: Dto => x.asInstanceOf[QDto].toSaveableMap }.orNull
           childTableFieldDefOpt
           .map { f =>
             val tables = saveToTableNames.map(qe.tableMetadata.tableDef)
