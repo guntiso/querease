@@ -241,18 +241,17 @@ trait Dto { self =>
             val key = // XXX too complicated to save a child
             // TODO support multiple, multiple direction, multi-col etc. refs properly
               tables
-                .zipWithIndex
-                .map(ti => (
-                  ti._1.name != f.table, ti._2, // for priority (sorting)
-                  ti._1, ti._1.refs.count(_.refTable == childTableName)))
-                .sortBy(x => "" + x._1 + x._2)
-                .map(x => x._3 -> x._4).find(_._2 > 0) // <--- FIXME what's this BS?
+                .sorted( // sort is stable
+                  Ordering.by((table: mojoz.metadata.TableDef.TableDefBase[_]) =>
+                    if (table.name == f.table) 0 else 1))
+                .find { table => table.refs.exists(_.refTable == childTableName) }
+                .map { table => table -> table.refs.count(_.refTable == childTableName) }
                 .map {
                 case (table, 1) => // TODO multi-col?
                   table.refs.find(_.refTable == childTableName).map(_.cols.head).get
                 case (table, n) => // FIXME analyze aliases and/or joins?
                   f.name + "_id"
-              }.getOrElse(childTableName)
+                }.getOrElse(childTableName)
             key + f.options -> value
           }
           .orElse(Some("*" + propName -> value)) // prefix * to avoid clashes
