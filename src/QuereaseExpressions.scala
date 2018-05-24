@@ -57,7 +57,7 @@ trait QuereaseExpressions { this: Querease =>
     * @param contextName "filter" or "resolver" for now
     */
   protected def resolverErrorMessageExpression(viewName: String, fieldName: String, contextName: String): String =
-    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || _"""
+    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || coalesce(_, 'null')"""
 
   /** Returns resolver expression string - db function call to check resolver result and throw exception
     * when result is not unique or is missing. This is important to avoid silent deletion of data from db.

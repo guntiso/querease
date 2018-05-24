@@ -206,45 +206,45 @@ class QuereaseTests extends FlatSpec with Matchers {
     keys(new ResolverTestAccount1) should be(List(
       "code",
       "code->bank_id=checked_resolve(_, array(bank[code = _]{id}@(2))," +
-          " 'Failed to identify value of \"code\" (from resolver_test_account_1) - ' || _)",
+          " 'Failed to identify value of \"code\" (from resolver_test_account_1) - ' || coalesce(_, 'null'))",
       "id"
     ).mkString("; "))
     keys(new ResolverTestAccount2) should be(List(
       "code",
       "code->bank_id=checked_resolve(_, array(bank[code = :code && :some_other_variable]{id}@(2))," +
-          " 'Failed to identify value of \"code\" (from resolver_test_account_2) - ' || _)",
+          " 'Failed to identify value of \"code\" (from resolver_test_account_2) - ' || coalesce(_, 'null'))",
       "id"
     ).mkString("; "))
     keys(new ResolverTestAccountSelfRef1) should be(List(
       "name",
       "name->id=checked_resolve(_, array(account;account/bank?[bank.code || ', ' || bank.name || ', ' || account.id = _]{account.id}@(2))," +
-          " 'Failed to identify value of \"name\" (from resolver_test_account_self_ref_1) - ' || _)"
+          " 'Failed to identify value of \"name\" (from resolver_test_account_self_ref_1) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestBank1) should be("name->name='My bank'")
     resolverKeys(new ResolverTestBank2) should be("name->name=_ || ' saved'")
     keys(new ResolverTestAccountCurrency1) should be(List(
       "account",
       "account->account_id=checked_resolve(_, array(account[billing_account = _]{id}@(2))," +
-          " 'Failed to identify value of \"account\" (from resolver_test_account_currency_1) - ' || _)",
+          " 'Failed to identify value of \"account\" (from resolver_test_account_currency_1) - ' || coalesce(_, 'null'))",
       "currency_name",
       "currency_name->currency_code=checked_resolve(_, array(currency[name = _]{code}@(2))," +
-          " 'Failed to identify value of \"currency_name\" (from resolver_test_account_currency_1) - ' || _)"
+          " 'Failed to identify value of \"currency_name\" (from resolver_test_account_currency_1) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson1) should be(List(
       "father->father_id=checked_resolve(_, array(person[name || surname = _]{id}@(2))," +
-          " 'Failed to identify value of \"father\" (from resolver_test_person_1) - ' || _)",
+          " 'Failed to identify value of \"father\" (from resolver_test_person_1) - ' || coalesce(_, 'null'))",
       "mother->mother_id=checked_resolve(_, array(person[name || surname = _]{id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from resolver_test_person_1) - ' || _)"
+          " 'Failed to identify value of \"mother\" (from resolver_test_person_1) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson2) should be(List(
       "father->father_id=checked_resolve(_, array(person[name || ' ' || surname || ' (#1)' = _]{person.id}@(2))," +
-          " 'Failed to identify value of \"father\" (from resolver_test_person_2) - ' || _)"
+          " 'Failed to identify value of \"father\" (from resolver_test_person_2) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson3) should be(List(
       "father->father_id=checked_resolve(_, array(person[name || ' ' || surname || ' (#4)' = _]{id}@(2))," +
-          " 'Failed to identify value of \"father\" (from resolver_test_person_3) - ' || _)",
+          " 'Failed to identify value of \"father\" (from resolver_test_person_3) - ' || coalesce(_, 'null'))",
       "mother->mother_id=checked_resolve(_, array(person[name || ' ' || surname || ' (#2)' = _]{person.id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from resolver_test_person_3) - ' || _)"
+          " 'Failed to identify value of \"mother\" (from resolver_test_person_3) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson4) should be(List(
       "father->father_id=2",
@@ -252,9 +252,9 @@ class QuereaseTests extends FlatSpec with Matchers {
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson5) should be(List(
       "father->father_id=checked_resolve(_, array(person[name || ' ' || surname || ' (#7)' = _]{id}@(2))," +
-          " 'Failed to identify value of \"father\" (from resolver_test_person_5) - ' || _)",
+          " 'Failed to identify value of \"father\" (from resolver_test_person_5) - ' || coalesce(_, 'null'))",
       "mother->mother_id=checked_resolve(_, array(person[name || ' ' || surname || ' (#5)' = _]{person.id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from resolver_test_person_5) - ' || _)"
+          " 'Failed to identify value of \"mother\" (from resolver_test_person_5) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson6) should be(List(
       "father->father_id=4",
@@ -262,18 +262,18 @@ class QuereaseTests extends FlatSpec with Matchers {
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson7) should be(List(
       "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person? father[name || ' ' || surname || ' of ' || father.name || ' (#7)' = _]{person.id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from resolver_test_person_7) - ' || _)"
+          " 'Failed to identify value of \"mother\" (from resolver_test_person_7) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson8) should be(List(
       "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person? father[name || ' ' || surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || _)"
+          " 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new NestedResolverTest1) should be(List(
       "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person? father[[name || ' ' || surname || ' of ' || father.name || ' (#7)' = :mother &" +
         " father_id = checked_resolve(:other_field, array(" +
           "person p1;p1[p1.father_id]person? father[[:other_field = name || ' ' || surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
-          " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || :other_field)]]{person.id}@(2))," +
-          " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || _)"
+          " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field, 'null'))]]{person.id}@(2))," +
+          " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
   }
   "querease" should "select referenced fields correctly" in {
@@ -372,13 +372,13 @@ class QuereaseTests extends FlatSpec with Matchers {
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_1"), Map("mother" -> "mother"))._1 should be(
       "person" +
       "[mother_id = checked_resolve(:mother?, array(person;person[person.mother_id]person? mother[[mother.name || mother.surname = :mother?]]{person.id}@(2))," +
-      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' || :mother?)" +
+      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' || coalesce(:mother?, 'null'))" +
       "] {person.name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_2"), Map("mother" -> "mother"))._1 should be(
       "person" +
       "[person[mother_id = checked_resolve(:mother?, array(person[[name || ' ' || surname || ' (#1)' = :mother?]]{person.id}@(2))," +
-      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' || :mother?)]{1}" +
+      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' || coalesce(:mother?, 'null'))]{1}" +
       "] {person.name}"
     )
   }
