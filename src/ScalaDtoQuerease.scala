@@ -193,6 +193,8 @@ trait Dto { self =>
         v.table
       else
         null
+    def childSaveTo(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =
+      Option(field).map(_.saveTo).filter(_ != null) getOrElse tablesTo(childView)
     def isChildTableField(field: QuereaseMetadata#FieldDef) =
       !field.isExpression &&
         field.type_.isComplexType &&
@@ -222,7 +224,7 @@ trait Dto { self =>
         .filter(isChildTableField)
       val saveableValueFunc: PartialFunction[Any, List[(String, Any)]] = {
         case Nil => childTableFieldDefOpt
-          .map(f => qe.viewDefOption(f.type_.name).map(v => tablesTo(v) + f.options).get -> Nil)
+          .map(f => qe.viewDefOption(f.type_.name).map(v => childSaveTo(f, v) + f.options).get -> Nil)
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
         case s: Seq[_] =>
@@ -230,7 +232,8 @@ trait Dto { self =>
             .map(_.options) getOrElse ""
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[QDto]] map { d =>
-            (tablesTo(qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
+            val f = childTableFieldDefOpt.orNull
+            (childSaveTo(f, qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
         case d if childTableFieldDefOpt.isDefined =>
           val value = Option(d).map { case x: Dto => x.asInstanceOf[QDto].toSaveableMap }.orNull
@@ -240,18 +243,21 @@ trait Dto { self =>
             val childTableName = qe.viewDefOption(f.type_.name).map(tablesTo).get
             val key = // XXX too complicated to save a child
             // TODO support multiple, multiple direction, multi-col etc. refs properly
-              tables
-                .sorted( // sort is stable
-                  Ordering.by((table: mojoz.metadata.TableDef.TableDefBase[_]) =>
-                    if (table.name == f.table) 0 else 1))
-                .find { table => table.refs.exists(_.refTable == childTableName) }
-                .map { table => table -> table.refs.count(_.refTable == childTableName) }
-                .map {
-                case (table, 1) => // TODO multi-col?
-                  table.refs.find(_.refTable == childTableName).map(_.cols.head).get
-                case (table, n) => // FIXME analyze aliases and/or joins?
-                  f.name + "_id"
-                }.getOrElse(childTableName)
+              Option(f.saveTo)
+                .getOrElse {
+                  tables
+                    .sorted( // sort is stable
+                      Ordering.by((table: mojoz.metadata.TableDef.TableDefBase[_]) =>
+                        if (table.name == f.table) 0 else 1))
+                    .find { table => table.refs.exists(_.refTable == childTableName) }
+                    .map { table => table -> table.refs.count(_.refTable == childTableName) }
+                    .map {
+                      case (table, 1) => // TODO multi-col?
+                        table.refs.find(_.refTable == childTableName).map(_.cols.head).get
+                      case (table, n) => // FIXME analyze aliases and/or joins?
+                        f.name + "_id"
+                    }.getOrElse(childTableName)
+                }
             key + f.options -> value
           }
           .orElse(Some("*" + propName -> value)) // prefix * to avoid clashes
