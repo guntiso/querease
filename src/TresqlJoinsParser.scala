@@ -2,6 +2,7 @@ package querease
 
 import org.tresql.Env
 import org.tresql.QueryCompiler._
+import org.tresql.{ CacheBase, SimpleCacheBase }
 
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
@@ -12,6 +13,7 @@ import scala.collection.immutable.Seq
 import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
+  val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
     val oldMetadata = Env.metadata
     Env.metadata = tresqlMetadata
@@ -24,7 +26,11 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
       .getOrElse(joinsStr + " {*}")
     val compiledExpr =
       try {
-        compile(compileStr)
+        cache.flatMap(_.get(compileStr)).getOrElse {
+          val e = compile(compileStr)
+          cache.foreach(_.put(compileStr, e))
+          e
+        }
       } catch {
         case NonFatal(ex) =>
           throw new RuntimeException("Failed to compile: " + compileStr, ex)
