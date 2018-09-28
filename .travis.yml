@@ -13,14 +13,12 @@ scala:
 env:
   - JDK=oraclejdk8
   - JDK=oraclejdk7
-  - JDK=openjdk7
+  - JDK=openjdk8
 matrix:
   # scala 2.12 requires java 8
   exclude:
     - scala: 2.12.7
       env: JDK=oraclejdk7
-    - scala: 2.12.7
-      env: JDK=openjdk7
 before_script:
   - jdk_switcher use $JDK
   - sudo chmod +x /usr/local/bin/sbt #https://github.com/travis-ci/travis-ci/issues/7703
