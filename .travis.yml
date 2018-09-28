@@ -11,6 +11,7 @@ scala:
   - 2.11.12
   - 2.10.7
 env:
+  - JDK=oraclejdk9
   - JDK=oraclejdk8
   - JDK=oraclejdk7
   - JDK=openjdk8
