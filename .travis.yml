@@ -7,7 +7,7 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION clean update compile test
 # - java -Xms2048M -Xmx2048M -Xss6M -XX:MaxPermSize=512M -jar launcher/sbt-launch.jar @launcher/launchconfig ++$TRAVIS_SCALA_VERSION clean update compile test
 scala:
-  - 2.12.5
+  - 2.12.7
   - 2.11.12
   - 2.10.7
 env:
@@ -17,9 +17,9 @@ env:
 matrix:
   # scala 2.12 requires java 8
   exclude:
-    - scala: 2.12.5
+    - scala: 2.12.7
       env: JDK=oraclejdk7
-    - scala: 2.12.5
+    - scala: 2.12.7
       env: JDK=openjdk7
 before_script:
   - jdk_switcher use $JDK
