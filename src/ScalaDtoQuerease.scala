@@ -189,6 +189,8 @@ trait Dto { self =>
     def tablesTo(v: QuereaseMetadata#ViewDef) =
       if (v.saveTo != null && v.saveTo.nonEmpty)
         v.saveTo.mkString("#")
+      else if (v.saveTo == Nil)
+        null
       else if (v.table != null)
         v.table
       else
@@ -224,16 +226,23 @@ trait Dto { self =>
         .filter(isChildTableField)
       val saveableValueFunc: PartialFunction[Any, List[(String, Any)]] = {
         case Nil => childTableFieldDefOpt
-          .map(f => qe.viewDefOption(f.type_.name).map(v => childSaveTo(f, v) + f.options).get -> Nil)
+          .flatMap(f => qe.viewDefOption(f.type_.name)
+            .map(childSaveTo(f, _))
+            .filter(_ != null)
+            .map(_ + f.options -> Nil))
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
         case s: Seq[_] =>
           val options = childTableFieldDefOpt
             .map(_.options) getOrElse ""
+          val f = childTableFieldDefOpt.orNull
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[QDto]] map { d =>
-            val f = childTableFieldDefOpt.orNull
-            (childSaveTo(f, qe.viewDef(ManifestFactory.classType(d.getClass))) + options, d.toSaveableMap)
+            qe.viewDefOption(ManifestFactory.classType(d.getClass))
+              .map(childSaveTo(f, _))
+              .filter(_ != null)
+              .map(_ + options -> d.toSaveableMap)
+              .getOrElse("*" + propName -> d.toSaveableMap) // prefix * to avoid clashes
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
         case d if childTableFieldDefOpt.isDefined =>
           val value = Option(d).map { case x: Dto => x.asInstanceOf[QDto].toSaveableMap }.orNull

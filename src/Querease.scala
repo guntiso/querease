@@ -653,7 +653,7 @@ trait QueryStringBuilder { this: Querease =>
             (if (tableOrAlias == alias) "" else " " + alias)
       }
     }
-    (List(List(autoBase), view.joins, autoJoins).flatten
+    (List(List(autoBase), Option(view.joins).getOrElse(Nil), autoJoins).flatten
       .filter(_ != null).filter(_ != "") mkString "; ",
       pathToAlias.toMap)
   }

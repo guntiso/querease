@@ -19,7 +19,7 @@ resolvers ++= Seq(
 )
 
 val tresqlV = "8.6-SNAPSHOT"
-val mojozV = "0.9-SNAPSHOT"
+val mojozV = "1.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
