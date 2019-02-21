@@ -16,6 +16,11 @@ object FilterType {
     col: String,
     rightOperator: String, rightName: String, rightOpt: String
   ) extends FilterType
+  // col = ^refViewName[^refFieldName = :name?]{refCol}
+  case class RefFilter(
+    col: String, name: String, opt: String,
+    refViewName: String, refFieldName: String, refCol: String
+  ) extends FilterType
   case class OtherFilter(filter: String) extends FilterType
 }
 
@@ -29,7 +34,6 @@ trait FilterTransformer { this: Querease =>
   private val any = ".*"
   private val Rq = "(!)?"
   private val Opt = "(\\?)?"
-  private val choiceRef = ":\\^" + ident2
   private val IntervalOps = "< <=".split("\\s+").toSet
   private val ComparisonOps = "!?in\\b|[<>=!~%$]+"
   private def toGroup(p: String) = if (p startsWith "(") p else s"($p)"
@@ -42,6 +46,9 @@ trait FilterTransformer { this: Querease =>
     qualifiedIdentOrRef, ComparisonOps, Rq)
   private val IntervalFilterDef = regex(Rq, IntervalOps.mkString("|"),
     qualifiedIdentOrRef, IntervalOps.mkString("|"), Rq)
+  private val RefFilterDef =
+    // col = ^refViewName[^refFieldName = :name?]{refCol}
+    s"^($ident)\\s*=\\s*\\^($ident)\\s*\\[\\s*\\^($ident)\\s*=\\s*:($ident)(\\?)?\\s*\\]\\s*\\{\\s*($ident)\\s*\\}$$".r
   private def opt(req: String) = if (req == "!") "" else "?"
   // TODO configure naming
   private def colName(name: String, baseTableAlias: String) =
@@ -85,6 +92,8 @@ trait FilterTransformer { this: Querease =>
         val nameFrom = par(name + "_from") // TODO configure naming
         val nameTo = par(name + "_to") // TODO configure naming
         IntervalFilter(nameFrom, opt(reqFrom), opFrom, col(name), opTo, nameTo, opt(reqTo))
+      case RefFilterDef(col, refViewName, refFieldName, name, op, refCol) =>
+        RefFilter(col, name, opt(op), refViewName, refFieldName, refCol)
       case x => OtherFilter(x)
     }
     // TODO analyze deeper levels
