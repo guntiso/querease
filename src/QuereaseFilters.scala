@@ -51,7 +51,7 @@ trait FilterTransformer { this: Querease =>
     qualifiedIdentOrRef, IntervalOps.mkString("|"), Rq)
   private val RefFilterDef =
     // col = ^refViewName[^refFieldName = :name?]{refCol}
-    s"^($ident)\\s*=\\s*\\^($ident)\\s*\\[\\s*\\^($ident)\\s*=\\s*:($ident)(\\?)?\\s*\\]\\s*\\{\\s*($ident)\\s*\\}$$".r
+    s"^($qualifiedIdent)\\s*=\\s*\\^($ident)\\s*\\[\\s*\\^($ident)\\s*=\\s*:($ident)(\\?)?\\s*\\]\\s*\\{\\s*($qualifiedIdent)\\s*\\}$$".r
   private def opt(req: String) = if (req == "!") "" else "?"
   // TODO configure naming
   private def colName(name: String, baseTableAlias: String) =
@@ -98,8 +98,8 @@ trait FilterTransformer { this: Querease =>
         val nameFrom = par(name + "_from") // TODO configure naming
         val nameTo = par(name + "_to") // TODO configure naming
         IntervalFilter(nameFrom, opt(reqFrom), opFrom, col(name), opTo, nameTo, opt(reqTo))
-      case RefFilterDef(col, refViewName, refFieldName, name, op, refCol) =>
-        RefFilter(col, name, opt(op), refViewName, refFieldName, refCol)
+      case RefFilterDef(col, _, refViewName, refFieldName, name, o, refCol, _) =>
+        RefFilter(col, name, if (o == "?") "?" else "", refViewName, refFieldName, refCol)
       case x => OtherFilter(x)
     }
     // TODO analyze deeper levels
