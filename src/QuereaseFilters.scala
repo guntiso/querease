@@ -30,6 +30,7 @@ trait FilterTransformer { this: Querease =>
   private val ident2 = s"$ident\\.$ident"
   private val qualifiedIdent = s"$ident(\\.$ident)*"
   private val qualifiedIdentOrRef = "\\^?" + qualifiedIdent
+  private val param = s":($ident)"
   private val s = "\\s*"
   private val any = ".*"
   private val Rq = "(!)?"
@@ -44,6 +45,8 @@ trait FilterTransformer { this: Querease =>
     regex(qualifiedIdentOrRef, Rq)
   private val ComparisonFilterDef = regex(
     qualifiedIdentOrRef, ComparisonOps, Rq)
+  private val ComparisonFullFilterDef = regex(
+    qualifiedIdentOrRef, ComparisonOps, param, Opt)
   private val IntervalFilterDef = regex(Rq, IntervalOps.mkString("|"),
     qualifiedIdentOrRef, IntervalOps.mkString("|"), Rq)
   private val RefFilterDef =
@@ -77,6 +80,7 @@ trait FilterTransformer { this: Querease =>
     }
     transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias)
   }
+  // TODO filter analyzer tests
   def analyzeFilter(filter: String, view: ViewDef, baseTableAlias: String): Seq[FilterType] = {
     import FilterType._
     def par(name: String) = parName(name)
@@ -88,6 +92,8 @@ trait FilterTransformer { this: Querease =>
         IdentFilter(col(name), par(name), opt(req))
       case ComparisonFilterDef(name, _, op, req) =>
         ComparisonFilter(col(name), op, par(name), opt(req))
+      case ComparisonFullFilterDef(name, _, op, _, param, o) =>
+        ComparisonFilter(col(name), op, param, if (o == "?") "?" else "")
       case IntervalFilterDef(reqFrom, opFrom, name, _, opTo, reqTo) =>
         val nameFrom = par(name + "_from") // TODO configure naming
         val nameTo = par(name + "_to") // TODO configure naming
