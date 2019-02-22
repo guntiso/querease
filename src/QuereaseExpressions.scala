@@ -15,6 +15,8 @@ object QuereaseExpressions {
 
   trait Parser extends QueryParsers with ExpTransformer {
     def parse(expr: String): Exp
+    def extractVariables(exp: String) =
+      traverser(variableExtractor)(Nil)(parse(exp)).reverse
   }
   abstract class DefaultParser extends Parser {
     val cache: Option[CacheBase[Exp]]
