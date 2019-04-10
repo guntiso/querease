@@ -170,6 +170,12 @@ trait Dto { self =>
       ||
       field.saveTo != null
       )
+  protected def isSavableChildField(field: QuereaseMetadata#FieldDef,
+                                    view: QuereaseMetadata#ViewDef,
+                                    saveToMulti: Boolean,
+                                    saveToTableNames: Seq[String],
+                                    childView: QuereaseMetadata#ViewDef): Boolean =
+    true
   protected lazy val saveableValue: QE => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
@@ -186,6 +192,8 @@ trait Dto { self =>
     }
     def isSaveableField(field: QuereaseMetadata#FieldDef) =
       isSavableField(field, view, saveToMulti, saveToTableNames)
+    def isSaveableChildField(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =
+      isSavableChildField(field, view, saveToMulti, saveToTableNames, childView)
     def tablesTo(v: QuereaseMetadata#ViewDef) =
       if (v.saveTo != null && v.saveTo.nonEmpty)
         v.saveTo.mkString("#")
@@ -227,8 +235,10 @@ trait Dto { self =>
       val saveableValueFunc: PartialFunction[Any, List[(String, Any)]] = {
         case Nil => childTableFieldDefOpt
           .flatMap(f => qe.viewDefOption(f.type_.name)
-            .map(childSaveTo(f, _))
-            .filter(_ != null)
+            .map(v => v -> childSaveTo(f, v))
+            .filter(_._2 != null)
+            .filter(vs => isSaveableChildField(f, vs._1))
+            .map(_._2)
             .map(_ + f.options -> Nil))
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
@@ -239,14 +249,17 @@ trait Dto { self =>
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[QDto]] map { d =>
             qe.viewDefOption(ManifestFactory.classType(d.getClass))
-              .map(childSaveTo(f, _))
-              .filter(_ != null)
+              .map(v => v -> childSaveTo(f, v))
+              .filter(_._2 != null)
+              .filter(vs => isSaveableChildField(f, vs._1))
+              .map(_._2)
               .map(_ + options -> d.toSaveableMap)
               .getOrElse("*" + propName -> d.toSaveableMap) // prefix * to avoid clashes
           } groupBy (_._1) map (t => t.copy(_2 = t._2.map(_._2))) toList
         case d if childTableFieldDefOpt.isDefined =>
           val value = Option(d).map { case x: Dto => x.asInstanceOf[QDto].toSaveableMap }.orNull
           childTableFieldDefOpt
+          .filter(f => isSaveableChildField(f, qe.viewDefOption(f.type_.name).get))
           .map { f =>
             val tables = saveToTableNames.map(qe.tableMetadata.tableDef)
             val childTableName = qe.viewDefOption(f.type_.name).map(tablesTo).get
