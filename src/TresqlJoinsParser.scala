@@ -14,16 +14,37 @@ import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private val ws = "\\s*" // FIXME handle any whitespace and comments
+  private val starts_cte = s"^ $ident \\( #? ($ident|\\*)(, ($ident|\\*))* \\) \\{".replace(" ", ws)
+  private val starts_cte_regex = starts_cte.r
+  private val starts_ident = s"^ $ident".replace(" ", ws)
+  private val starts_ident_regex = starts_ident.r
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
     val oldMetadata = Env.metadata
     Env.metadata = tresqlMetadata
    try {
-    val joinsStr = (Option(baseTable).toList ++ joins).mkString("; ")
-    //prefix joins with [] so that compiler knows that it is a join not division operation
-    val compileStr = "\\w".r.findFirstIn(joinsStr.substring(0, 1))
-      .map(_ => "[]" + joinsStr)
-      // otherwise suffix with {*} to avoid BinSelectDef and get proper metadata
-      .getOrElse(joinsStr + " {*}")
+    val firstNonCteJoinIdx = joins.indexWhere(starts_cte_regex.findFirstIn(_).isEmpty)
+    val joinsStr = {
+      val btl = Option(baseTable).toList
+      if (firstNonCteJoinIdx < 0)
+        joins
+      else if (firstNonCteJoinIdx == 0)
+        btl ++ joins
+      else
+        joins.slice(0, firstNonCteJoinIdx) ++ btl ++ joins.slice(firstNonCteJoinIdx, joins.size)
+    }.mkString("; ")
+    val compileStr =
+      if (firstNonCteJoinIdx > 0)
+        // if starts with CTE, leave as is
+        joinsStr
+      else if (starts_ident_regex.findFirstIn(joinsStr).isDefined)
+        // if starts with other ident:
+        // prefix joins with [] so that compiler knows that it is a join not division operation
+        "[]" + joinsStr
+      else
+        // otherwise (subquery) suffix with {*} to avoid BinSelectDef and get proper metadata
+        joinsStr + " {*}"
     val compiledExpr =
       try {
         cache.flatMap(_.get(compileStr)).getOrElse {
