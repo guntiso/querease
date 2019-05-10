@@ -35,7 +35,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         joins.slice(0, firstNonCteJoinIdx) ++ btl ++ joins.slice(firstNonCteJoinIdx, joins.size)
     }.mkString("; ")
     val compileStr =
-      if (firstNonCteJoinIdx > 0)
+      if (firstNonCteJoinIdx != 0)
         // if starts with CTE, leave as is
         joinsStr
       else if (starts_ident_regex.findFirstIn(joinsStr).isDefined)
