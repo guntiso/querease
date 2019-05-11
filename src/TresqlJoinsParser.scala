@@ -15,7 +15,7 @@ import scala.util.control.NonFatal
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-  private val ws = "\\s*" // FIXME handle any whitespace and comments
+  private val ws = """([\h\v]*+(/\*(.|[\h\v])*?\*/)?(//.*+(\n|$))?)+"""
   private val starts_cte = s"^ $ident \\( #? ($ident|\\*)(, ($ident|\\*))* \\) \\{".replace(" ", ws)
   private val starts_cte_regex = starts_cte.r
   private val starts_ident = s"^ $ident".replace(" ", ws)
