@@ -1,7 +1,7 @@
 package querease
 
 import org.tresql.Env
-import org.tresql.QueryCompiler._
+import org.tresql.compiling.Compiler
 import org.tresql.{ CacheBase, SimpleCacheBase }
 
 import mojoz.metadata.in.Join
@@ -10,9 +10,15 @@ import mojoz.metadata.ColumnDef
 import mojoz.metadata.Type
 
 import scala.collection.immutable.Seq
+import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
+  val joinsParserCompiler = new Compiler {
+    override val metadata = tresqlMetadata
+    def compile(exp: String): Exp = compile(parseExp(exp))
+  }
+  import joinsParserCompiler.{ Braces, declaredTable, Exp, metadata, Obj, SelectDef, SelectDefBase, TableDef, TableAlias }
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val ws = """([\h\v]*+(/\*(.|[\h\v])*?\*/)?(//.*+(\n|$))?)+"""
@@ -21,9 +27,6 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   private val starts_ident = s"^ $ident".replace(" ", ws)
   private val starts_ident_regex = starts_ident.r
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val oldMetadata = Env.metadata
-    Env.metadata = tresqlMetadata
-   try {
     val firstNonCteJoinIdx = joins.indexWhere(starts_cte_regex.findFirstIn(_).isEmpty)
     val joinsStr = {
       val btl = Option(baseTable).toList
@@ -48,7 +51,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
     val compiledExpr =
       try {
         cache.flatMap(_.get(compileStr)).getOrElse {
-          val e = compile(compileStr)
+          val e = joinsParserCompiler.compile(compileStr)
           cache.foreach(_.put(compileStr, e))
           e
         }
@@ -93,8 +96,5 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
       }
      case x => exprNotSupportedException(x)
     }
-   } finally {
-      Env.metadata = oldMetadata
-   }
   }
 }
