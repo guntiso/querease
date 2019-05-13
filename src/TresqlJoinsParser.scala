@@ -7,7 +7,9 @@ import org.tresql.{ CacheBase, SimpleCacheBase }
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
 import mojoz.metadata.ColumnDef
+import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import mojoz.metadata.Type
+import mojoz.metadata.TypeDef
 
 import scala.collection.immutable.Seq
 import scala.language.reflectiveCalls
@@ -97,4 +99,13 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
      case x => exprNotSupportedException(x)
     }
   }
+}
+
+object TresqlJoinsParser {
+  def apply(
+    tableDefs: Seq[TableDef[ColumnDef[Type]]],
+    typeDefs: collection.immutable.Seq[TypeDef],
+    functionSignaturesClass: Class[_]
+  ): TresqlJoinsParser =
+    new TresqlJoinsParser(new TresqlMetadataFactory().create(tableDefs, typeDefs, functionSignaturesClass))
 }
