@@ -106,6 +106,7 @@ object TresqlJoinsParser {
     tableDefs: Seq[TableDef[ColumnDef[Type]]],
     typeDefs: collection.immutable.Seq[TypeDef],
     functionSignaturesClass: Class[_]
-  ): TresqlJoinsParser =
-    new TresqlJoinsParser(new TresqlMetadataFactory().create(tableDefs, typeDefs, functionSignaturesClass))
+  ): TresqlJoinsParser = {
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, functionSignaturesClass))
+  }
 }

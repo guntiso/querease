@@ -95,20 +95,22 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
     val functionSignaturesClass = Option(functionSignaturesClassName).map(Class.forName).orNull
-    create(tableDefs, typeDefs, functionSignaturesClass)
+    TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
   }
+}
 
+object TresqlMetadata {
   /** Creates tresql compiler metadata from table metadata, typedefs and function signatures class.
    */
-  def create(
+  def apply(
       tableDefs: Seq[TableDef[ColumnDef[Type]]],
       typeDefs: collection.immutable.Seq[TypeDef],
       functionSignaturesClass: Class[_]): TresqlMetadata = {
     val procedureMetadata = null // TODO?
     if (functionSignaturesClass == null)
-      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs = Nil)
+      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs)
     else {
-      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs = Nil) with CompilerFunctionMetadata {
+      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs) with CompilerFunctionMetadata {
         override def compilerFunctionSignatures = functionSignaturesClass
       }
     }
