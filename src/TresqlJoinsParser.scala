@@ -20,7 +20,8 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
     override val metadata = tresqlMetadata
     def compile(exp: String): Exp = compile(parseExp(exp))
   }
-  import joinsParserCompiler.{ Braces, declaredTable, Exp, metadata, Obj, SelectDef, SelectDefBase, TableDef, TableAlias }
+  import joinsParserCompiler.{ Braces, declaredTable, Exp, metadata, Obj }
+  import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val ws = """([\h\v]*+(/\*(.|[\h\v])*?\*/)?(//.*+(\n|$))?)+"""
@@ -69,8 +70,12 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
       case b: Braces => selectDefBase(b.expr)
       case x => exprNotSupportedException(x)
     }
-    selectDefBase(compiledExpr) match {
-     case s: SelectDef => s.tables
+    val (s, tables) = selectDefBase(compiledExpr) match {
+      case s: SelectDef => (s, s.tables)
+      case s: WithSelectDef => (s, s.tables)
+      case x => exprNotSupportedException(x)
+    }
+    tables
       .filter { //filter out aliases
         case TableDef(_, Obj(_: TableAlias, _, _, _, _)) => false
         case _ => true
@@ -96,8 +101,6 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
           }
         )
       }
-     case x => exprNotSupportedException(x)
-    }
   }
 }
 
