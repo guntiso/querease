@@ -70,9 +70,9 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
       case b: Braces => selectDefBase(b.expr)
       case x => exprNotSupportedException(x)
     }
-    val (s, tables) = selectDefBase(compiledExpr) match {
-      case s: SelectDef => (s, s.tables)
-      case s: WithSelectDef => (s, s.tables)
+    val (s, scopes, tables) = selectDefBase(compiledExpr) match {
+      case s: SelectDef => (s, List(s), s.tables)
+      case w: WithSelectDef => (w, w.exp :: w.withTables.reverse, w.tables)
       case x => exprNotSupportedException(x)
     }
     tables
@@ -81,7 +81,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         case _ => true
       }.map { t =>
         val alias = t.name
-        val table = declaredTable(List(s))(alias).get
+        val table = declaredTable(scopes)(alias).get
         val tableName = // FIXME may clash!
           tresqlMetadata.tableOption(table.name).map(_.name).orNull
         val outerJoin = t.exp.outerJoin == "l" //left outer join
