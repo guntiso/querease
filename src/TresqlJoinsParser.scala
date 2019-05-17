@@ -23,23 +23,10 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   import joinsParserCompiler.{ Braces, declaredTable, Exp, metadata, Obj }
   import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
-  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-  private val ws = """([\h\v]*+(/\*(.|[\h\v])*?\*/)?(//.*+(\n|$))?)+"""
-  private val starts_cte = s"^ $ident \\( #? ($ident|\\*)(, ($ident|\\*))* \\) \\{".replace(" ", ws)
-  private val starts_cte_regex = starts_cte.r
-  private val starts_ident = s"^ $ident".replace(" ", ws)
-  private val starts_ident_regex = starts_ident.r
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val firstNonCteJoinIdx = joins.indexWhere(starts_cte_regex.findFirstIn(_).isEmpty)
-    val joinsStr = {
-      val btl = Option(baseTable).toList
-      if (firstNonCteJoinIdx < 0)
-        joins
-      else if (firstNonCteJoinIdx == 0)
-        btl ++ joins
-      else
-        joins.slice(0, firstNonCteJoinIdx) ++ btl ++ joins.slice(firstNonCteJoinIdx, joins.size)
-    }.mkString("; ")
+    import TresqlJoinsParser._
+    val (firstNonCteJoinIdx, joinsStr) =
+      firstNonCteJoinIdxAndJoinsString(baseTable, joins)
     val compileStr =
       if (firstNonCteJoinIdx != 0)
         // if starts with CTE, leave as is
@@ -105,6 +92,30 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
 }
 
 object TresqlJoinsParser {
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private val ws = """([\h\v]*+(/\*(.|[\h\v])*?\*/)?(//.*+(\n|$))?)+"""
+  private val starts_cte = s"^ $ident \\( #? (($ident|\\*)(, ($ident|\\*))*)? \\) \\{".replace(" ", ws)
+  private val starts_cte_regex = starts_cte.r
+  private val starts_ident = s"^ $ident".replace(" ", ws)
+  private val starts_ident_regex = starts_ident.r
+  private def firstNonCteJoinIdxAndJoinsString(baseTable: String, joins: Seq[String]) = {
+    val firstNonCteJoinIdx = joins.indexWhere(starts_cte_regex.findFirstIn(_).isEmpty)
+    val joinsStr = {
+      val btl = Option(baseTable).toList
+      if (joins.isEmpty)
+        btl.mkString("")
+      else if (firstNonCteJoinIdx < 0)
+        joins.mkString(", ")
+      else if (firstNonCteJoinIdx == 0)
+        (btl ++ joins).mkString("; ")
+      else
+        joins.slice(0, firstNonCteJoinIdx).mkString("", ", ", " ") +
+          (btl ++ joins.slice(firstNonCteJoinIdx, joins.size)).mkString("; ")
+    }
+    (firstNonCteJoinIdx, joinsStr)
+  }
+  private[querease] def joinsString(baseTable: String, joins: Seq[String]): String =
+    firstNonCteJoinIdxAndJoinsString(baseTable, joins)._2
   def apply(
     tableDefs: Seq[TableDef[ColumnDef[Type]]],
     typeDefs: collection.immutable.Seq[TypeDef],

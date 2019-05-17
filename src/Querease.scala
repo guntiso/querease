@@ -653,9 +653,13 @@ trait QueryStringBuilder { this: Querease =>
             (if (tableOrAlias == alias) "" else " " + alias)
       }
     }
-    (List(List(autoBase), Option(view.joins).getOrElse(Nil), autoJoins).flatten
-      .filter(_ != null).filter(_ != "") mkString "; ",
-      pathToAlias.toMap)
+    val joinsString =
+      TresqlJoinsParser.joinsString(
+        autoBase,
+        List(Option(view.joins).getOrElse(Nil), autoJoins).flatten
+          .filter(_ != null).filter(_ != "")
+      )
+    (joinsString, pathToAlias.toMap)
   }
   /*
   val where = (filter.map(f =>
