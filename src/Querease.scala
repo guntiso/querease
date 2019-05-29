@@ -1,7 +1,6 @@
 package querease
 
 import scala.annotation.tailrec
-import scala.language.existentials
 import scala.language.postfixOps
 import scala.collection.mutable
 import scala.util.Try
@@ -273,7 +272,6 @@ trait QueryStringBuilder { this: Querease =>
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
 
-    import language.existentials
     val (q1, limitOffsetPars) =
       limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
     val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
@@ -331,7 +329,7 @@ trait QueryStringBuilder { this: Querease =>
   def isRu(f: FieldDef) = preferRu && f.isI18n
   */
   private def isI18n(f: FieldDef) = false // f.isI18n
-  def queryColTableAlias(view: ViewDef, f: FieldDef) =
+  def queryColTableAlias(view: ViewDef, f: FieldDef): String =
     Option(f.tableAlias) getOrElse
       (if (f.table == view.table) baseFieldsQualifier(view) else f.table)
 
@@ -341,7 +339,7 @@ trait QueryStringBuilder { this: Querease =>
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
   def qualify(view: ViewDef, expression: String,
-    pathToAlias: Map[List[String], String]) = {
+    pathToAlias: Map[List[String], String]): String = {
     QueryParser.transformTresql(expression, {
       // do not transform subqueries (skip deeper analysis)
       case q: QueryParser.Query => q
@@ -354,7 +352,7 @@ trait QueryStringBuilder { this: Querease =>
     })
   }
   def queryColExpression(view: ViewDef, f: FieldDef,
-      pathToAlias: Map[List[String], String]) = {
+      pathToAlias: Map[List[String], String]): String = {
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
     if (f.expression != null)
@@ -514,7 +512,7 @@ trait QueryStringBuilder { this: Querease =>
     else qName
   }
 
-  def queryColAlias(f: FieldDef) =
+  def queryColAlias(f: FieldDef): String =
     Option(f.alias) getOrElse {
       if (f.isExpression && f.expression != null || isI18n(f)) f.name
       else if (f.type_ != null && f.type_.isComplexType && f.isCollection) f.name // FIXME toPlural(f.name)
@@ -522,12 +520,12 @@ trait QueryStringBuilder { this: Querease =>
       else null
     }
 
-  def queryColName(view: ViewDef, f: FieldDef) =
+  def queryColName(view: ViewDef, f: FieldDef): String =
     Option(f.alias).getOrElse(
       if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
   def cols(view: ViewDef, countAll: Boolean,
-    pathToAlias: Map[List[String], String]) =
+    pathToAlias: Map[List[String], String]): String =
     if (countAll) " {count(*)}"
     else view.fields
       .filter(f => !f.isExpression || f.expression != null)
@@ -536,10 +534,10 @@ trait QueryStringBuilder { this: Querease =>
       .map(f => queryColExpression(view, f, pathToAlias)
         + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
       .mkString(" {", ", ", "}")
-  def groupBy(view: ViewDef) = Option(view.groupBy)
+  def groupBy(view: ViewDef): String = Option(view.groupBy)
     .map(_ mkString ", ")
     .filter(_ != "").map(g => s"($g)") getOrElse ""
-  def having(view: ViewDef) = Option(view.having)
+  def having(view: ViewDef): String = Option(view.having)
     .map(hl => if (hl.lengthCompare(1) > 0) hl.map(h => s"($h)") else hl)
     .map(_ mkString " & ")
     .filter(_ != "").map(h => s"^($h)") getOrElse ""
@@ -667,13 +665,13 @@ trait QueryStringBuilder { this: Querease =>
       " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
     .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
   */
-  def where(view: ViewDef, extraFilter: String) =
+  def where(view: ViewDef, extraFilter: String): String =
     (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
       .filter(_ != null).filter(_ != "")
       .map(transformFilter(_, view, baseFieldsQualifier(view)))
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
 
-  def order(view: ViewDef, orderBy: String) =
+  def order(view: ViewDef, orderBy: String): String =
     Option(orderBy).orElse(Option(view.orderBy).map(_ mkString ", "))
     .filter(_ != "").map(o => s"#($o)") getOrElse ""
 
@@ -690,7 +688,7 @@ trait QueryStringBuilder { this: Querease =>
   */
 
   def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int
-      ) = (if (countAll) (0, 0) else (limit, offset)) match {
+      ): (String, Array[Int]) = (if (countAll) (0, 0) else (limit, offset)) match {
     case (0, 0) => (query, Array())
     case (limit, 0) =>
       (query + "@(?)", Array(limit))
@@ -700,7 +698,7 @@ trait QueryStringBuilder { this: Querease =>
       (query + "@(? ?)", Array(offset, limit))
   }
 
-  def tableAndAlias(view: ViewDef) =
+  def tableAndAlias(view: ViewDef): String =
     Option(view.table)
       .map(_ + Option(view.tableAlias).map(" " + _).getOrElse(""))
       .orNull
