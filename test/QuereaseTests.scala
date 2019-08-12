@@ -1,8 +1,7 @@
 package test
 
 import java.io.PrintWriter
-import java.sql.Connection
-import java.sql.DriverManager
+import java.sql.{Connection, DriverManager, Timestamp}
 
 import scala.io.Source
 import org.scalatest.FlatSpec
@@ -21,6 +20,8 @@ import mojoz.metadata.out.SqlWriter
 import querease.Querease
 import querease.TresqlMetadata
 import querease.ScalaDtoQuereaseIo
+
+import scala.compat.Platform
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
@@ -190,6 +191,17 @@ class QuereaseTests extends FlatSpec with Matchers {
       if (expectedFatherTree != producedFatherTree)
         toFile(dataPath + "/" + "father-tree-out-produced.txt", producedFatherTree)
       expectedFatherTree should be(producedFatherTree)
+
+      //resolver test with bind variable from substructure
+      val acc = new AccountWithBank
+      val accb = new AccountWithBankBank
+      accb.code = "BNP"
+      accb.countryCode = "FR"
+      accb.id = 10001L
+      acc.bank = accb
+      acc.billingAccount = "123456789"
+      acc.lastModified = new Timestamp(Platform.currentTime)
+      qe.save(acc) should be (10004)
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {

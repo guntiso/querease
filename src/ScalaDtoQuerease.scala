@@ -222,8 +222,11 @@ trait Dto { self =>
             s"Failed to imply resolver for ${view.name}.$alias")
         }
         val fSaveTo = Option(f.saveTo) getOrElse name
+        val resolvedVal =
+          //if complex type encountered, call toMap since values may be used in resolvers.
+          if (f.type_.isComplexType) v.asInstanceOf[QDto].toMap else v
         resolvers
-          .map(r => (alias + "->") -> (fSaveTo + "=" + r)) ++ Seq(alias -> v)
+          .map(r => (alias + "->") -> (fSaveTo + "=" + r)) ++ Seq(alias -> resolvedVal)
       }
     }
     propName => {

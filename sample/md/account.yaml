@@ -49,3 +49,17 @@ name: self_ref_test_account_2
 table: account a1
 fields:
 - full_name = ^account_choice.name
+
+name: account_with_bank
+table: account
+fields:
+- id
+- billing_account
+- last_modified
+- bank -> bank_id = :bank.id:
+    table: bank
+    save-to:
+    fields:
+    - id
+    - code
+    - country.code
