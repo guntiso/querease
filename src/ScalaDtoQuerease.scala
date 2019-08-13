@@ -224,7 +224,7 @@ trait Dto { self =>
         val fSaveTo = Option(f.saveTo) getOrElse name
         val resolvedVal =
           //if complex type encountered, call toMap since values may be used in resolvers.
-          if (f.type_.isComplexType) v.asInstanceOf[QDto].toMap else v
+          if (f.type_.isComplexType && !f.isCollection) v.asInstanceOf[QDto].toMap else v
         resolvers
           .map(r => (alias + "->") -> (fSaveTo + "=" + r)) ++ Seq(alias -> resolvedVal)
       }
