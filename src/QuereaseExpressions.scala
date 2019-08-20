@@ -58,8 +58,17 @@ trait QuereaseExpressions { this: Querease =>
     * @param fieldName   field name this expression is from or null
     * @param contextName "filter" or "resolver" for now
     */
-  protected def resolverErrorMessageExpression(viewName: String, fieldName: String, contextName: String): String =
-    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || coalesce(_, 'null')"""
+  protected def resolverErrorMessageExpression(viewName: String,
+                                               fieldName: String,
+                                               contextName: String,
+                                               bindVars: List[String]): String = {
+    val varsToStr = bindVars.map(v => s"coalesce($v, 'null')") match {
+      case Nil => "coalesce(_, 'null')"
+      case v :: Nil => v
+      case l => l.mkString("concat_ws(', ', ", ", ", ")")
+    }
+    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $varsToStr"""
+  }
 
   /** Returns resolver expression string - db function call to check resolver result and throw exception
     * when result is not unique or is missing. This is important to avoid silent deletion of data from db.
@@ -92,8 +101,14 @@ trait QuereaseExpressions { this: Querease =>
     * @param queryString
     * @param errorMessage
     */
-  protected def resolverExpression(queryString: String, errorMessage: String): String =
-    s"checked_resolve(_, array($queryString), $errorMessage)"
+  protected def resolverExpression(queryString: String, errorMessage: String, bindVars: List[String]): String = {
+    val bvOrPlaceholder = bindVars match {
+      case Nil => "_"
+      case List(bv) => bv
+      case l => l.mkString("coalesce(", ", ", ")")
+    }
+    s"checked_resolve($bvOrPlaceholder, array($queryString), $errorMessage)"
+  }
 
   /** Returns transformed expression
     *
@@ -139,9 +154,6 @@ trait QuereaseExpressions { this: Querease =>
         val nctx = ctx.copy(transformerContext = OtherOpCtx)
         With(w.tables.map(expressionTransformer(nctx)).asInstanceOf[List[WithTable]], expressionTransformer(ctx)(w.query))
       case q @ Query(tables, filter, cols, group, order, offset, limit) =>
-        val resolvableVarOpt = traverser(variableExtractor)(Nil)(q).reverse.headOption
-        val resolvableName = Option(fieldName).orElse(resolvableVarOpt.map(_.variable)).orNull
-
         val isViewRef = tables.size == 1 && tables.head.tresql.startsWith("^")
         val isResolver =
           ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
@@ -210,15 +222,11 @@ trait QuereaseExpressions { this: Querease =>
           }
         }
         if (isResolver) {
-          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name)
-          val parsed = parse(resolverExpression(withLimitQ(resolvedQuery), errorMessage))
-          if (ctx.mdContext == Resolver && ctx.transformerContext == RootCtx)
-            parsed
-          else
-            transformer {
-              case Ident(List("_")) if resolvableVarOpt.isDefined =>
-                resolvableVarOpt.get
-            } (parsed)
+          val resolverVars = traverser(variableExtractor)(Nil)(q).reverse
+          val resolverVarsTresql = resolverVars.map(_.tresql)
+          val resolvableName = Option(fieldName).orElse(resolverVars.headOption.map(_.variable)).orNull
+          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
+          parse(resolverExpression(withLimitQ(resolvedQuery), errorMessage, resolverVarsTresql))
         } else {
           resolvedQuery
         }
