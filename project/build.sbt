@@ -1,10 +1,6 @@
-resolvers ++= Seq(
-  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-)
-
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "8.5-SNAPSHOT",
-  "org.mojoz" %% "mojoz" % "0.9-SNAPSHOT"
+  "org.tresql" %% "tresql" % "9.1",
+  "org.mojoz" %% "mojoz" % "1.1"
 )
 
 scalaSource in Compile := baseDirectory(_ / ".." / "src").value

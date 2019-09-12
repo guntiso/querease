@@ -2,7 +2,7 @@ name := "querease"
 
 organization := "org.mojoz"
 
-val scalaV = "2.12.8"
+val scalaV = "2.12.10"
 
 scalaVersion := scalaV
 
@@ -12,18 +12,15 @@ crossScalaVersions := Seq(
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-resolvers ++= Seq(
-  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
-)
-
-val tresqlV = "9.0-SNAPSHOT"
-val mojozV = "1.0-SNAPSHOT"
+val tresqlV = "9.1"
+val mojozV = "1.1"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
+  "org.scala-lang.modules" %% "scala-parser-combinators" % "1.1.2", // FIXME
   // test
   "org.hsqldb" % "hsqldb" % "2.3.2" % "test",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
 
 scalaSource in Compile := baseDirectory(_ / "src").value
