@@ -92,6 +92,8 @@ publishMavenStyle := true
 
 publishArtifact in Test := false
 
+testOptions in Test += Tests.Argument("-oF")
+
 pomIncludeRepository := { _ => false }
 
 licenses := Seq("MIT" -> url("http://www.opensource.org/licenses/MIT"))

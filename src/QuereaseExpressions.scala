@@ -49,6 +49,7 @@ trait QuereaseExpressions { this: Querease =>
     viewDef: ViewDef,
     fieldName: String,
     baseTableAlias: String,
+    pathToAlias: Map[List[String], String],
     mdContext: MdContext,
     transformerContext: TransformerContext)
   val parser: Parser = DefaultParser
@@ -117,12 +118,13 @@ trait QuereaseExpressions { this: Querease =>
     * @param fieldDef    field this expression is from or null
     * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
+    * @param pathToAlias path to alias map for this query
     */
   protected def transformExpression(
       expression: String, viewDef: ViewDef, fieldDef: FieldDef, mdContext: MdContext,
-      baseTableAlias: String = null): String = {
+      baseTableAlias: String = null, pathToAlias: Map[List[String], String] = null): String = {
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
-    transformExpression(expression, viewDef, fieldName, mdContext, baseTableAlias)
+    transformExpression(expression, viewDef, fieldName, mdContext, baseTableAlias, pathToAlias)
   }
 
   /** Returns transformed expression
@@ -132,18 +134,18 @@ trait QuereaseExpressions { this: Querease =>
     * @param fieldName   field name this expression is from or null
     * @param mdContext   yaml section this expression is from
     * @param baseTableAlias base table alias for filter transformation
+    * @param pathToAlias path to alias map for this query
     */
   def transformExpression(
       expression: String, viewDef: ViewDef, fieldName: String, mdContext: MdContext,
-      baseTableAlias: String): String = {
-    expressionTransformer(Context(viewDef, fieldName, baseTableAlias, mdContext, RootCtx))(
+      baseTableAlias: String, pathToAlias: Map[List[String], String]): String = {
+    expressionTransformer(Context(viewDef, fieldName, baseTableAlias, pathToAlias, mdContext, RootCtx))(
       parser.parse(expression)
     ).tresql
   }
 
   /** Returns expression transformer */
   protected def expressionTransformer: parser.TransformerWithState[Context] = parser.transformerWithState { ctx =>
-    import ctx._
     val viewName = Option(ctx.viewDef).map(_.name).orNull
     import parser._
     {
@@ -163,7 +165,7 @@ trait QuereaseExpressions { this: Querease =>
           //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore or query result
           Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
         def fullContextName =
-          s"${ctx.mdContext.name} of $viewName${Option(fieldName).map("." + _).getOrElse("")}"
+          s"${ctx.mdContext.name} of $viewName${Option(ctx.fieldName).map("." + _).getOrElse("")}"
         def withLimitQ(q: Query) =
           (if (q.limit == null) q.copy(limit = Const(2)) else q).tresql
         // TODO transform all fieldrefs of this query
@@ -187,6 +189,7 @@ trait QuereaseExpressions { this: Querease =>
             }
           // val alias = fieldAliasOrName
           val refViewDefBaseTableAlias = null // FIXME refViewDefBaseTableAlias?
+          val refViewDefPathToAlias = null
           val colFields =
             Option(cols)
               .map(_.cols)
@@ -212,7 +215,10 @@ trait QuereaseExpressions { this: Querease =>
                     s"Field $refViewName.$refFieldName referenced from $fullContextName is not found")
                 }
             }
-          val transformedFilterString = transformFilter(q.filter.filters.map(_.tresql).mkString, refViewDef, refViewDefBaseTableAlias)
+          val transformedFilterString =
+            transformFilter(
+              q.filter.filters.map(_.tresql).mkString,
+              refViewDef, refViewDefBaseTableAlias, refViewDefPathToAlias)
           val resolvedQueryString = queryString(refViewDef, colFields, refFields, transformedFilterString)
           parse(resolvedQueryString) match {
             case q: Query => q
@@ -224,19 +230,20 @@ trait QuereaseExpressions { this: Querease =>
         if (isResolver) {
           val resolverVars = traverser(variableExtractor)(Nil)(q).reverse
           val resolverVarsTresql = resolverVars.map(_.tresql)
-          val resolvableName = Option(fieldName).orElse(resolverVars.headOption.map(_.variable)).orNull
+          val resolvableName = Option(ctx.fieldName).orElse(resolverVars.headOption.map(_.variable)).orNull
           val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
           parse(resolverExpression(withLimitQ(resolvedQuery), errorMessage, resolverVarsTresql))
         } else {
           resolvedQuery
         }
-      case iexpr @ Ident(List(ident)) if ident.startsWith("^") => // FIXME needs current context view, so, transformWithState?
+      case iexpr @ Ident(List(ident)) if ident.startsWith("^") =>
         val name = ident.substring(1)
+        lazy val pathToAlias = if (ctx.pathToAlias != null) ctx.pathToAlias else this.fromAndPathToAlias(ctx.viewDef)._2
         Seq(ctx.viewDef).filter(_ != null)
           .flatMap(_.fields)
           .find(f => Option(f.alias).getOrElse(f.name) == name)
-          .map(f => parse(Option(f.expression).getOrElse(
-             Option(f.tableAlias).orElse(Option(baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
+          .map(f => parse(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias)).getOrElse(
+             Option(f.tableAlias).orElse(Option(ctx.baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)
       case o @ Obj(b: Braces, _, null, _, _) =>
         o.copy(obj = expressionTransformer(ctx)(b))

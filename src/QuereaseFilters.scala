@@ -62,7 +62,7 @@ trait FilterTransformer { this: Querease =>
      else if (name startsWith "^") name.substring(1)
      else name)
       .replace(".", "_")
-  def transformFilter(filter: String, view: ViewDef, baseTableAlias: String): String = {
+  def transformFilter(filter: String, view: ViewDef, baseTableAlias: String, pathToAlias: Map[List[String], String] = null): String = {
     def par(name: String) = parName(name)
     def col(name: String) = colName(name, baseTableAlias)
     val transformedFilter = filter match {
@@ -78,7 +78,7 @@ trait FilterTransformer { this: Querease =>
         s":$nameFrom${opt(reqFrom)} $opFrom ${col(name)} $opTo :$nameTo${opt(reqTo)}"
       case x => x
     }
-    transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias)
+    transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias, pathToAlias)
   }
   // TODO filter analyzer tests
   def analyzeFilter(filter: String, view: ViewDef, baseTableAlias: String): Seq[FilterType] = {

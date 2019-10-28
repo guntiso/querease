@@ -281,9 +281,9 @@ class QuereaseTests extends FlatSpec with Matchers {
           " 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new NestedResolverTest1) should be(List(
-      "mother->mother_id=checked_resolve(coalesce(:mother, :other_field), array(person;person[person.father_id]person? father[[name || ' ' || surname || ' of ' || father.name || ' (#7)' = :mother &" +
+      "mother->mother_id=checked_resolve(coalesce(:mother, :other_field), array(person;person[person.father_id]person? father[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother &" +
         " father_id = checked_resolve(:other_field, array(" +
-          "person p1;p1[p1.father_id]person? father[[:other_field = name || ' ' || surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
+          "person p1;p1[p1.father_id]person? father[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
           " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field, 'null'))]]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother, 'null'), coalesce(:other_field, 'null')))"
     ).mkString("; "))
@@ -389,9 +389,25 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_2"), Map("mother" -> "mother"))._1 should be(
       "person" +
-      "[person[mother_id = checked_resolve(:mother?, array(person[[name || ' ' || surname || ' (#1)' = :mother?]]{person.id}@(2))," +
+      "[person[mother_id = checked_resolve(:mother?, array(person[[person.name || ' ' || person.surname || ' (#1)' = :mother?]]{person.id}@(2))," +
       " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' || coalesce(:mother?, 'null'))]{1}" +
       "] {person.name}"
+    )
+
+    // test field-ref in filter
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_1"), Map("full_name" -> "full_name"))._1 should be(
+      "person[person.name || ' ' || person.surname = :full_name?] {person.name || ' ' || person.surname full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_2"), Map("full_name" -> "full_name"))._1 should be(
+      "person[person.name || ' ' || person.surname = :full_name] {person.name || ' ' || person.surname full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_3"), Map("full_name" -> "full_name"))._1 should be(
+      "person[(person_2 (# id) { null{person.id} } person_2[person.id = person_2.id]person{person.name || ' ' || person.surname full_name}) = :full_name] " +
+      "{(person_2(# id) {{person.id}} person_2 [person.id = person_2.id] person {person.name || ' ' || person.surname full_name}) full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_4"), Map("full_name" -> "full_name"))._1 should be(
+      "person p1[(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
+      "{(person[person.id = p1.id] {person.name || ' ' || person.surname full_name}) full_name}"
     )
   }
   "implicit querease" should "be found" in {

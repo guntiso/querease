@@ -264,7 +264,7 @@ trait QueryStringBuilder { this: Querease =>
     countAll: Boolean = false): (String, Map[String, Any]) = {
 
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
-    val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull)
+    val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull, pathToAlias)
     val groupBy = this.groupBy(view)
     val having = this.having(view)
     val simpleCountAll = countAll && groupBy == "" && having == ""
@@ -665,10 +665,10 @@ trait QueryStringBuilder { this: Querease =>
       " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
     .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
   */
-  def where(view: ViewDef, extraFilter: String): String =
+  def where(view: ViewDef, extraFilter: String, pathToAlias: Map[List[String], String] = null): String =
     (Option(view.filter).getOrElse(Nil) ++ Option(extraFilter))
       .filter(_ != null).filter(_ != "")
-      .map(transformFilter(_, view, baseFieldsQualifier(view)))
+      .map(transformFilter(_, view, baseFieldsQualifier(view), pathToAlias))
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
 
   def order(view: ViewDef, orderBy: String): String =

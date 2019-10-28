@@ -260,3 +260,32 @@ fields:
 - name
 filter:
 - person[mother_id = ^person_choice_without_resolver[^full_name = :mother?]{id}]{1}
+
+# test field-ref in filter
+name: filter_with_field_ref_test_1
+table: person
+fields:
+- full_name = name || ' ' || surname
+filter:
+- ^full_name
+
+name: filter_with_field_ref_test_2
+table: person
+fields:
+- full_name = name || ' ' || surname
+filter:
+- ^full_name = :full_name
+
+name: filter_with_field_ref_test_3
+table: person
+fields:
+- full_name = ^filter_with_field_ref_test_1.full_name[this]
+filter:
+- ^full_name = :full_name
+
+name: filter_with_field_ref_test_4
+table: person p1
+fields:
+- full_name = ^filter_with_field_ref_test_1.full_name[this]
+filter:
+- ^full_name = :full_name
