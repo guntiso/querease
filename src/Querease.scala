@@ -232,7 +232,7 @@ trait QueryStringBuilder { this: Querease =>
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
-  private def unusedName(name: String, usedNames: collection.Set[String]): String = {
+  protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
     def unusedName(index: Int): String =
       // FIXME ensure max identifier length for db is not exceeded!
@@ -356,113 +356,12 @@ trait QueryStringBuilder { this: Querease =>
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
     if (f.expression != null)
-      if (FieldRefRegexp.pattern.matcher(f.expression).matches) {
-        f.expression match {
-          case FieldRefRegexp(refViewName, refFieldName, _, refFilter) =>
-            // TODO duplicate code with Dto
-            def alias = Option(f.alias).getOrElse(f.name)
-            val refViewDef = Try(viewDef(refViewName)).toOption
-              .getOrElse{
-                throw new RuntimeException(
-                  s"View $refViewName referenced from ${view.name}.$alias is not found")
-              }
-            val refFieldDef = refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
-              .getOrElse {
-                throw new RuntimeException(
-                  s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")
-              }
-            def queryColExpr(filter: String) =
-              queryString(refViewDef, Seq(refFieldDef), Nil, filter)
-            val table = view.table
-            val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
-            val refTable = refViewDef.table
-            val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
-            val tableDefOpt = Option(table).map(tableMetadata.tableDef)
-            val key = tableDefOpt
-              .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
-              .getOrElse(tableDefOpt
-                .map(_.uk).filter(_ != null).map(_.filter(_ != null)).filter(_.nonEmpty).map(_.head)
-                .orNull)
-            val allRefs = tableDefOpt.map { tableDef =>
-              if (table == refTable && key != null)
-                tableDef.refs :+
-                  TableDef.Ref(
-                    tableDef.name, key.cols,
-                    tableDef.name, key.cols,
-                    null, "this", null, null)
-               else
-                 tableDef.refs
-            } getOrElse Nil
-            val filterOrResolver = Option(refFilter).map(_.trim).filter(_ != "").orNull
-            val resolverIsRefTableAlias =
-              filterOrResolver != null &&
-                (filterOrResolver == "this" || allRefs.exists(_.defaultRefTableAlias == filterOrResolver))
-            if (filterOrResolver == null || resolverIsRefTableAlias) {
-              if (table == null || refTable == null)
-                throw new RuntimeException(
-                  s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias" +
-                    " can not be joined because table not specified")
-              val viewName = view.name
-              val tableDef = tableDefOpt.get
-              val joinCol = f.saveTo
-              val allRefsTo = allRefs.filter(_.refTable == refViewDef.table)
-              val refs = Option(allRefsTo)
-                .map { refs =>
-                  if (resolverIsRefTableAlias) {
-                    refs.filter(_.defaultRefTableAlias == filterOrResolver)
-                  } else refs
-                }
-                .map { refs =>
-                  if (refs.lengthCompare(1) > 0) {
-                    Option(refs.filter(_.defaultRefTableAlias == alias))
-                      .filter(_.nonEmpty)
-                      .getOrElse(refs)
-                  } else refs
-                }
-                .map { refs =>
-                  if (refs.lengthCompare(1) > 0) {
-                    Option(refs.filter(_.cols.contains(joinCol)))
-                      .filter(_.nonEmpty)
-                      .getOrElse(refs)
-                  } else refs
-                }
-                .get
-              def refErrorMessage(prefix: String) =
-                s"$prefix from $table" +
-                  s" to $refTable (of $refViewName referenced from $viewName.$alias)" +
-                  ", please provide resolver or filter explicitly"
-              refs.size match {
-                case 0 =>
-                  throw new RuntimeException(refErrorMessage("No ref found"))
-                case 1 =>
-                  val colsRefCols = refs.head.cols.zip(refs.head.refCols)
-                  def joinFilter(tableOrAlias: String) = colsRefCols.map {
-                    case (col, refCol) => s"$refTableOrAlias.$refCol = $tableOrAlias.$col"
-                  }.mkString(" & ")
-                  def usedNamesExtractor: Traverser[Set[String]] = {
-                    names => { case i: Ident => names + i.ident.head }
-                  }
-                  val usedNames =
-                    traverser(usedNamesExtractor)(Set.empty)(parseExp(queryColExpr("true")))
-                  if (usedNames contains tableOrAlias) {
-                    val fixedTableAlias = unusedName(tableOrAlias, usedNames)
-                    val colsString = colsRefCols.map(_._1).mkString(", ")
-                    val qColsString = colsRefCols.map { case (col, refCol) => s"$tableOrAlias.$col" }.mkString(", ")
-                    s"($fixedTableAlias(# $colsString) {{$qColsString}}" +
-                      s" $fixedTableAlias [${joinFilter(fixedTableAlias)}] ${queryColExpr(null)})"
-                  } else {
-                    "(" + queryColExpr(joinFilter(tableOrAlias)) + ")"
-                  }
-                case _ =>
-                  throw new RuntimeException(refErrorMessage("Ambiguous refs"))
-              }
-            } else {
-              "(" + queryColExpr(refFilter) + ")"
-            }
-        }
-      } else {
-       qualify(view, f.expression, pathToAlias)
-      }
+      qualify(
+        view,
+        transformExpression(
+          f.expression, view, f, QuereaseExpressions.Field, baseFieldsQualifier(view), pathToAlias),
+        pathToAlias
+      )
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
       val joinToParent = Option(f.joinToParent) getOrElse ""

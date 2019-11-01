@@ -289,3 +289,24 @@ fields:
 - full_name = ^filter_with_field_ref_test_1.full_name[this]
 filter:
 - ^full_name = :full_name
+
+name: filter_with_field_ref_test_5
+table: person p1
+fields:
+- father_full_name = ^filter_with_field_ref_test_1.full_name[father]
+filter:
+- ^filter_with_field_ref_test_1.full_name[this] = :full_name
+
+name: filter_with_field_ref_test_6
+table: person p1
+fields:
+- full_name = ^filter_with_field_ref_test_1.full_name[this]
+filter:
+- ^filter_with_field_ref_test_1.full_name[father] = :full_name
+
+name: filter_with_field_ref_test_7
+table: person p1
+fields:
+- full_name = ^filter_with_field_ref_test_1.full_name[this]
+filter:
+- ^filter_with_field_ref_test_1.full_name[this] = :full_name

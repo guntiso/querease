@@ -409,6 +409,18 @@ class QuereaseTests extends FlatSpec with Matchers {
       "person p1[(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
       "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
     )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_5"), Map("full_name" -> "full_name"))._1 should be(
+      "person p1[person[person.id = p1.id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "{(person[person.id = p1.father_id]{person.name || ' ' || person.surname full_name}) father_full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_6"), Map("full_name" -> "full_name"))._1 should be(
+      "person p1[person[person.id = p1.father_id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_7"), Map("full_name" -> "full_name"))._1 should be(
+      "person p1[person[person.id = p1.id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
+    )
   }
   "implicit querease" should "be found" in {
     val pn = new dto.PersonName
