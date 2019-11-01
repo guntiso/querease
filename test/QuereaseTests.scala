@@ -292,92 +292,92 @@ class QuereaseTests extends FlatSpec with Matchers {
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_2"), Map.empty)._1 should be(
       "person p2 {" +
       "p2.id, " +
-      "(person[p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
-      "(person[id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+      "(person[p2.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[id = p2.father_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("ref_expression_test_person_2b"), Map.empty)._1 should be(
       "person p2 {" +
       "p2.id, " +
-      "(person[person.id = p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
-      "(person[person.id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+      "(person[person.id = p2.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p2.father_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("ref_expression_test_person_2c"), Map.empty)._1 should be(
       "person p2 {" +
       "p2.id, " +
-      "(person[person.id = p2.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
-      "(person[person.id = p2.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
+      "(person[person.id = p2.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p2.father_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_3"), Map.empty)._1 should be(
       "person p3 {" +
       "p3.id, " +
-      "(person[p3.mother_id = id + 3] {person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
-      "(person[person.id = p3.father_id] {person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
+      "(person[p3.mother_id = id + 3]{person.name || ' ' || person.surname || ' (#2)' full_name}) mother, " +
+      "(person[person.id = p3.father_id]{person.name || ' ' || person.surname || ' (#3)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_5"), Map.empty)._1 should be(
       "person p5 {" +
       "p5.id, " +
-      "(person[p5.mother_id = id + 5] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
-      "(person[person.id = p5.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+      "(person[p5.mother_id = id + 5]{person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
+      "(person[person.id = p5.father_id]{person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_6"), Map.empty)._1 should be(
       "person p6 {" +
       "p6.id, " +
-      "(person[person.id = p6.mother_id] {person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
-      "(person[person.id = p6.father_id] {person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
+      "(person[person.id = p6.mother_id]{person.name || ' ' || person.surname || ' (#5)' full_name}) mother, " +
+      "(person[person.id = p6.father_id]{person.name || ' ' || person.surname || ' (#6)' full_name}) father}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_7"), Map.empty)._1 should be(
       "person p7 {" +
-      "(person; person[person.father_id father?] person[person.id = p7.mother_id] {person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
+      "(person;person[person.father_id]person? father[person.id = p7.mother_id]{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_8"), Map.empty)._1 should be(
       "person p8 {" +
-      "(person p1; p1[p1.father_id father?] person[p1.id = p8.mother_id] {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "(person p1;p1[p1.father_id]person? father[p1.id = p8.mother_id]{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("ref_test_bank_2"), Map.empty)._1 should be(
       "bank {" +
       "bank.name, " +
-      "(country[country.code = bank.country_code] {country.code || ' - ' || country.name c2_and_name}) country}"
+      "(country[country.code = bank.country_code]{country.code || ' - ' || country.name c2_and_name}) country}"
     )
     qe.queryStringAndParams(qe.viewDef("ref_test_bank_3"), Map.empty)._1 should be(
       "bank b3 {" +
       "b3.name, " +
-      "(country c3[c3.code = b3.country_code] {c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
+      "(country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
     )
 
     // test alias clash resolvement in implicit resolver joins
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_7_a"), Map.empty)._1 should be(
       "person {" +
-      "(person_2(# mother_id) {{person.mother_id}} person_2 [person.id = person_2.mother_id] person;" +
-      " person[person.father_id father?] person {person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
+      "(person_2 (# mother_id) { null{person.mother_id} } person_2[person.id = person_2.mother_id]person;" +
+      "person[person.father_id]person? father{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_8_a"), Map.empty)._1 should be(
       "person p1 {" +
-      "(p1_2(# mother_id) {{p1.mother_id}} p1_2 [p1.id = p1_2.mother_id] person p1;" +
-      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "(p1_2 (# mother_id) { null{p1.mother_id} } p1_2[p1.id = p1_2.mother_id]person p1;" +
+      "p1[p1.father_id]person? father{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_8_b"), Map.empty)._1 should be(
       "person father {" +
-      "(father_2(# mother_id) {{father.mother_id}} father_2 [p1.id = father_2.mother_id] person p1;" +
-      " p1[p1.father_id father?] person {p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "(father_2 (# mother_id) { null{father.mother_id} } father_2[p1.id = father_2.mother_id]person p1;" +
+      "p1[p1.father_id]person? father{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
 
     // test implied join to self
     qe.queryStringAndParams(qe.viewDef("self_ref_test_account_1"), Map.empty)._1 should be(
-      "account {(account_2(# id) {{account.id}} account_2 [account.id = account_2.id] account;" +
-      " account/bank? {bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
+      "account {(account_2 (# id) { null{account.id} } account_2[account.id = account_2.id]account;" +
+      "account/bank?{bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
     )
     qe.queryStringAndParams(qe.viewDef("self_ref_test_account_2"), Map.empty)._1 should be(
-      "account a1 {(account; account/bank?[account.id = a1.id] {bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
+      "account a1 {(account;account/bank?[account.id = a1.id]{bank.code || ', ' || bank.name || ', ' || account.id name}) full_name}"
     )
 
     // test ambiguity resolver
     qe.queryStringAndParams(qe.viewDef("ambiguity_resolver_test_person_1"), Map.empty)._1 should be(
       "person p1 {" +
-      "(person[person.id = p1.id] {person.name || ' ' || person.surname || ' (#1)' full_name}) this_name, " +
-      "(person[person.id = p1.father_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) fath_name, " +
-      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) moth_name, " +
-      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
-      "(person[person.id = p1.mother_id] {person.name || ' ' || person.surname || ' (#1)' full_name}) ma}"
+      "(person[person.id = p1.id]{person.name || ' ' || person.surname || ' (#1)' full_name}) this_name, " +
+      "(person[person.id = p1.father_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) fath_name, " +
+      "(person[person.id = p1.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) moth_name, " +
+      "(person[person.id = p1.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) mother, " +
+      "(person[person.id = p1.mother_id]{person.name || ' ' || person.surname || ' (#1)' full_name}) ma}"
     )
 
     // test resolver in filter
@@ -403,11 +403,11 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_3"), Map("full_name" -> "full_name"))._1 should be(
       "person[(person_2 (# id) { null{person.id} } person_2[person.id = person_2.id]person{person.name || ' ' || person.surname full_name}) = :full_name] " +
-      "{(person_2(# id) {{person.id}} person_2 [person.id = person_2.id] person {person.name || ' ' || person.surname full_name}) full_name}"
+      "{(person_2 (# id) { null{person.id} } person_2[person.id = person_2.id]person{person.name || ' ' || person.surname full_name}) full_name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_4"), Map("full_name" -> "full_name"))._1 should be(
       "person p1[(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
-      "{(person[person.id = p1.id] {person.name || ' ' || person.surname full_name}) full_name}"
+      "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
     )
   }
   "implicit querease" should "be found" in {
