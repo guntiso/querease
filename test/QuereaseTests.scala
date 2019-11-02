@@ -395,6 +395,18 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
 
     // test field-ref in filter
+    qe.queryStringAndParams(qe.viewDef("ref_test_bank_4"), Map.empty)._1 should be(
+      "bank b3[(country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) = :country_c3_and_name?] " +
+      "{b3.name, (country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("ref_test_bank_5"), Map.empty)._1 should be(
+      "bank b3[(country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) = :country_choice_3_c3_and_name?] " +
+      "{b3.name, (country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
+    )
+    qe.queryStringAndParams(qe.viewDef("ref_test_bank_6"), Map.empty)._1 should be(
+      "bank b3[(country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) = :cc?] " +
+      "{b3.name, (country c3[c3.code = b3.country_code]{c3.code3 || ' - ' || c3.name c3_and_name}) country_c3_and_name}"
+    )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_1"), Map("full_name" -> "full_name"))._1 should be(
       "person[person.name || ' ' || person.surname = :full_name?] {person.name || ' ' || person.surname full_name}"
     )
@@ -410,15 +422,15 @@ class QuereaseTests extends FlatSpec with Matchers {
       "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_5"), Map("full_name" -> "full_name"))._1 should be(
-      "person p1[person[person.id = p1.id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "person p1[(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
       "{(person[person.id = p1.father_id]{person.name || ' ' || person.surname full_name}) father_full_name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_6"), Map("full_name" -> "full_name"))._1 should be(
-      "person p1[person[person.id = p1.father_id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "person p1[(person[person.id = p1.father_id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
       "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_field_ref_test_7"), Map("full_name" -> "full_name"))._1 should be(
-      "person p1[person[person.id = p1.id]{person.name || ' ' || person.surname full_name} = :full_name] " +
+      "person p1[(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) = :full_name] " +
       "{(person[person.id = p1.id]{person.name || ' ' || person.surname full_name}) full_name}"
     )
   }

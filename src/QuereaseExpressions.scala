@@ -61,7 +61,9 @@ trait QuereaseExpressions { this: Querease =>
     baseTableAlias: String,
     pathToAlias: Map[List[String], String],
     mdContext: MdContext,
-    transformerContext: TransformerContext)
+    transformerContext: TransformerContext,
+    addParensToSubquery: Boolean,
+  )
   val parser: Parser = DefaultParser
   /** Returns error message expression string for resolver
     *
@@ -134,7 +136,8 @@ trait QuereaseExpressions { this: Querease =>
       expression: String, viewDef: ViewDef, fieldDef: FieldDef, mdContext: MdContext,
       baseTableAlias: String = null, pathToAlias: Map[List[String], String] = null): String = {
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
-    val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext, RootCtx)
+    val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext,
+      RootCtx, addParensToSubquery = mdContext == Field)
     transformExpression(expression, ctx)
   }
 
@@ -151,7 +154,8 @@ trait QuereaseExpressions { this: Querease =>
       expression: String, viewDef: ViewDef, fieldName: String, mdContext: MdContext,
       baseTableAlias: String, pathToAlias: Map[List[String], String]): String = {
     val fieldDef: FieldDef = null
-    val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext, RootCtx)
+    val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext,
+      RootCtx, addParensToSubquery = mdContext == Field)
     transformExpression(expression, ctx)
   }
 
@@ -273,7 +277,7 @@ trait QuereaseExpressions { this: Querease =>
 
     {
       case BinOp("=", lop, rop) =>
-        val nctx = ctx.copy(transformerContext = EqOpCtx)
+        val nctx = ctx.copy(transformerContext = EqOpCtx, addParensToSubquery = true)
         BinOp("=", expressionTransformer(nctx)(lop), expressionTransformer(nctx)(rop))
       case w: With =>
         val nctx = ctx.copy(transformerContext = OtherOpCtx)
@@ -380,7 +384,7 @@ trait QuereaseExpressions { this: Querease =>
                   s" in $fullContextName")
             }
           parse(resolverExpression(resolvedQueryStringWithLimit, errorMessage, resolverVarsTresql))
-        } else if (ctx.mdContext == Field && ctx.transformerContext == RootCtx) {
+        } else if (ctx.addParensToSubquery) {
           parse("(" + resolvedQuery.tresql + ")")
         } else {
           resolvedQuery
@@ -399,17 +403,17 @@ trait QuereaseExpressions { this: Querease =>
         val (viewRef, dotRefFieldName) = ident.splitAt(ident.lastIndexOf("."))
         val (refViewName, refFieldName) = (viewRef.substring(1), dotRefFieldName.substring(1))
         val resolvedQueryString = refViewExpressionString(refViewName, refFieldName, refFilter = null)
-        if (ctx.mdContext == Field && ctx.transformerContext == RootCtx) {
+        if (ctx.addParensToSubquery) {
           parse("(" + resolvedQueryString + ")")
         } else {
           parse(resolvedQueryString)
         }
       case o @ Obj(b: Braces, _, null, _, _) =>
-        o.copy(obj = expressionTransformer(ctx)(b))
+        o.copy(obj = expressionTransformer(ctx.copy(addParensToSubquery = false))(b))
       case o @ Obj(i: Ident, _, null, _, _) =>
         o.copy(obj = expressionTransformer(ctx)(i))
       case x if ctx.transformerContext == RootCtx || ctx.transformerContext == EqOpCtx =>
-        expressionTransformer(ctx.copy(transformerContext = OtherOpCtx))(x)
+        expressionTransformer(ctx.copy(transformerContext = OtherOpCtx, addParensToSubquery = x.isInstanceOf[BinOp]))(x)
     }
   }
 }

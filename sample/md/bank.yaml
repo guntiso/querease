@@ -64,3 +64,27 @@ table: bank b3
 fields:
 - name
 - country_c3_and_name = ^country_choice_3.c3_and_name
+
+name: ref_test_bank_4
+table: bank b3
+fields:
+- name
+- country_c3_and_name = ^country_choice_3.c3_and_name
+filter:
+- ^country_c3_and_name
+
+name: ref_test_bank_5
+table: bank b3
+fields:
+- name
+- country_c3_and_name = ^country_choice_3.c3_and_name
+filter:
+- ^country_choice_3.c3_and_name
+
+name: ref_test_bank_6
+table: bank b3
+fields:
+- name
+- country_c3_and_name = ^country_choice_3.c3_and_name
+filter:
+- ^country_choice_3.c3_and_name = :cc?
