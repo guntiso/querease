@@ -13,7 +13,7 @@ crossScalaVersions := Seq(
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 val tresqlV = "9.1"
-val mojozV = "1.1"
+val mojozV = "1.2"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
