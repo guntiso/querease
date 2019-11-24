@@ -62,7 +62,7 @@ trait QuereaseExpressions { this: Querease =>
     pathToAlias: Map[List[String], String],
     mdContext: MdContext,
     transformerContext: TransformerContext,
-    addParensToSubquery: Boolean,
+    addParensToSubquery: Boolean
   )
   val parser: Parser = DefaultParser
   /** Returns error message expression string for resolver
