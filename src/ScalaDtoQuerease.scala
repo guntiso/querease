@@ -314,5 +314,5 @@ trait Dto { self =>
 
 trait DtoWithId extends Dto {
   def id: java.lang.Long
-  def id_=(id: java.lang.Long)
+  def id_=(id: java.lang.Long): Unit
 }

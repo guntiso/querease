@@ -469,7 +469,7 @@ object QuereaseTests {
      override lazy val yamlMetadata = YamlMd.fromFiles(path = "sample/md")
      override lazy val viewDefs = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
-       .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef])
+       .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef]).toMap
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
        Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
    }
