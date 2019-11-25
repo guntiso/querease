@@ -22,6 +22,9 @@ object QuereaseExpressions {
   case object EqOpCtx extends TransformerContext
   case object OtherOpCtx extends TransformerContext
 
+  private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
+  private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
+
   trait Parser extends QueryParsers with ExpTransformer {
     def parse(expr: String): Exp
     def extractVariables(exp: String) =

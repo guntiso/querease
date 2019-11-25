@@ -7,6 +7,8 @@ import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
 
+import java.util.concurrent.ConcurrentHashMap
+
 import org.tresql.Column
 import org.tresql.RowLike
 
@@ -34,23 +36,54 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
     m.runtimeClass.newInstance.asInstanceOf[B{type QE = self.type}].fill(r)(this)
 }
 
+private[querease] object DtoReflection {
+  private val cache =
+    new ConcurrentHashMap[Class[_ <: Dto], Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))]]
+  def manifest(name: String, dto: Dto, clazz: Class[_]): (Manifest[_], Manifest[_ <: Dto]) =
+    if (!clazz.isPrimitive)
+      ManifestFactory.classType(clazz) ->
+        (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
+          childManifest(dto.getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
+        } else null)
+    else (clazz match {
+      case java.lang.Integer.TYPE => ManifestFactory.Int
+      case java.lang.Long.TYPE => ManifestFactory.Long
+      case java.lang.Double.TYPE => ManifestFactory.Double
+      case java.lang.Boolean.TYPE => ManifestFactory.Boolean
+    }) -> null
+  def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
+    val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
+    val clazz = parametrisedType.getActualTypeArguments()(0) match {
+      case c: Class[_] => c
+      case v: java.lang.reflect.TypeVariable[_] =>
+        v.getGenericDeclaration.asInstanceOf[Class[_]]
+    }
+    ManifestFactory.classType(clazz)
+  }
+  def setters(dto: Dto): Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] = {
+    val dtoClass = dto.getClass
+    cache.getOrDefault(dtoClass, {
+      val setters =
+        (for (
+          m <- dtoClass.getMethods
+          if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
+        ) yield {
+          val name = m.getName.dropRight(4)
+          name -> (m -> manifest(name, dto, m.getParameterTypes()(0)))
+        }).toMap
+      cache.putIfAbsent(dtoClass, setters)
+      setters
+    })
+  }
+}
+
 trait Dto { self =>
 
   protected type QE <: QuereaseMetadata with QuereaseResolvers
   //protected type QE <: Querease with ScalaDtoQuereaseIo { type DTO >: self.type }
   protected type QDto >: Null <: Dto { type QE = self.QE }
 
-  //filling in object from RowLike
-  private val _setters: Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] =
-    (for (
-      m <- getClass.getMethods
-      if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
-    ) yield {
-      val name = m.getName.dropRight(4)
-      name -> (m -> manifest(name, m.getParameterTypes()(0)))
-    }).toMap
-
-  //end filling in object from RowLike
+  // populate from RowLike
   def fill(r: RowLike)(implicit qe: QE): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
       case Column(_, name, _) if name != null => set(name, r)
@@ -59,7 +92,7 @@ trait Dto { self =>
     this
   }
 
-  protected def setters = _setters
+  protected def setters = DtoReflection.setters(this)
   protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
@@ -83,25 +116,9 @@ trait Dto { self =>
   protected def dbToPropName(name: String) = name // .toLowerCase
   protected def propToDbName(name: String) = name
   protected def manifest(name: String, clazz: Class[_]) =
-    if (!clazz.isPrimitive)
-      ManifestFactory.classType(clazz) ->
-        (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
-          childManifest(getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
-        } else null)
-    else (clazz match {
-      case java.lang.Integer.TYPE => ManifestFactory.Int
-      case java.lang.Long.TYPE => ManifestFactory.Long
-      case java.lang.Double.TYPE => ManifestFactory.Double
-      case java.lang.Boolean.TYPE => ManifestFactory.Boolean
-    }) -> null
+    DtoReflection.manifest(name, this, clazz)
   protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
-    val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
-    val clazz = parametrisedType.getActualTypeArguments()(0) match {
-      case c: Class[_] => c
-      case v: java.lang.reflect.TypeVariable[_] =>
-        v.getGenericDeclaration.asInstanceOf[Class[_]]
-    }
-    ManifestFactory.classType(clazz)
+    DtoReflection.childManifest(t)
   }
 
   private def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.flatMap { m =>
@@ -147,10 +164,8 @@ trait Dto { self =>
     s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}}"
   }
 
-  private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
-  private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
-  def identifier(s: String) = s match {
-    case IdentifierExtractor(ident, _) => ident
+  protected def identifier(s: String) = s match {
+    case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
     case _ => ""
   }
   protected def isSavableField(field: QuereaseMetadata#FieldDef,
