@@ -442,7 +442,9 @@ class QuereaseTests extends FlatSpec with Matchers {
     pi.sex = "V"
     pi.children = List(pn);
     pi.toMap should be(
-      Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "children" -> List(Map("name" -> "Sigita")), "father" -> null, "motherName" -> null))
+      Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "motherName" -> null, "fatherName" -> null,
+          "maternalGrandmother" -> null, "maternalGrandfather" -> null, "paternalGrandmother" -> null, "paternalGrandfather" -> null,
+          "children" -> List(Map("name" -> "Sigita")), "father" -> null))
   }
 }
 
@@ -470,6 +472,13 @@ object QuereaseTests {
      override lazy val viewDefs = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
        .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef]).toMap
+     override protected lazy val viewNameToFieldOrdering =
+       viewDefs.map(kv => (kv._1, new FieldOrdering(
+         kv._2.fields
+          .map(f => Option(f.alias) getOrElse f.name)
+          .map(TestQuereaseNaming.dbToPropName)
+          .zipWithIndex.toMap)
+       ))
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
        Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
    }
