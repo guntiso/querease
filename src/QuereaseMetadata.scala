@@ -20,6 +20,8 @@ trait QuereaseMetadata {
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
       nameToIndex.getOrElse(x, 999) - nameToIndex.getOrElse(y, 999)
+    override def toString: String =
+      s"FieldOrdering(${nameToIndex.toList.sortBy(_._2).map(_._1).mkString(", ")})"
   }
   object FieldOrdering {
     def apply(view: ViewDef) =
