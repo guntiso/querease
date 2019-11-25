@@ -150,8 +150,8 @@ trait Dto { self =>
   protected def toString(fieldNames: Seq[String])(implicit qe: QE): String = {
     def isMisleading(s: String) =
       s.contains(" ") || s == "null" || s == "" || s(0).isDigit
-    val kv: Seq[(String, Object)] = fieldNames.flatMap{ name =>
-      Try(getClass.getMethod(name)).map(_.invoke(this) match {
+    val kv: Seq[(String, Object)] = fieldNames.map { name =>
+      getClass.getMethod(name).invoke(this) match {
         case s: Seq[_] => name ->
           ("(" + (s map {
             case s: String => "\"" + s + "\""
@@ -161,7 +161,7 @@ trait Dto { self =>
         case s: String if isMisleading(s) => name -> ("\"" + s + "\"")
         case d: Dto => name -> d.asInstanceOf[QDto].toString
         case x => name -> x
-      }).map(List(_)).toOption.getOrElse(Nil)
+      }
     }
     s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}}"
   }
