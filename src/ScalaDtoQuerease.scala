@@ -121,16 +121,18 @@ trait Dto { self =>
     DtoReflection.childManifest(t)
   }
 
-  private def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.flatMap { m =>
-    scala.util.Try(getClass.getMethod(m._1).invoke(this)).toOption.map {
-      case s: Seq[_] => m._1 -> s.map {
+  def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.map { m =>
+    val propName = m._1
+    val propValue = getClass.getMethod(propName).invoke(this) match {
+      case s: Seq[_] => s.map {
         case dto: Dto => dto.asInstanceOf[QDto].toMap
         case str: String => str
         case i: java.lang.Integer => i
       }
-      case c: Dto => m._1 -> c.asInstanceOf[QDto].toMap
-      case x => m._1 -> x
+      case c: Dto => c.asInstanceOf[QDto].toMap
+      case x => x
     }
+    propName -> propValue
   }
   def toMap(implicit qe: QE): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
     .map(toMapWithOrdering).getOrElse(toUnorderedMap)
