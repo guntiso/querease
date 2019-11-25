@@ -15,6 +15,8 @@ trait Dto extends querease.Dto { self =>
     TestQuereaseNaming.dbToPropName(name)
   override protected def propToDbName(name: String) =
     TestQuereaseNaming.propToDbName(name)
+  override protected def toString(fieldNames: Seq[String])(implicit qe: QE): String =
+    super.toString(fieldNames.map(dbToPropName))
 }
 
 trait DtoWithId extends Dto with querease.DtoWithId
