@@ -259,12 +259,12 @@ trait Dto { self =>
             .filter(_._2 != null)
             .filter(vs => isSaveableChildField(f, vs._1))
             .map(_._2)
-            .map(_ + f.options -> Nil))
+            .map(_ + Option(f.options).getOrElse("") -> Nil))
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
         case s: Seq[_] =>
           val options = childTableFieldDefOpt
-            .map(_.options) getOrElse ""
+            .map(_.options).filter(_ != null) getOrElse ""
           val f = childTableFieldDefOpt.orNull
           //objects from one list can be put into different tables
           s.asInstanceOf[Seq[QDto]] map { d =>
@@ -300,7 +300,7 @@ trait Dto { self =>
                         f.name + "_id"
                     }.getOrElse(childTableName)
                 }
-            key + f.options -> value
+            key + Option(f.options).getOrElse("") -> value
           }
           .orElse(Some("*" + propName -> value)) // prefix * to avoid clashes
           .toList
