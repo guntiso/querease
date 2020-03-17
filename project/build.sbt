@@ -1,6 +1,6 @@
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % "9.1",
-  "org.mojoz" %% "mojoz" % "1.1"
+  "org.mojoz" %% "mojoz" % "1.2.1"
 )
 
 scalaSource in Compile := baseDirectory(_ / ".." / "src").value
