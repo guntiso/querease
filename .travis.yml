@@ -10,11 +10,6 @@ jdk:
   - oraclejdk11
   - openjdk11
   - openjdk8
-before_script:
-  - sudo chmod +x /usr/local/bin/sbt #https://github.com/travis-ci/travis-ci/issues/7703
-sudo: required # for setting hostname
-addons:
-  hostname: localhost #https://github.com/travis-ci/travis-ci/issues/5227
 notifications:
   email:
     - guntiso@uniso.lv
