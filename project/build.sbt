@@ -1,5 +1,5 @@
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "9.1",
+  "org.tresql" %% "tresql" % "9.2",
   "org.mojoz" %% "mojoz" % "1.2.1"
 )
 
