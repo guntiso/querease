@@ -1,5 +1,9 @@
+resolvers ++= Seq(
+  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+)
+
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "9.3",
+  "org.tresql" %% "tresql" % "9.3.1-SNAPSHOT",
   "org.mojoz" %% "mojoz" % "1.2.1"
 )
 

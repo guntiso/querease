@@ -15,7 +15,7 @@ crossScalaVersions := Seq(
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-val tresqlV = "9.3"
+val tresqlV = "9.3.1-SNAPSHOT"
 val mojozV = "1.2.1"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
@@ -45,6 +45,10 @@ scalacOptions in (Compile, doc) ++= (baseDirectory in
    bd => Seq("-sourcepath", bd.getAbsolutePath,
              "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
  }.value
+
+resolvers ++= Seq(
+  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+)
 
 unmanagedResourceDirectories in Test := baseDirectory(b => Seq(b / "sample" / "md", b / "test" / "data")).value
 
