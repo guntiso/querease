@@ -33,7 +33,7 @@ trait QuereaseResolvers { this: Querease =>
                 val expressionOpt =
                   if (doRebaseTable)
                     Option(f.expression)
-                    .map(parse)
+                    .map(parseExp)
                     .map(transformer {
                       case i: Ident =>
                         if (i.ident.size > 1) i.copy(ident = i.ident.tail) else i

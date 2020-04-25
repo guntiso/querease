@@ -26,9 +26,8 @@ object QuereaseExpressions {
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
 
   trait Parser extends QueryParsers with ExpTransformer {
-    def parse(expr: String): Exp
     def extractVariables(exp: String) =
-      traverser(variableExtractor)(Nil)(parse(exp)).reverse
+      traverser(variableExtractor)(Nil)(parseExp(exp)).reverse
   }
   abstract class DefaultParser extends Parser {
     val cache: Option[CacheBase[Exp]]
@@ -36,7 +35,7 @@ object QuereaseExpressions {
       case Some(s) ~ ident => s + ident
       case None ~ ident => ident
     }  named "^ident"
-    override def parse(expr: String): Exp = {
+    override def parseExp(expr: String): Exp = {
       cache.flatMap(_.get(expr)).getOrElse {
         try {
           intermediateResults.get.clear
@@ -164,7 +163,7 @@ trait QuereaseExpressions { this: Querease =>
 
   private def transformExpression(expression: String, ctx: Context): String = {
     expressionTransformer(ctx)(
-      parser.parse(expression)
+      parser.parseExp(expression)
     ).tresql
   }
 
@@ -260,7 +259,7 @@ trait QuereaseExpressions { this: Querease =>
               names => { case i: Ident => names + i.ident.head }
             }
             val usedNames =
-              traverser(usedNamesExtractor)(Set.empty)(parse(queryColExpr("true")))
+              traverser(usedNamesExtractor)(Set.empty)(parseExp(queryColExpr("true")))
             if (usedNames contains tableOrAlias) {
               val fixedTableAlias = unusedName(tableOrAlias, usedNames)
               val colsString = colsRefCols.map(_._1).mkString(", ")
@@ -365,7 +364,7 @@ trait QuereaseExpressions { this: Querease =>
                 refViewDef, refViewDefBaseTableAlias, refViewDefPathToAlias)
             queryString(refViewDef, colFields, refFields, transformedFilterString)
           }
-          parse(resolvedQueryString) match {
+          parseExp(resolvedQueryString) match {
             case q: Query => q
             case w: With => w
             case x =>
@@ -386,9 +385,9 @@ trait QuereaseExpressions { this: Querease =>
                 sys.error("Unexpected query class: " + Option(x).map(_.getClass.getName).orNull +
                   s" in $fullContextName")
             }
-          parse(resolverExpression(resolvedQueryStringWithLimit, errorMessage, resolverVarsTresql))
+          parseExp(resolverExpression(resolvedQueryStringWithLimit, errorMessage, resolverVarsTresql))
         } else if (ctx.addParensToSubquery) {
-          parse("(" + resolvedQuery.tresql + ")")
+          parseExp("(" + resolvedQuery.tresql + ")")
         } else {
           resolvedQuery
         }
@@ -398,7 +397,7 @@ trait QuereaseExpressions { this: Querease =>
         Seq(ctx.viewDef).filter(_ != null)
           .flatMap(_.fields)
           .find(f => Option(f.alias).getOrElse(f.name) == name)
-          .map(f => parse(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias)).getOrElse(
+          .map(f => parseExp(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias)).getOrElse(
              Option(f.tableAlias).orElse(Option(ctx.baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)
       case iexpr @ Ident(identList: List[String]) if identList(0).startsWith("^") =>
@@ -407,9 +406,9 @@ trait QuereaseExpressions { this: Querease =>
         val (refViewName, refFieldName) = (viewRef.substring(1), dotRefFieldName.substring(1))
         val resolvedQueryString = refViewExpressionString(refViewName, refFieldName, refFilter = null)
         if (ctx.addParensToSubquery) {
-          parse("(" + resolvedQueryString + ")")
+          parseExp("(" + resolvedQueryString + ")")
         } else {
-          parse(resolvedQueryString)
+          parseExp(resolvedQueryString)
         }
       case o @ Obj(b: Braces, _, null, _, _) =>
         o.copy(obj = expressionTransformer(ctx.copy(addParensToSubquery = false))(b))

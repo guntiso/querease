@@ -2,22 +2,20 @@ package querease
 
 import java.io.File
 
-import org.tresql.compiling.CompilerFunctionMetadata
-import org.tresql.compiling.CompilerMetadataFactory
+import org.tresql.compiling.{CompilerFunctionMetadata, CompilerMetadata, CompilerMetadataFactory}
 import org.tresql.Metadata
 import org.tresql.metadata.Col
 import org.tresql.metadata.Key
-import org.tresql.metadata.{ Ref => TresqlRef }
+import org.tresql.metadata.{Ref => TresqlRef}
 import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
-
 import mojoz.metadata.io._
 import mojoz.metadata.in._
 import mojoz.metadata.Type
 import mojoz.metadata.TypeDef
 import mojoz.metadata.TypeMetadata
-import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
-import mojoz.metadata.ColumnDef.{ ColumnDefBase => ColumnDef }
+import mojoz.metadata.TableDef.{TableDefBase => TableDef}
+import mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
@@ -78,6 +76,7 @@ class TresqlMetadata(
   }
 }
 
+
 class TresqlMetadataFactory extends CompilerMetadataFactory {
   /** Creates tresql compiler metadata by loading table metadata (as produced by
    *  [[querease.TresqlMetadata.tableMetadataString]]) and instantiating
@@ -86,16 +85,23 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
    *  Expects "tableMetadataFile" and "functions" keys in conf parameter.
    *  Defaults to "tresql-table-metadata.yaml" and "org.tresql.compiling.TresqlFunctionSignatures"
    */
-  override def create(conf: Map[String, String]): TresqlMetadata = {
+  override def create(conf: Map[String, String]): CompilerMetadata = {
     val tableMetadataFileName = conf.getOrElse("tableMetadataFile", "tresql-table-metadata.yaml")
     val functionSignaturesClassName =
       conf.getOrElse("functions", "org.tresql.compiling.TresqlFunctionSignatures")
+    val macrosClassName = conf.get("macros")
     val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
     val functionSignaturesClass = Option(functionSignaturesClassName).map(Class.forName).orNull
-    TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
+    new CompilerMetadata {
+      override def metadata: Metadata =
+        TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
+
+      override def macros: Option[Any] =
+        macrosClassName.map(cn => Class.forName(cn).getDeclaredConstructor().newInstance())
+    }
   }
 }
 
