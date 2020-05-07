@@ -106,7 +106,6 @@ order:
 
 # FIXME eliminate father_id field from main query
 # FIXME eliminate technical ref :1(..) to parent query
-# FIXME eliminate column list [here for hsqldb] from t
 # FIXME eliminate trailing t for this [single cte] subcase?
 name:  with_forefathers
 table: person p
@@ -116,10 +115,10 @@ fields:
 - forefathers * [] :
     table:
     joins:
-    - t(level, name, surname, father_id) {
-        person f [f.id = :1(father_id)]   {1, name, surname, father_id}
+    - t(*) {
+        person f [f.id = :1(father_id)]   {1   level, name, surname, father_id}
         +
-        t [t.father_id = ff.id] person ff {level + 1, ff.name, ff.surname, ff.father_id}
+        t [t.father_id = ff.id] person ff {1 + level, ff.name, ff.surname, ff.father_id}
       }
       t
     fields:
