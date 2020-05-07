@@ -398,7 +398,7 @@ trait QueryStringBuilder { this: Querease =>
             Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
         }
       */
-      if (childViewDef.table == null)
+      if (childViewDef.table == null && (childViewDef.joins == null || childViewDef.joins == Nil))
         s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
       else if (view.name == childViewDef.name)
         s"(|$joinToParent)"

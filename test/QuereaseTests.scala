@@ -192,6 +192,16 @@ class QuereaseTests extends FlatSpec with Matchers {
         toFile(dataPath + "/" + "father-tree-out-produced.txt", producedFatherTree)
       expectedFatherTree should be(producedFatherTree)
 
+      val expectedForefathers = fileToString(dataPath + "/" + "forefathers-out.txt")
+      val producedForefathers =
+        qe.list[WithForefathers](null).toList.flatMap { p => List(
+          p.fullName,
+          s"  ${p.forefathers.map(_.fullName).mkString(", ")}"
+        )}.filterNot(_.trim == "").mkString("\n")
+      if (expectedForefathers != producedForefathers)
+        toFile(dataPath + "/" + "forefathers-out-produced.txt", producedForefathers)
+      expectedForefathers should be(producedForefathers)
+
       //resolver test with bind variable from substructure
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
