@@ -21,7 +21,7 @@ libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
   // test
-  "org.hsqldb" % "hsqldb" % "2.3.2" % "test",
+  "org.hsqldb" % "hsqldb" % "2.5.0" % "test",
   "org.scalatest" %% "scalatest" % "3.0.8" % "test"
 )
 
