@@ -106,7 +106,6 @@ order:
 
 # FIXME eliminate father_id field from main query
 # FIXME eliminate technical ref :1(..) to parent query
-# FIXME eliminate trailing t for this [single cte] subcase?
 name:  with_forefathers
 table: person p
 fields:
