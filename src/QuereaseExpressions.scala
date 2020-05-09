@@ -67,6 +67,7 @@ trait QuereaseExpressions { this: Querease =>
     addParensToSubquery: Boolean
   )
   val parser: Parser = DefaultParser
+
   /** Returns error message expression string for resolver
     *
     * @param viewName    view name this expression is from
@@ -140,28 +141,6 @@ trait QuereaseExpressions { this: Querease =>
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
     val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext,
       RootCtx, addParensToSubquery = mdContext == Field)
-    transformExpression(expression, ctx)
-  }
-
-  /** Returns transformed expression
-    *
-    * @param expression  expression to be transformed
-    * @param viewDef     view this expression is from
-    * @param fieldName   field name this expression is from or null
-    * @param mdContext   yaml section this expression is from
-    * @param baseTableAlias base table alias for filter transformation
-    * @param pathToAlias path to alias map for this query
-    */
-  def transformExpression(
-      expression: String, viewDef: ViewDef, fieldName: String, mdContext: MdContext,
-      baseTableAlias: String, pathToAlias: Map[List[String], String]): String = {
-    val fieldDef: FieldDef = null
-    val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext,
-      RootCtx, addParensToSubquery = mdContext == Field)
-    transformExpression(expression, ctx)
-  }
-
-  private def transformExpression(expression: String, ctx: Context): String = {
     expressionTransformer(ctx)(
       parser.parseExp(expression)
     ).tresql

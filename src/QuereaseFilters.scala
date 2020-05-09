@@ -78,7 +78,7 @@ trait FilterTransformer { this: Querease =>
         s":$nameFrom${opt(reqFrom)} $opFrom ${col(name)} $opTo :$nameTo${opt(reqTo)}"
       case x => x
     }
-    transformExpression(transformedFilter, view, null: String, QuereaseExpressions.Filter, baseTableAlias, pathToAlias)
+    transformExpression(transformedFilter, view, null, QuereaseExpressions.Filter, baseTableAlias, pathToAlias)
   }
   // TODO filter analyzer tests
   def analyzeFilter(filter: String, view: ViewDef, baseTableAlias: String): Seq[FilterType] = {
