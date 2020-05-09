@@ -48,7 +48,7 @@ object Sample {
       case "hsql" => HSQLDialect
       case "ansi" | "" | null => ANSISQLDialect
     }
-    Env.metadata = new TresqlMetadata(md.tableDefs, null)
+    Env.metadata = new TresqlMetadata(md.tableDefs)
     Env.conn = conn
     if (dbg) Env update { (msg, level) => println(msg) }
     else Env update { (msg, level) => () }

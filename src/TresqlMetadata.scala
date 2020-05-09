@@ -19,7 +19,6 @@ import mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
-  val procedureMetadata: Metadata,
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs)
   extends Metadata with TypeMapper {
 
@@ -47,12 +46,6 @@ class TresqlMetadata(
 
   override def table(name: String) = tables(name)
   override def tableOption(name: String) = tables.get(name)
-  override def procedure(name: String) =
-    if (procedureMetadata != null) procedureMetadata.procedure(name)
-    else sys.error("Procedure metadata not initialized")
-  override def procedureOption(name: String) =
-    if (procedureMetadata != null) procedureMetadata.procedureOption(name)
-    else None
   lazy val tableMetadataString = {
     def colToString(col: ColumnDef[Type]) =
       col.name +
@@ -112,11 +105,10 @@ object TresqlMetadata {
       tableDefs: Seq[TableDef[ColumnDef[Type]]],
       typeDefs: collection.immutable.Seq[TypeDef],
       functionSignaturesClass: Class[_]): TresqlMetadata = {
-    val procedureMetadata = null // TODO?
     if (functionSignaturesClass == null)
-      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs)
+      new TresqlMetadata(tableDefs, typeDefs)
     else {
-      new TresqlMetadata(tableDefs, procedureMetadata, typeDefs) with CompilerFunctionMetadata {
+      new TresqlMetadata(tableDefs, typeDefs) with CompilerFunctionMetadata {
         override def compilerFunctionSignatures = functionSignaturesClass
       }
     }

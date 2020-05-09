@@ -510,7 +510,7 @@ object QuereaseTests {
     conn.setAutoCommit(false)
     Env.dialect = HSQLDialect
     Env.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
-    Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs, null)
+    Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
   }
