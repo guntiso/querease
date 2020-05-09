@@ -31,13 +31,13 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
         s"  def resolve_${r._1} = dbUse {" + nl +
         s"    tresql$q3({${r._2}})$q3(Env.withParams(this.toMap))" + nl +
         s"      .unique[${if (r._1 == "id" || r._1.endsWith("_id")) "java.lang.Long" else "String"}]" + nl + // FIXME find type
-        s"  }"
+        s"  }" + nl
       }
   }
 
   override def scalaBodyExtra(viewDef: ViewDefBase[FieldDefBase[Type]]): String = qe match {
     case resolvers: QuereaseResolvers =>
-      resolverDefs(viewDef, resolvers).mkString(nl)
+      resolverDefs(viewDef, resolvers).mkString
     case _ => ""
   }
 }
