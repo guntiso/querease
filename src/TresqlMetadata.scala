@@ -6,6 +6,7 @@ import org.tresql.compiling.{CompilerFunctionMetadata, CompilerMetadata, Compile
 import org.tresql.Metadata
 import org.tresql.metadata.Col
 import org.tresql.metadata.Key
+import org.tresql.metadata.Procedure
 import org.tresql.metadata.{Ref => TresqlRef}
 import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
@@ -46,6 +47,7 @@ class TresqlMetadata(
 
   override def table(name: String) = tables(name)
   override def tableOption(name: String) = tables.get(name)
+  override def procedureOption(name: String): Option[Procedure[_]] = None
   lazy val tableMetadataString = {
     def colToString(col: ColumnDef[Type]) =
       col.name +
