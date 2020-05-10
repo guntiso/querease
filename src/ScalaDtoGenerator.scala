@@ -17,28 +17,35 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       viewDef: ViewDefBase[FieldDefBase[Type]],
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
-    val q3 = "\"\"\""
     viewDef.fields
       .filterNot(_.type_.isComplexType)
       .flatMap { f =>
         qe.allResolvers(
           viewDef.asInstanceOf[this.qe.ViewDef],
           f.asInstanceOf[this.qe.FieldDef]
-        ).map((f, _))
+        ).map(resolverDef(viewDef, f, _))
       }
-      .filterNot(_._2.indexOf("^") >= 0) // XXX will not compile if not converted to tresql
-      .map { case (f, r) =>
-        s"  def resolve_${resolverColName(f)} = dbUse {" + nl +
-        s"    tresql$q3({${r}})$q3(Env.withParams(this.toMap))" + nl +
-        s"      .unique[${resolverTypeName(f)}]" + nl +
-        s"  }" + nl
-      }
+      .filterNot(_ == null)
+      .filterNot(_ == "")
+      .map(_ + nl)
+  }
+  def resolverDefBodyPrefix: String = ""
+  def resolverDef(
+      viewDef: ViewDefBase[FieldDefBase[Type]],
+      fieldDef: FieldDefBase[Type],
+      resolverExpression: String
+  ): String = {
+    val q3 = "\"\"\"" // https://github.com/scala/bug/issues/6476
+    s"  def resolve_${resolverTargetColName(fieldDef)} = $resolverDefBodyPrefix{" + nl +
+    s"    tresql$q3{$resolverExpression}$q3(Env.withParams(this.toMap))" + nl +
+    s"      .unique[${resolverTargetTypeName(fieldDef)}]" + nl +
+    s"  }"
   }
 
-  def resolverColName(f: FieldDefBase[Type]): String =
+  def resolverTargetColName(f: FieldDefBase[Type]): String =
     Option(f.saveTo) getOrElse f.name
-  def resolverTypeName(f: FieldDefBase[Type]): String = {
-    val colName = resolverColName(f)
+  def resolverTargetTypeName(f: FieldDefBase[Type]): String = {
+    val colName = resolverTargetColName(f)
     val type_ = Option(f.table)
       .flatMap(qe.tableMetadata.tableDefOption)
       .flatMap(_.cols.find(_.name == colName))
