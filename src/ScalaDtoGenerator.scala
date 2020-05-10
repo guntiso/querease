@@ -24,15 +24,27 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
         qe.allResolvers(
           viewDef.asInstanceOf[this.qe.ViewDef],
           f.asInstanceOf[this.qe.FieldDef]
-        ).map((Option(f.saveTo) getOrElse f.name, _))
+        ).map((f, _))
       }
       .filterNot(_._2.indexOf("^") >= 0) // XXX will not compile if not converted to tresql
-      .map { r =>
-        s"  def resolve_${r._1} = dbUse {" + nl +
-        s"    tresql$q3({${r._2}})$q3(Env.withParams(this.toMap))" + nl +
-        s"      .unique[${if (r._1 == "id" || r._1.endsWith("_id")) "java.lang.Long" else "String"}]" + nl + // FIXME find type
+      .map { case (f, r) =>
+        s"  def resolve_${resolverColName(f)} = dbUse {" + nl +
+        s"    tresql$q3({${r}})$q3(Env.withParams(this.toMap))" + nl +
+        s"      .unique[${resolverTypeName(f)}]" + nl +
         s"  }" + nl
       }
+  }
+
+  def resolverColName(f: FieldDefBase[Type]): String =
+    Option(f.saveTo) getOrElse f.name
+  def resolverTypeName(f: FieldDefBase[Type]): String = {
+    val colName = resolverColName(f)
+    val type_ = Option(f.table)
+      .flatMap(qe.tableMetadata.tableDefOption)
+      .flatMap(_.cols.find(_.name == colName))
+      .map(_.type_)
+      .getOrElse(qe.metadataConventions.fromExternal(colName, None, None)._1)
+    scalaSimpleTypeName(type_)
   }
 
   override def scalaBodyExtra(viewDef: ViewDefBase[FieldDefBase[Type]]): String = qe match {
