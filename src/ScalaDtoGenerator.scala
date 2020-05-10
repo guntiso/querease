@@ -23,11 +23,18 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
         qe.allResolvers(
           viewDef.asInstanceOf[this.qe.ViewDef],
           f.asInstanceOf[this.qe.FieldDef]
-        ).map(resolverDef(viewDef, f, _))
+        ).map(exp => resolverDef(viewDef, f, transformResolverExpression(exp, f)))
       }
       .filterNot(_ == null)
       .filterNot(_ == "")
       .map(_ + nl)
+  }
+  def transformResolverExpression(expression: String, field: FieldDefBase[Type]): String = {
+    import qe.parser._
+    transformer {
+      case Ident(List("_")) if field != null =>
+        Variable(Option(field.alias).getOrElse(field.name), Nil, false)
+    } (parseExp(expression)).tresql
   }
   def resolverDefBodyPrefix: String = ""
   def resolverDef(
