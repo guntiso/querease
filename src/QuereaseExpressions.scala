@@ -1,16 +1,11 @@
 package querease
 
 import mojoz.metadata.TableDef
-
-import org.tresql.QueryParser
-import org.tresql.QueryParser.Null
-
-import org.tresql.{ CacheBase, SimpleCacheBase }
-import org.tresql.parsing.{ QueryParsers, ExpTransformer }
+import org.tresql.{CacheBase, SimpleCacheBase}
+import org.tresql.parsing.{Exp, ExpTransformer, QueryParsers}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
-import scala.util.control.NonFatal
 
 object QuereaseExpressions {
   sealed trait MdContext { val name: String }

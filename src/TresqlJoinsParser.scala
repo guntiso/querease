@@ -3,6 +3,7 @@ package querease
 import org.tresql.Env
 import org.tresql.compiling.Compiler
 import org.tresql.{ CacheBase, SimpleCacheBase }
+import org.tresql.parsing.Exp
 
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
@@ -20,7 +21,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
     override val metadata = tresqlMetadata
     def compile(exp: String): Exp = compile(parseExp(exp))
   }
-  import joinsParserCompiler.{ Braces, declaredTable, Exp, metadata, Obj }
+  import joinsParserCompiler.{ Braces, declaredTable, metadata, Obj }
   import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
   def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
