@@ -135,7 +135,7 @@ trait QuereaseExpressions { this: Querease =>
     * @param baseTableAlias base table alias for filter transformation
     * @param pathToAlias path to alias map for this query
     */
-  protected def transformExpression(
+  def transformExpression(
       expression: String, viewDef: ViewDef, fieldDef: FieldDef, mdContext: MdContext,
       baseTableAlias: String = null, pathToAlias: Map[List[String], String] = null): String = {
     val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
