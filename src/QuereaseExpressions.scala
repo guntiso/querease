@@ -32,15 +32,12 @@ object QuereaseExpressions {
     }  named "^ident"
     override def parseExp(expr: String): Exp = {
       cache.flatMap(_.get(expr)).getOrElse {
-        try {
-          intermediateResults.get.clear
-          val e = phrase(exprList)(new CharSequenceReader(expr)) match {
-            case Success(r, _) => r
-            case x => sys.error(x.toString)
-          }
-          cache.foreach(_.put(expr, e))
-          e
-        } finally intermediateResults.get.clear
+        val e = phrase(exprList)(new CharSequenceReader(expr)) match {
+          case Success(r, _) => r
+          case x => sys.error(x.toString)
+        }
+        cache.foreach(_.put(expr, e))
+        e
       }
     }
   }
