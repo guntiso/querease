@@ -50,7 +50,11 @@ resolvers ++= Seq(
   "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
-unmanagedResourceDirectories in Test := baseDirectory(b => Seq(b / "sample" / "md", b / "test" / "data")).value
+unmanagedResourceDirectories in Test := baseDirectory(b => Seq(
+  b / "test" / "data",
+  b / "test" / "tables",
+  b / "test" / "views"
+)).value
 
 scalaSource in Test := baseDirectory(_ / "test").value
 

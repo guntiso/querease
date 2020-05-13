@@ -486,7 +486,7 @@ object QuereaseTests {
      private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
      override lazy val tableMetadata =
        new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
-     override lazy val yamlMetadata = YamlMd.fromFiles(path = "sample/md")
+     override lazy val yamlMetadata = YamlMd.fromFiles(path = "test")
      override lazy val viewDefs = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
        .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef]).toMap
