@@ -58,30 +58,80 @@ unmanagedResourceDirectories in Test := baseDirectory(b => Seq(
 
 scalaSource in Test := baseDirectory(_ / "test").value
 
+unmanagedClasspath in Test +=
+  // Needs [pre-compiled] function signatures to compile tresql in generated sources
+  baseDirectory.value / "project" / "target" / "scala-2.12" / "sbt-1.0" / "classes"
+
+scalacOptions in Test := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8",
+  "-Xmacro-settings:" + List(
+    "metadataFactoryClass=querease.TresqlMetadataFactory",
+    "tableMetadataFile=" + new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
+    "functions=test.FunctionSignatures",
+    "macros=org.tresql.Macros"
+  ).mkString(", ")
+)
+
+resourceGenerators in Test += Def.task {
+  import querease._
+  import mojoz.metadata._
+  import mojoz.metadata.in._
+  import mojoz.metadata.out._
+  val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
+  val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
+  val file = new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath)
+  val contents = new TresqlMetadata(new YamlTableDefLoader(yamlMd).tableDefs.sortBy(_.name)).tableMetadataString
+  IO.write(file, contents)
+  Seq(file)
+}.taskValue
+
 sourceGenerators in Test += Def.task {
     // TODO val cacheDirectory = streams.value.cacheDirectory
     val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
     val outDir: File = (sourceManaged in Test).value
     import querease._
     import mojoz.metadata._
+    import mojoz.metadata.FieldDef._
+    import mojoz.metadata.ViewDef._
     import mojoz.metadata.in._
     import mojoz.metadata.out._
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
-    val viewDefs = YamlViewDefLoader(tableMd, yamlMd,
-      new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs))).viewDefs
-    object ScalaBuilder extends ScalaClassWriter {
+    val viewDefLoader = YamlViewDefLoader(tableMd, yamlMd,
+      new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs)))
+    val viewDefs = viewDefLoader.viewDefs
+    val xViewDefs = viewDefLoader.extendedViewDefs
+    val qe = new Querease with ScalaDtoQuereaseIo {
+      override lazy val tableMetadata = tableMd
+      override lazy val viewDefs = xViewDefs.asInstanceOf[Map[String, ViewDef]]
+    }
+    val shouldGenerateResolversInDtos =
+      !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not unavailable for old scala
+      !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?
+    val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) = Naming.camelize(name)
       override def scalaFieldName(name: String) = Naming.camelizeLower(name)
-      override def scalaClassTraits(viewDef: ViewDef.ViewDefBase[FieldDef.FieldDefBase[Type]]) =
-        if (viewDef.fields.exists(f => f.name == "id" && f.type_.name == "long"))
-          List("DtoWithId")
-        else List("Dto")
+      override def shouldGenerateInstanceResolverDef(
+          viewDef: ViewDefBase[FieldDefBase[Type]],
+          fieldDef: FieldDefBase[Type],
+          resolverExpression: String
+      ): Boolean = shouldGenerateResolversInDtos
+      override def shouldGenerateCompanionResolverDef(
+          viewDef: ViewDefBase[FieldDefBase[Type]],
+          fieldDef: FieldDefBase[Type],
+          resolverExpression: String
+      ): Boolean = shouldGenerateResolversInDtos
     }
     val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
-      List("package dto", "",
-        "import test.{ Dto, DtoWithId }", ""), viewDefs, Nil)
+      List(
+        "package dto",
+        "",
+        "import test.{ Dto, DtoWithId }",
+        "import org.tresql._",
+        "import org.tresql.implicits._",
+        ""),
+      viewDefs,
+      Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
 }.taskValue
