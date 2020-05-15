@@ -519,7 +519,7 @@ object QuereaseTests {
     Env.conn = null
   }
   Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
-  def executeStatements(statements: String*) {
+  def executeStatements(statements: String*): Unit = {
     val conn = getConnection
     try {
       val statement = conn.createStatement
@@ -534,7 +534,7 @@ object QuereaseTests {
     source.close()
     body.replace(nl, "\n") // normalize newlines
   }
-  def toFile(filename: String, message: String) {
+  def toFile(filename: String, message: String): Unit = {
     val out = new PrintWriter(filename, "UTF-8")
     try out.print(message) finally out.close
   }
