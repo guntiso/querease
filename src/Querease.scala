@@ -282,6 +282,7 @@ trait QueryStringBuilder { this: Querease =>
   def queryString(view: ViewDef, fields: Seq[FieldDef], exprFields: Seq[FieldDef], filter: String): String = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view, (fields ++ exprFields).filter(_ != null))
     val where = Option(filter).filter(_ != "")
+      .map(filter => if (pathToAlias.size > 1) qualify(view, filter, pathToAlias, ignoreUnknownPaths = true) else filter)
       .map("[" + _ + "]").mkString match { case "" => "" case a => a }
     val groupBy = this.groupBy(view)
     val having = this.having(view)
@@ -339,15 +340,19 @@ trait QueryStringBuilder { this: Querease =>
         " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
 
   def qualify(view: ViewDef, expression: String,
-    pathToAlias: Map[List[String], String]): String = {
+    pathToAlias: Map[List[String], String], ignoreUnknownPaths: Boolean = false): String = {
     QueryParser.transformTresql(expression, {
       // do not transform subqueries (skip deeper analysis)
       case q: QueryParser.Query => q
-      case Ident(i) =>
+      case ident @ Ident(i) =>
         if (i.lengthCompare(1) == 0)
           if (tableMetadata.col(view.table, i.head).isDefined)
             Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
-          else Ident(i) // no-arg function or unknown pseudo-col
+          else ident // no-arg function or unknown pseudo-col
+        else if (ignoreUnknownPaths)
+          pathToAlias.get(i dropRight 1)
+            .map(a => Ident(a :: (i takeRight 1)))
+            .getOrElse(ident)
         else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
     })
   }

@@ -283,16 +283,16 @@ class QuereaseTests extends FlatSpec with Matchers {
       "mother->mother_id=3"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson7) should be(List(
-      "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person? father[name || ' ' || surname || ' of ' || father.name || ' (#7)' = _]{person.id}@(2))," +
+      "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = _]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from resolver_test_person_7) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson8) should be(List(
-      "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person? father[name || ' ' || surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2))," +
+      "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || coalesce(_, 'null'))"
     ).mkString("; "))
     resolverKeys(new NestedResolverTest1) should be(List(
       "mother->mother_id=checked_resolve(coalesce(:mother, :other_field), array(person;person[person.father_id]person? father[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother &" +
-        " father_id = checked_resolve(:other_field, array(" +
+        " person.father_id = checked_resolve(:other_field, array(" +
           "person p1;p1[p1.father_id]person? father[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
           " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field, 'null'))]]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother, 'null'), coalesce(:other_field, 'null')))"
