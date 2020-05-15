@@ -104,22 +104,12 @@ sourceGenerators in Test += Def.task {
       override lazy val tableMetadata = tableMd
       override lazy val viewDefs = xViewDefs.asInstanceOf[Map[String, ViewDef]]
     }
-    val shouldGenerateResolversInDtos =
-      !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not unavailable for old scala
-      !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) = Naming.camelize(name)
       override def scalaFieldName(name: String) = Naming.camelizeLower(name)
-      override def shouldGenerateInstanceResolverDef(
-          viewDef: ViewDefBase[FieldDefBase[Type]],
-          fieldDef: FieldDefBase[Type],
-          resolverExpression: String
-      ): Boolean = shouldGenerateResolversInDtos
-      override def shouldGenerateCompanionResolverDef(
-          viewDef: ViewDefBase[FieldDefBase[Type]],
-          fieldDef: FieldDefBase[Type],
-          resolverExpression: String
-      ): Boolean = shouldGenerateResolversInDtos
+      override def useTresqlInterpolator =
+        !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not available for old scala
+        !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?
     }
     val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.createScalaClassesString(
@@ -129,7 +119,10 @@ sourceGenerators in Test += Def.task {
         "import test.{ Dto, DtoWithId }",
         "import org.tresql._",
         "import org.tresql.implicits._",
-        ""),
+        if  (scalaVersion.value.startsWith("2.10."))
+            "import org.tresql.CoreTypes._"
+        else null,
+        "").filter(_ != null),
       viewDefs,
       Nil)
     IO.write(file, contents)

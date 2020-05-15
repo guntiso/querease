@@ -16,7 +16,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     if (viewDef.fields.exists(f => Option(f.alias).getOrElse(f.name) == "id" && f.type_.name == "long"))
       List("DtoWithId")
     else List("Dto")
-
+  def useTresqlInterpolator = true
   def transformResolverExpression(expression: String, field: FieldDefBase[Type]): String = {
     import qe.parser._
     transformer {
@@ -78,14 +78,25 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
         case lst => !lst.exists(!SimpleIdentR.pattern.matcher(_).matches)
       })
   }
+  def resolverBody(
+      resolverExpression: String,
+      resolverParams: String,
+      resolverTargetType: String
+  ): String = {
+    if (useTresqlInterpolator)
+      s"    tresql$q3{$resolverExpression}$q3(Env.withParams($resolverParams))" + nl +
+      s"      .unique[$resolverTargetType]" + nl
+    else
+      s"    Query($q3{$resolverExpression}$q3)(Env.withParams($resolverParams))" + nl +
+      s"      .unique[$resolverTargetType]" + nl
+  }
   def instanceResolverDef(
       viewDef: ViewDefBase[FieldDefBase[Type]],
       fieldDef: FieldDefBase[Type],
       resolverExpression: String
   ): String = {
     s"  def resolve_${resolverTargetColName(fieldDef)} = $resolverDefBodyPrefix{" + nl +
-    s"    tresql$q3{$resolverExpression}$q3(Env.withParams(this.toMap))" + nl +
-    s"      .unique[${resolverTargetTypeName(fieldDef)}]" + nl +
+          resolverBody(resolverExpression, "this.toMap", resolverTargetTypeName(fieldDef)) +
     s"  }"
   }
   def companionResolverDef(
@@ -105,8 +116,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
         paramNames.map(p => s"""${scalaNameString(p)}: ${resolverParamTypeName(viewDef, p)}""")
           .mkString(", ")
       s"  def resolve_${resolverTargetColName(fieldDef)}($argsString) = $resolverDefBodyPrefix{" + nl +
-      s"    tresql$q3{$resolverExpression}$q3(Env.withParams(Map($paramsKeyValueScalaString)))" + nl +
-      s"      .unique[${resolverTargetTypeName(fieldDef)}]" + nl +
+            resolverBody(resolverExpression, s"Map($paramsKeyValueScalaString)", resolverTargetTypeName(fieldDef)) +
       s"  }"
     }
   }
