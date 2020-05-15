@@ -106,7 +106,6 @@ sourceGenerators in Test += Def.task {
     }
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) = Naming.camelize(name)
-      override def scalaFieldName(name: String) = Naming.camelizeLower(name)
       override def useTresqlInterpolator =
         !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not available for old scala
         !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?

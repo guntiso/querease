@@ -77,8 +77,8 @@ class QuereaseTests extends FlatSpec with Matchers {
         p.name = name
         p.surname = surname
         p.sex = if (name endsWith "s") "M" else "F"
-        p.motherId = mId.map(toId).orNull
-        p.fatherId = fId.map(toId).orNull
+        p.mother_id = mId.map(toId).orNull
+        p.father_id = fId.map(toId).orNull
         p
       }
       val personsString = fileToString(dataPath + "/" + "persons-in.txt")
@@ -104,15 +104,15 @@ class QuereaseTests extends FlatSpec with Matchers {
         def hasInfo(info: String*) = info.filter(_ != null).size > 0
         List(
           List(name, surname).filter(_ != null).mkString(" "),
-          if (!hasInfo(fatherName, motherName)) null else
+          if (!hasInfo(father_name, mother_name)) null else
             List(
-              Option(fatherName).map(_ +
-                (if (!hasInfo(paternalGrandfather, paternalGrandmother)) "" else
-                  List(paternalGrandfather, paternalGrandmother)
+              Option(father_name).map(_ +
+                (if (!hasInfo(paternal_grandfather, paternal_grandmother)) "" else
+                  List(paternal_grandfather, paternal_grandmother)
                     .filter(_ != null).mkString(" (son of ", " and ", ")"))),
-              Option(motherName).map(_ +
-                (if (!hasInfo(maternalGrandfather, maternalGrandmother)) "" else
-                  List(maternalGrandfather, maternalGrandmother)
+              Option(mother_name).map(_ +
+                (if (!hasInfo(maternal_grandfather, maternal_grandmother)) "" else
+                  List(maternal_grandfather, maternal_grandmother)
                     .filter(_ != null)
                     .mkString(" (daughter of ", " and ", ")"))))
               .flatten
@@ -143,12 +143,12 @@ class QuereaseTests extends FlatSpec with Matchers {
         p.name = a.name
         p.surname = a.surname
         p.sex = a.sex
-        p.motherName = a.motherName
-        p.fatherName = a.fatherName
-        p.maternalGrandmother = a.maternalGrandmother
-        p.maternalGrandfather = a.maternalGrandfather
-        p.paternalGrandmother = a.paternalGrandmother
-        p.paternalGrandfather = a.paternalGrandfather
+        p.mother_name = a.mother_name
+        p.father_name = a.father_name
+        p.maternal_grandmother = a.maternal_grandmother
+        p.maternal_grandfather = a.maternal_grandfather
+        p.paternal_grandmother = a.paternal_grandmother
+        p.paternal_grandfather = a.paternal_grandfather
         p.children = a.children.map(c => { val n = new PersonName; n.name = c.name; n })
         p.father = if(a.father != null) {val n = new PersonInfoFather; n.name = a.father.name; n.surname = a.father.surname; n}else null
         p
@@ -195,8 +195,8 @@ class QuereaseTests extends FlatSpec with Matchers {
       val expectedForefathers = fileToString(dataPath + "/" + "forefathers-out.txt")
       val producedForefathers =
         qe.list[WithForefathers](null).toList.flatMap { p => List(
-          p.fullName,
-          s"  ${p.forefathers.map(_.fullName).mkString(", ")}"
+          p.full_name,
+          s"  ${p.forefathers.map(_.full_name).mkString(", ")}"
         )}.filterNot(_.trim == "").mkString("\n")
       if (expectedForefathers != producedForefathers)
         toFile(dataPath + "/" + "forefathers-out-produced.txt", producedForefathers)
@@ -206,11 +206,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
       accb.code = "BNP"
-      accb.countryCode = "FR"
+      accb.country_code = "FR"
       accb.id = 10001L
       acc.bank = accb
-      acc.billingAccount = "123456789"
-      acc.lastModified = new Timestamp(Platform.currentTime)
+      acc.billing_account = "123456789"
+      acc.last_modified = new Timestamp(Platform.currentTime)
       qe.save(acc) should be (10004)
 
       // dto resolver tests
@@ -457,17 +457,17 @@ class QuereaseTests extends FlatSpec with Matchers {
     c2.name = "Sigita"
     val pi = new dto.PersonInfo
     pi.name = "Gunzi"
-    pi.fatherName = "Juris"
+    pi.father_name = "Juris"
     pi.sex = "V"
     pi.children = List(c1, c2);
     pi.toString should be(
-      "dto.PersonInfo{name: Gunzi, surname: null, sex: V, motherName: null, fatherName: Juris, " +
-      "maternalGrandmother: null, maternalGrandfather: null, paternalGrandmother: null, paternalGrandfather: null, " +
+      "dto.PersonInfo{name: Gunzi, surname: null, sex: V, mother_name: null, father_name: Juris, " +
+      "maternal_grandmother: null, maternal_grandfather: null, paternal_grandmother: null, paternal_grandfather: null, " +
       "children: (dto.PersonName{name: Simona}, dto.PersonName{name: Sigita}), father: null}"
     )
     pi.toMap should be(
-      Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "motherName" -> null, "fatherName" -> "Juris",
-          "maternalGrandmother" -> null, "maternalGrandfather" -> null, "paternalGrandmother" -> null, "paternalGrandfather" -> null,
+      Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "mother_name" -> null, "father_name" -> "Juris",
+          "maternal_grandmother" -> null, "maternal_grandfather" -> null, "paternal_grandmother" -> null, "paternal_grandfather" -> null,
           "children" -> List(Map("name" -> "Simona"), Map("name" -> "Sigita")), "father" -> null))
   }
 }
@@ -500,7 +500,6 @@ object QuereaseTests {
        viewDefs.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields
           .map(f => Option(f.alias) getOrElse f.name)
-          .map(TestQuereaseNaming.dbToPropName)
           .zipWithIndex.toMap)
        ))
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
