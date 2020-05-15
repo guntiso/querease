@@ -47,12 +47,14 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       .filterNot(_ == "")
       .map(_ + nl)
   }
+  def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
       viewDef: ViewDefBase[FieldDefBase[Type]],
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
+  def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
       viewDef: ViewDefBase[FieldDefBase[Type]],
       qe: Querease with QuereaseResolvers
@@ -128,7 +130,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   def scalaObjectString(viewDef: ViewDefBase[FieldDefBase[Type]]): String = {
     val className = scalaClassName(viewDef.name)
     val resolverDefs = (qe match {
-      case resolvers: QuereaseResolvers => companionResolverDefs(viewDef, resolvers)
+      case resolvers: QuereaseResolvers if shouldGenerateCompanionResolverDefs =>
+        companionResolverDefs(viewDef, resolvers)
       case _ => Nil
     })
     if (resolverDefs.nonEmpty) {
@@ -160,7 +163,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   }
 
   override def scalaBodyExtra(viewDef: ViewDefBase[FieldDefBase[Type]]): String = qe match {
-    case resolvers: QuereaseResolvers =>
+    case resolvers: QuereaseResolvers if shouldGenerateInstanceResolverDefs =>
       instanceResolverDefs(viewDef, resolvers).mkString
     case _ => ""
   }
