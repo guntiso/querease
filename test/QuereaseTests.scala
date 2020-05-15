@@ -218,6 +218,13 @@ class QuereaseTests extends FlatSpec with Matchers {
       intercept[java.sql.SQLException] { // FIXME test resolver exception message
         PersonChoiceResolverImplied.resolve_id("blah blah")
       }
+      val personChoiceResolverImplied = new PersonChoiceResolverImplied
+      personChoiceResolverImplied.full_name = "Andris Ozols (#2)"
+      personChoiceResolverImplied.resolve_id shouldBe 1128
+      intercept[java.sql.SQLException] { // FIXME test resolver exception message
+        personChoiceResolverImplied.full_name = "dada dada"
+        personChoiceResolverImplied.resolve_id
+      }
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {
