@@ -212,6 +212,12 @@ class QuereaseTests extends FlatSpec with Matchers {
       acc.billingAccount = "123456789"
       acc.lastModified = new Timestamp(Platform.currentTime)
       qe.save(acc) should be (10004)
+
+      // dto resolver tests
+      PersonChoiceResolverImplied.resolve_id("Guntis Ozols (#2)") shouldBe 1127
+      intercept[java.sql.SQLException] { // FIXME test resolver exception message
+        PersonChoiceResolverImplied.resolve_id("blah blah")
+      }
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {
@@ -508,7 +514,19 @@ object QuereaseTests {
   def getConnection = DriverManager.getConnection(url, user, password)
   def setEnv(conn: Connection = getConnection) = {
     conn.setAutoCommit(false)
-    Env.dialect = HSQLDialect
+    // FIXME clean up this dialect BS when tresql fixed
+    import org.tresql.QueryBuilder
+    import org.tresql.QueryParser
+    Env.dialect = HSQLDialect orElse {
+      case e: QueryBuilder#SelectExpr =>
+        val b = e.builder
+        e match {
+          case s @ b.SelectExpr(List(b.Table(b.ConstExpr(QueryParser.Null), _, _, _, _)), _, _, _, _, _, _, _, _, _) =>
+            s.copy(tables = List(s.tables.head.copy(table = b.IdentExpr(List("(values(0))"))))).sql
+          case _ => e.defaultSQL
+        }
+      case c: QueryBuilder#CastExpr => c.exp.sql
+    }
     Env.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
@@ -526,8 +544,16 @@ object QuereaseTests {
       try statements foreach { statement.execute } finally statement.close()
     } finally conn.close()
   }
+  val hsqldb_custom_functions_statements = Seq(
+    """CREATE FUNCTION checked_resolve(
+         resolvable CHAR VARYING(1024), resolved BIGINT ARRAY, error_message CHAR VARYING(1024)
+       ) RETURNS BIGINT
+       LANGUAGE JAVA DETERMINISTIC NO SQL
+       EXTERNAL NAME 'CLASSPATH:test.HsqldbCustomFunctions.checked_resolve_l'"""
+  )
   val statements = SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs)
-    .split(";").toList.map(_.trim).filter(_ != "")
+    .split(";").toList.map(_.trim).filter(_ != "") ++
+    hsqldb_custom_functions_statements
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
     val body = source.mkString
