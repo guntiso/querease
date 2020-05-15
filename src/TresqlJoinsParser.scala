@@ -1,6 +1,5 @@
 package querease
 
-import org.tresql.Env
 import org.tresql.compiling.Compiler
 import org.tresql.{ CacheBase, SimpleCacheBase }
 import org.tresql.parsing.Exp
