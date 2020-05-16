@@ -17,9 +17,7 @@ import mojoz.metadata.in.YamlMd
 import mojoz.metadata.in.YamlTableDefLoader
 import mojoz.metadata.in.YamlViewDefLoader
 import mojoz.metadata.out.SqlWriter
-import querease.Querease
-import querease.TresqlMetadata
-import querease.ScalaDtoQuereaseIo
+import querease._
 
 import scala.compat.Platform
 
@@ -509,6 +507,16 @@ class QuereaseTests extends FlatSpec with Matchers {
       Map("name" -> "Gunzi", "surname" -> null, "sex" -> "V", "mother_name" -> null, "father_name" -> "Juris",
           "maternal_grandmother" -> null, "maternal_grandfather" -> null, "paternal_grandmother" -> null, "paternal_grandfather" -> null,
           "children" -> List(Map("name" -> "Simona"), Map("name" -> "Sigita")), "father" -> null))
+  }
+
+  "dto generator" should "generate correct dto code" in {
+    val generator = new ScalaDtoGenerator(qe)
+    val dtosPath = "test/dtos"
+    val expectedDtos: String = fileToString(dtosPath + "/" + "dtos-out.scala")
+    val producedDtos: String = generator.createScalaClassesString(Nil, qe.viewDefs.values.toList.sortBy(_.name), Nil)
+    if (expectedDtos != producedDtos)
+      toFile(dtosPath + "/" + "dtos-out-produced.scala", producedDtos)
+    expectedDtos shouldBe producedDtos
   }
 }
 

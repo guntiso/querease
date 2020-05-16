@@ -57,6 +57,7 @@ unmanagedResourceDirectories in Test := baseDirectory(b => Seq(
 )).value
 
 scalaSource in Test := baseDirectory(_ / "test").value
+Test / unmanagedSources / excludeFilter := "*-out*.*"
 
 unmanagedClasspath in Test +=
   // Needs [pre-compiled] function signatures to compile tresql in generated sources
