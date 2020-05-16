@@ -178,7 +178,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     val type_ = Option(viewDef)
       .map(_.fields)
       .filter(_ != null)
-      .flatMap(_.find(f => Option(f.name).getOrElse(f.alias) == paramName))
+      .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == paramName))
       .map(_.type_)
       .getOrElse(qe.metadataConventions.fromExternal(paramName, None, None)._1)
     scalaSimpleTypeName(type_)
