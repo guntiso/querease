@@ -369,8 +369,8 @@ object resolver_test_account_1 {
 class resolver_test_account_2 extends DtoWithId {
   var id: java.lang.Long = null
   var code: String = null
-  def resolve_bank_id = {
-    tresql"""{checked_resolve(coalesce(:code, :some_other_variable), array(bank[code = :code && :some_other_variable]{id}@(2)), 'Failed to identify value of "code" (from resolver_test_account_2) - ' || concat_ws(', ', coalesce(:code, 'null'), coalesce(:some_other_variable, 'null')))}"""(Env.withParams(this.toMap))
+  def resolve_bank_id(some_other_variable: String) = {
+    tresql"""{checked_resolve(coalesce(:code, :some_other_variable), array(bank[code = :code && :some_other_variable]{id}@(2)), 'Failed to identify value of "code" (from resolver_test_account_2) - ' || concat_ws(', ', coalesce(:code, 'null'), coalesce(:some_other_variable, 'null')))}"""(Env.withParams(this.toMap ++ Map("some_other_variable" -> some_other_variable)))
       .unique[java.lang.Long]
   }
 }

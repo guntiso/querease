@@ -92,12 +92,37 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       s"    Query($q3{$resolverExpression}$q3)(Env.withParams($resolverParams))" + nl +
       s"      .unique[$resolverTargetType]" + nl
   }
+  private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], name: String): Boolean = {
+    def findField(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
+      Option(viewDef)
+        .map(_.fields)
+        .filter(_ != null)
+        .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == name))
+    if (SimpleIdentR.pattern.matcher(name).matches)
+      findField(viewDef, name).map(_ => true) getOrElse false
+    else {
+      val nameParts = name.split("""\.""")
+      val descViewDef =
+        nameParts.dropRight(1).foldLeft(Option(viewDef)) {
+          case (vOpt, n) =>
+            vOpt flatMap { v =>
+              findField(v, n)
+                .filter(_.type_.isComplexType)
+                .flatMap(_ => qe.viewDefOption(n))
+            }
+        }.getOrElse(null)
+      findField(descViewDef, nameParts.last).map(_ => true) getOrElse false
+    }
+  }
   def instanceResolverDef(
       viewDef: ViewDefBase[FieldDefBase[Type]],
       fieldDef: FieldDefBase[Type],
       resolverExpression: String
   ): String = {
-    val paramNames = null
+    val variables = qe.parser.extractVariables(resolverExpression)
+    val paramNames: Seq[String] =
+      variables.map(_.variable).zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+        .filterNot(isFieldDefined(viewDef, _))
     val defaultParamsString = "this.toMap"
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
