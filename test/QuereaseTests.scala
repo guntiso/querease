@@ -237,6 +237,27 @@ class QuereaseTests extends FlatSpec with Matchers {
         personChoiceResolverImplied.full_name = "dada dada"
         personChoiceResolverImplied.resolve_id
       }).getMessage shouldBe """Failed to identify value of "full_name" (from person_choice_resolver_implied) - dada dada"""
+      ResolverTestAccountCurrency1.resolve_account_id(bacNr) shouldBe accountId
+      (intercept[java.sql.SQLException] {
+        ResolverTestAccountCurrency1.resolve_account_id(s"$bacNr-X")
+      }).getMessage shouldBe """Failed to identify value of "account" (from resolver_test_account_currency_1) - 123456789-X"""
+      ResolverTestAccountCurrency1.resolve_currency_code("Euro") shouldBe "EUR"
+      (intercept[java.sql.SQLException] {
+        ResolverTestAccountCurrency1.resolve_currency_code("Euro-X")
+      }).getMessage shouldBe """Failed to identify value of "currency_name" (from resolver_test_account_currency_1) - Euro-X"""
+      val resolverTestAccountCurrency1 = new ResolverTestAccountCurrency1
+      resolverTestAccountCurrency1.account = bacNr
+      resolverTestAccountCurrency1.currency_name = "Euro"
+      resolverTestAccountCurrency1.resolve_account_id shouldBe accountId
+      resolverTestAccountCurrency1.resolve_currency_code shouldBe "EUR"
+      resolverTestAccountCurrency1.account += "-Z"
+      resolverTestAccountCurrency1.currency_name += "-Z"
+      (intercept[java.sql.SQLException] {
+        resolverTestAccountCurrency1.resolve_account_id
+      }).getMessage shouldBe """Failed to identify value of "account" (from resolver_test_account_currency_1) - 123456789-Z"""
+      (intercept[java.sql.SQLException] {
+        resolverTestAccountCurrency1.resolve_currency_code
+      }).getMessage shouldBe """Failed to identify value of "currency_name" (from resolver_test_account_currency_1) - Euro-Z"""
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {
@@ -566,9 +587,20 @@ object QuereaseTests {
     """create function array_length(sql_array bigint array) returns int
        language java deterministic no sql
        external name 'CLASSPATH:test.HsqldbCustomFunctions.array_length'""",
+    """create function array_length(sql_array char varying(1024) array) returns int
+       language java deterministic no sql
+       external name 'CLASSPATH:test.HsqldbCustomFunctions.array_length'""",
     """create function checked_resolve(
          resolvable char varying(1024), resolved bigint array, error_message char varying(1024)
        ) returns bigint
+         if array_length(resolved) > 1 or resolvable is not null and (array_length(resolved) = 0 or resolved[1] is null) then
+           signal sqlstate '45000' set message_text = error_message;
+         else
+           return resolved[1];
+         end if""",
+    """create function checked_resolve(
+         resolvable char varying(1024), resolved char varying(1024) array, error_message char varying(1024)
+       ) returns  char varying(1024)
          if array_length(resolved) > 1 or resolvable is not null and (array_length(resolved) = 0 or resolved[1] is null) then
            signal sqlstate '45000' set message_text = error_message;
          else
