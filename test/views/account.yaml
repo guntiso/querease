@@ -32,7 +32,11 @@ name: resolver_test_account_self_ref_1
 table: account
 fields:
 - name = bank.code || ', ' || bank.name || ', ' || account.id -> id
-# name = bank.code || ', ' || bank.name || ', ' ||         id -> id   # FIXME! Table alias for id?
+
+name: resolver_test_account_self_ref_2
+table: account
+fields:
+- name = bank.code || ', ' || bank.name || ', ' || id -> id
 
 name: resolver_test_account_currency_1
 table: account_currency
