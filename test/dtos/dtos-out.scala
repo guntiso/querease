@@ -437,8 +437,8 @@ class resolver_test_bank_1 extends DtoWithId {
   }
 }
 object resolver_test_bank_1 {
-  def resolve_name() = {
-    tresql"""{'My bank'}"""(Env.withParams(Map()))
+  def resolve_name = {
+    tresql"""{'My bank'}"""(Env.withParams(Map.empty))
       .unique[String]
   }
 }
@@ -532,12 +532,12 @@ class resolver_test_person_4 extends DtoWithId {
   }
 }
 object resolver_test_person_4 {
-  def resolve_mother_id() = {
-    tresql"""{1}"""(Env.withParams(Map()))
+  def resolve_mother_id = {
+    tresql"""{1}"""(Env.withParams(Map.empty))
       .unique[java.lang.Long]
   }
-  def resolve_father_id() = {
-    tresql"""{2}"""(Env.withParams(Map()))
+  def resolve_father_id = {
+    tresql"""{2}"""(Env.withParams(Map.empty))
       .unique[java.lang.Long]
   }
 }
@@ -578,12 +578,12 @@ class resolver_test_person_6 extends DtoWithId {
   }
 }
 object resolver_test_person_6 {
-  def resolve_mother_id() = {
-    tresql"""{3}"""(Env.withParams(Map()))
+  def resolve_mother_id = {
+    tresql"""{3}"""(Env.withParams(Map.empty))
       .unique[java.lang.Long]
   }
-  def resolve_father_id() = {
-    tresql"""{4}"""(Env.withParams(Map()))
+  def resolve_father_id = {
+    tresql"""{4}"""(Env.withParams(Map.empty))
       .unique[java.lang.Long]
   }
 }

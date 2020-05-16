@@ -97,9 +97,9 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       fieldDef: FieldDefBase[Type],
       resolverExpression: String
   ): String = {
-    s"  def resolve_${resolverTargetColName(fieldDef)} = $resolverDefBodyPrefix{" + nl +
-          resolverBody(resolverExpression, "this.toMap", resolverTargetTypeName(fieldDef)) +
-    s"  }"
+    val paramNames = null
+    val defaultParamsString = "this.toMap"
+    resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
   def companionResolverDef(
       viewDef: ViewDefBase[FieldDefBase[Type]],
@@ -107,18 +107,40 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       resolverExpression: String
   ): String = {
     val variables = qe.parser.extractVariables(resolverExpression)
-    if (variables.exists(v => !SimpleIdentR.pattern.matcher(v.variable).matches))
+    val paramNames: Seq[String] =
+      variables.map(_.variable).zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+    val defaultParamsString = ""
+    resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
+  }
+  def resolverDef(
+      viewDef: ViewDefBase[FieldDefBase[Type]],
+      fieldDef: FieldDefBase[Type],
+      paramNames: Seq[String],
+      defaultParamsString: String,
+      resolverExpression: String
+  ): String = {
+    if (paramNames != null && paramNames.exists(n => !SimpleIdentR.pattern.matcher(n).matches))
       null // TODO?
     else {
-      val paramNames: Seq[String] =
-        variables.map(_.variable).zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+      val hasParams = paramNames != null && paramNames.nonEmpty
+      val hasDefaultParams = defaultParamsString != null && defaultParamsString != ""
       val paramsKeyValueScalaString =
-        paramNames.map(p => s""""$p" -> ${scalaNameString(p)}""").mkString(", ")
+        if  (hasParams)
+             paramNames.map(p => s""""$p" -> ${scalaNameString(p)}""").mkString(", ")
+        else ""
       val argsString =
-        paramNames.map(p => s"""${scalaNameString(p)}: ${resolverParamTypeName(viewDef, p)}""")
-          .mkString(", ")
-      s"  def resolve_${resolverTargetColName(fieldDef)}($argsString) = $resolverDefBodyPrefix{" + nl +
-            resolverBody(resolverExpression, s"Map($paramsKeyValueScalaString)", resolverTargetTypeName(fieldDef)) +
+        if (hasParams)
+          paramNames.map(p => s"""${scalaNameString(p)}: ${resolverParamTypeName(viewDef, p)}""")
+            .mkString("(", ", ", ")")
+        else ""
+      val paramsString = (hasParams, hasDefaultParams) match {
+        case (false, false) =>  "Map.empty"
+        case (false,  true) =>   defaultParamsString
+        case (true,  false) => s"Map($paramsKeyValueScalaString)"
+        case (true,   true) => s"$defaultParamsString ++ Map($paramsKeyValueScalaString)"
+      }
+      s"  def resolve_${resolverTargetColName(fieldDef)}$argsString = $resolverDefBodyPrefix{" + nl +
+            resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
       s"  }"
     }
   }
