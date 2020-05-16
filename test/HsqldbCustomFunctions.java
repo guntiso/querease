@@ -1,12 +1,11 @@
 package test;
 
 public class HsqldbCustomFunctions {
-  public static java.lang.Long checked_resolve_l(
-      String resolvable, java.sql.Array resolved, String error_message) throws java.sql.SQLException {
-    Object[] resolved_a = (Object[]) resolved.getArray();
-    if (resolved_a.length > 1 || resolvable != null && (resolved_a.length == 0 || resolved_a[0] == null))
-      throw new RuntimeException(error_message);
+  public static java.lang.Integer array_length(java.sql.Array sql_array) throws java.sql.SQLException {
+    Object[] array = (Object[]) sql_array.getArray();
+    if (array == null)
+      return null;
     else
-      return (Long) resolved_a[0];
+      return array.length;
   }
 }

@@ -215,16 +215,16 @@ class QuereaseTests extends FlatSpec with Matchers {
 
       // dto resolver tests
       PersonChoiceResolverImplied.resolve_id("Guntis Ozols (#2)") shouldBe 1127
-      intercept[java.sql.SQLException] { // FIXME test resolver exception message
+      (intercept[java.sql.SQLException] {
         PersonChoiceResolverImplied.resolve_id("blah blah")
-      }
+      }).getMessage shouldBe """Failed to identify value of "full_name" (from person_choice_resolver_implied) - blah blah"""
       val personChoiceResolverImplied = new PersonChoiceResolverImplied
       personChoiceResolverImplied.full_name = "Andris Ozols (#2)"
       personChoiceResolverImplied.resolve_id shouldBe 1128
-      intercept[java.sql.SQLException] { // FIXME test resolver exception message
+      (intercept[java.sql.SQLException] {
         personChoiceResolverImplied.full_name = "dada dada"
         personChoiceResolverImplied.resolve_id
-      }
+      }).getMessage shouldBe """Failed to identify value of "full_name" (from person_choice_resolver_implied) - dada dada"""
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {
@@ -551,11 +551,17 @@ object QuereaseTests {
     } finally conn.close()
   }
   val hsqldb_custom_functions_statements = Seq(
-    """CREATE FUNCTION checked_resolve(
-         resolvable CHAR VARYING(1024), resolved BIGINT ARRAY, error_message CHAR VARYING(1024)
-       ) RETURNS BIGINT
-       LANGUAGE JAVA DETERMINISTIC NO SQL
-       EXTERNAL NAME 'CLASSPATH:test.HsqldbCustomFunctions.checked_resolve_l'"""
+    """create function array_length(sql_array bigint array) returns int
+       language java deterministic no sql
+       external name 'CLASSPATH:test.HsqldbCustomFunctions.array_length'""",
+    """create function checked_resolve(
+         resolvable char varying(1024), resolved bigint array, error_message char varying(1024)
+       ) returns bigint
+         if array_length(resolved) > 1 or resolvable is not null and (array_length(resolved) = 0 or resolved[1] is null) then
+           signal sqlstate '45000' set message_text = error_message;
+         else
+           return resolved[1];
+         end if"""
   )
   val statements = SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs)
     .split(";").toList.map(_.trim).filter(_ != "") ++
