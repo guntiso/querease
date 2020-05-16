@@ -22,7 +22,7 @@ libraryDependencies ++= Seq(
   "org.mojoz" %% "mojoz" % mojozV,
   // test
   "org.hsqldb" % "hsqldb" % "2.3.1" % "test",
-  "org.scalatest" %% "scalatest" % "3.0.8" % "test"
+  "org.scalatest" %% "scalatest" % "3.1.1" % "test"
 )
 
 scalaSource in Compile := baseDirectory(_ / "src").value
