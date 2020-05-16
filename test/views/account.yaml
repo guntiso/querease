@@ -16,6 +16,12 @@ extends: account
 fields:
 - name = bank.code || ', ' || bank.name || ', ' || id
 
+name:     account_currency
+table:    account_currency
+fields:
+- account_id
+- currency_code
+
 name: resolver_test_account_1
 table: account
 fields:

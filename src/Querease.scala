@@ -88,15 +88,18 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
           ORT.insertMultiple(transf(propMap), tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
-        case x: InsertResult => (x.count.get, x.id.get)
+        case x: InsertResult => (x.count.get, x.id getOrElse null)
         case a: ArrayResult[_] => //if array result consider last element as insert result
            a.values.last match {
-            case x: InsertResult => (x.count.get, x.id.get)
+            case x: InsertResult => (x.count.get, x.id getOrElse null)
           }
       }
       if (insertedRowCount == 0) throw new NotFoundException(
         s"Record not inserted into table(s): ${tables.mkString(",")}")
-      else id.asInstanceOf[Long]
+      else id match {
+        case id: Long => id
+        case xx       => 0L
+      }
     } else {
       val updatedRowCount = if (tables.lengthCompare(1) == 0)
         ORT.update(tables(0), transf(propMap),

@@ -1,0 +1,7 @@
+name:   currency
+table:  currency
+fields:
+- code
+- name
+- name_eng -> = coalesce(_, '')
+- name_rus -> = coalesce(_, '')

@@ -205,13 +205,25 @@ class QuereaseTests extends FlatSpec with Matchers {
       //resolver test with bind variable from substructure
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
+      val bacNr = "123456789"
       accb.code = "BNP"
       accb.country_code = "FR"
       accb.id = 10001L
       acc.bank = accb
-      acc.billing_account = "123456789"
+      acc.billing_account = bacNr
       acc.last_modified = new Timestamp(Platform.currentTime)
-      qe.save(acc) should be (10004)
+      val accountId = qe.save(acc)
+      accountId shouldBe 10004
+
+      val currency = new Currency
+      currency.code = "EUR"
+      currency.name = "Euro"
+      qe.save(currency)
+
+      val accountCurrency = new AccountCurrency
+      accountCurrency.account_id = accountId
+      accountCurrency.currency_code = "EUR"
+      qe.save(accountCurrency)
 
       // dto resolver tests
       PersonChoiceResolverImplied.resolve_id("Guntis Ozols (#2)") shouldBe 1127
