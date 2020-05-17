@@ -28,6 +28,16 @@ class account_with_bank extends DtoWithId {
   var billing_account: String = null
   var last_modified: java.sql.Timestamp = null
   var bank: account_with_bank_bank = null
+  def resolve_bank_id = {
+    tresql"""{:bank.'id'}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object account_with_bank {
+  def resolve_bank_id(bank: account_with_bank_bank) = {
+    tresql"""{:bank.'id'}"""(Env.withParams(Map("bank" -> Option(bank).map(_.toMap).orNull)))
+      .unique[java.lang.Long]
+  }
 }
 class account_with_bank_bank extends DtoWithId {
   var id: java.lang.Long = null
@@ -264,6 +274,62 @@ class person_multitable_choice_resolver_implied_2 extends Dto {
 }
 class person_name extends Dto {
   var name: String = null
+}
+class person_with_complex_type_resolvers_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var mother: person_with_complex_type_resolvers_1_mother = null
+  var father: person_with_complex_type_resolvers_1_father = null
+  def resolve_mother_id = {
+    tresql"""{checked_resolve(coalesce(:mother.'name', :mother.'surname'), array(person[name = :mother.'name' & surname = :mother.'surname']{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.'name', 'null'), coalesce(:mother.'surname', 'null')))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+  def resolve_father_id = {
+    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname'), array(person[name = :father.'name' & surname = :father.'surname']{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null')))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object person_with_complex_type_resolvers_1 {
+  def resolve_mother_id(mother: person_with_complex_type_resolvers_1_mother) = {
+    tresql"""{checked_resolve(coalesce(:mother.'name', :mother.'surname'), array(person[name = :mother.'name' & surname = :mother.'surname']{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.'name', 'null'), coalesce(:mother.'surname', 'null')))}"""(Env.withParams(Map("mother" -> Option(mother).map(_.toMap).orNull)))
+      .unique[java.lang.Long]
+  }
+  def resolve_father_id(father: person_with_complex_type_resolvers_1_father) = {
+    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname'), array(person[name = :father.'name' & surname = :father.'surname']{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull)))
+      .unique[java.lang.Long]
+  }
+}
+class person_with_complex_type_resolvers_1_father extends Dto {
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  def resolve_sex = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object person_with_complex_type_resolvers_1_father {
+  def resolve_sex(sex: String) = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(Map("sex" -> sex)))
+      .unique[String]
+  }
+}
+class person_with_complex_type_resolvers_1_mother extends Dto {
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  def resolve_sex = {
+    tresql"""{coalesce(:sex, 'F')}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object person_with_complex_type_resolvers_1_mother {
+  def resolve_sex(sex: String) = {
+    tresql"""{coalesce(:sex, 'F')}"""(Env.withParams(Map("sex" -> sex)))
+      .unique[String]
+  }
 }
 class ref_expression_test_person_2b extends DtoWithId {
   var id: java.lang.Long = null

@@ -129,6 +129,31 @@ order:
 - name
 
 
+name:     person_with_complex_type_resolvers_1
+table:    person p
+fields:
+- id
+- name
+- surname
+- sex
+- mother [p.mother_id = m.id] -> mother_id = person[name = :mother.name & surname = :mother.surname]{id} :
+    table:  person m
+    save-to:
+    fields:
+    - name
+    - surname
+    - sex -> = coalesce(_, 'F')
+# FIXME imply join from alias!
+# father -> = person[name = :father.name & surname = :father.surname]{id} :
+- father [p.father_id = f.id] -> = person[name = :father.name & surname = :father.surname]{id} :
+    table:  person f
+    save-to:
+    fields:
+    - name
+    - surname
+    - sex -> = coalesce(_, 'M')
+
+
 name: person_choice_without_resolver
 table: person
 fields:

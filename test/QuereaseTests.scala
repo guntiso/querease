@@ -97,7 +97,8 @@ class QuereaseTests extends FlatSpec with Matchers {
         case x => sys.error("unexpected format: " + x)
       })
       def personInfoString(p: PersonInfo) = {
-        import p._
+        import p.{name, surname, sex, mother_name, father_name, children,
+          maternal_grandmother, maternal_grandfather, paternal_grandmother, paternal_grandfather}
         def sxName(m: String, f: String) = if (sex == "M") m else f
         def hasInfo(info: String*) = info.filter(_ != null).size > 0
         List(
@@ -125,7 +126,7 @@ class QuereaseTests extends FlatSpec with Matchers {
                 case _ => sys.error("impossible")
               }
             }
-          },if(father != null) s"father's full name ${father.name} ${father.surname}" else null)
+          },if(p.father != null) s"father's full name ${p.father.name} ${p.father.surname}" else null)
           .filter(_ != null)
           .mkString(", ")
       }
@@ -213,6 +214,40 @@ class QuereaseTests extends FlatSpec with Matchers {
       val accountId = qe.save(acc)
       accountId shouldBe 10004
 
+      var child = new PersonWithComplexTypeResolvers1
+      child.name    = "Some"
+      child.surname = "Child"
+      child.sex     = "M"
+      /* FIXME waiting for tresql fix
+      val childId = qe.save(child)
+      childId shouldBe 10005L
+      child = qe.get[PersonWithComplexTypeResolvers1](childId).get
+      */
+      var mother = new PersonWithComplexTypeResolvers1Mother
+      mother.name    = "Some"
+      mother.surname = "Mother"
+      val motherId = qe.save(mother)
+      motherId shouldBe 10005
+      var father = new PersonWithComplexTypeResolvers1Father
+      father.name    = "Some"
+      father.surname = "Father"
+      val fatherId = qe.save(father)
+      fatherId shouldBe 10006
+      PersonWithComplexTypeResolvers1.resolve_mother_id(mother) shouldBe motherId
+      PersonWithComplexTypeResolvers1.resolve_father_id(father) shouldBe fatherId
+      child.mother = mother
+      child.father = father
+      child.resolve_mother_id shouldBe motherId
+      child.resolve_father_id shouldBe fatherId
+      val childId = qe.save(child)
+      childId  shouldBe 10007
+      child = qe.get[PersonWithComplexTypeResolvers1](childId).get
+      child.mother.surname shouldBe "Mother"
+      child.mother.sex     shouldBe "F"
+      child.father.surname shouldBe "Father"
+      child.father.sex     shouldBe "M"
+
+      // sample data
       val currency = new Currency
       currency.code = "EUR"
       currency.name = "Euro"
