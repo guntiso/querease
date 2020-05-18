@@ -93,26 +93,28 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   }
   def resourcesWithParams(params: String): String =
     s"Env.withParams($params)"
-  private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], name: String): Boolean = {
-    def findField(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
+  private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Boolean =
+    findField(viewDef, path).nonEmpty
+  def findField(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Option[FieldDefBase[Type]] = {
+    def findField_(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
       Option(viewDef)
         .map(_.fields)
         .filter(_ != null)
         .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == name))
-    if (SimpleIdentR.pattern.matcher(name).matches)
-      findField(viewDef, name).map(_ => true) getOrElse false
+    if (SimpleIdentR.pattern.matcher(path).matches)
+      findField_(viewDef, path)
     else {
-      val nameParts = name.split("""\.""")
+      val nameParts = path.split("""\.""")
       val descViewDef =
         nameParts.dropRight(1).foldLeft(Option(viewDef)) {
           case (vOpt, n) =>
             vOpt flatMap { v =>
               findField(v, n)
                 .filter(_.type_.isComplexType)
-                .flatMap(_ => qe.viewDefOption(n))
+                .flatMap(f => qe.viewDefOption(f.type_.name))
             }
         }.getOrElse(null)
-      findField(descViewDef, nameParts.last).map(_ => true) getOrElse false
+      findField_(descViewDef, nameParts.last)
     }
   }
   def instanceResolverDef(
@@ -122,7 +124,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   ): String = {
     val variables = qe.parser.extractVariables(resolverExpression)
     val paramNames: Seq[String] =
-      variables.map(_.variable).zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+      variables.map(v => (v.variable :: v.members).mkString("."))
+        .zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
         .filterNot(isFieldDefined(viewDef, _))
     val defaultParamsString = "this.toMap"
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
@@ -134,7 +137,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   ): String = {
     val variables = qe.parser.extractVariables(resolverExpression)
     val paramNames: Seq[String] =
-      variables.map(_.variable).zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+      variables.map(v => (v.variable :: v.members).mkString("."))
+        .zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
     val defaultParamsString = ""
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
@@ -180,7 +184,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
           resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
     s"  }"
   }
-  def scalaNameString(name: String) = name
+  def scalaNameString(name: String) =
+    if (SimpleIdentR.pattern.matcher(name).matches) name else s"`$name`"
   override def createScalaClassString(viewDef: ViewDefBase[FieldDefBase[Type]]) = {
     Seq(super.createScalaClassString(viewDef), scalaObjectString(viewDef))
       .filter(_ != null).filter(_ != "").mkString(nl)
@@ -211,14 +216,15 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   }
   def resolverTargetTypeName(f: FieldDefBase[Type]): String =
     scalaSimpleTypeName(resolverTargetType(f))
-  def resolverParamType(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): Type = {
-    Option(viewDef)
-      .map(_.fields)
-      .filter(_ != null)
-      .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == paramName))
+  def resolverParamType(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): Type =
+    findField(viewDef, paramName)
       .map(_.type_)
-      .getOrElse(qe.metadataConventions.fromExternal(paramName, None, None)._1)
-  }
+      .orElse(Option(qe.metadataConventions.fromExternal(paramName, None, None)._1))
+      // TODO clean up?
+      .filterNot(_.name == null)
+      .orElse(Option(qe.metadataConventions.fromExternal(paramName.split("""\.""").last, None, None)._1))
+      .filterNot(_.name == null)
+      .getOrElse(new Type("string"))
   def resolverParamTypeName(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): String =
     scalaTypeName(resolverParamType(viewDef, paramName))
   def scalaTypeName(type_ : Type): String =

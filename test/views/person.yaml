@@ -153,6 +153,21 @@ fields:
     - surname
     - sex -> = coalesce(_, 'M')
 
+name:     person_with_complex_type_resolvers_2
+table:    person p
+fields:
+- id
+- name
+- surname
+- sex
+- father [p.father_id = f.id] -> = person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id} :
+    table:  person f
+    save-to:
+    fields:
+    - name
+    - surname
+    - sex -> = coalesce(_, 'M')
+
 
 name: person_choice_without_resolver
 table: person

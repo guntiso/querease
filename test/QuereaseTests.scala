@@ -247,6 +247,12 @@ class QuereaseTests extends FlatSpec with Matchers {
       child.father.surname shouldBe "Father"
       child.father.sex     shouldBe "M"
 
+      var child2 = qe.get[PersonWithComplexTypeResolvers2](childId).get
+      /* FIXME?
+      child2.resolve_father_id(`father.is_resolver_disabled` = false) shouldBe fatherId
+      child2.resolve_father_id(`father.is_resolver_disabled` = true)  shouldBe ...
+      */
+
       // sample data
       val currency = new Currency
       currency.code = "EUR"

@@ -331,6 +331,38 @@ object person_with_complex_type_resolvers_1_mother {
       .unique[String]
   }
 }
+class person_with_complex_type_resolvers_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var father: person_with_complex_type_resolvers_2_father = null
+  def resolve_father_id(`father.is_resolver_disabled`: java.lang.Boolean) = {
+    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname', :father.'is_resolver_disabled'?), array(person[name = :father.'name' & surname = :father.'surname' & !:father.'is_resolver_disabled'?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null'), coalesce(:father.'is_resolver_disabled'?, 'null')))}"""(Env.withParams(this.toMap ++ Map("father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
+      .unique[java.lang.Long]
+  }
+}
+object person_with_complex_type_resolvers_2 {
+  def resolve_father_id(father: person_with_complex_type_resolvers_2_father, `father.is_resolver_disabled`: java.lang.Boolean) = {
+    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname', :father.'is_resolver_disabled'?), array(person[name = :father.'name' & surname = :father.'surname' & !:father.'is_resolver_disabled'?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null'), coalesce(:father.'is_resolver_disabled'?, 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull, "father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
+      .unique[java.lang.Long]
+  }
+}
+class person_with_complex_type_resolvers_2_father extends Dto {
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  def resolve_sex = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object person_with_complex_type_resolvers_2_father {
+  def resolve_sex(sex: String) = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(Map("sex" -> sex)))
+      .unique[String]
+  }
+}
 class ref_expression_test_person_2b extends DtoWithId {
   var id: java.lang.Long = null
   var mother: String = null
