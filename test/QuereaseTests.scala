@@ -20,7 +20,6 @@ import mojoz.metadata.in.YamlViewDefLoader
 import mojoz.metadata.out.SqlWriter
 import querease._
 
-import scala.compat.Platform
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
@@ -211,7 +210,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       acc.resolve_bank_id shouldBe accb.id
       AccountWithBank.resolve_bank_id(accb) shouldBe accb.id
       acc.billing_account = bacNr
-      acc.last_modified = new Timestamp(Platform.currentTime)
+      acc.last_modified = new Timestamp(System.currentTimeMillis)
       val accountId = qe.save(acc)
       accountId shouldBe 10004
       qe.get[AccountWithBank](accountId).get.bank.id shouldBe accb.id
@@ -598,7 +597,7 @@ object QuereaseTests {
      override lazy val yamlMetadata = YamlMd.fromFiles(path = "test")
      override lazy val viewDefs = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
-       .extendedViewDefs.mapValues(i18nRules.setI18n(_).asInstanceOf[ViewDef]).toMap
+       .extendedViewDefs.toMap
      override protected lazy val viewNameToFieldOrdering =
        viewDefs.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields
