@@ -6,7 +6,6 @@ import java.sql.{Connection, DriverManager, Timestamp}
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
-import org.tresql.{Env => GlobalEnv}
 import org.tresql.Resources
 import org.tresql.ThreadLocalResources
 import org.tresql.dialects.HSQLDialect
@@ -562,7 +561,9 @@ class QuereaseTests extends FlatSpec with Matchers {
 }
 
 object QuereaseTests {
-  implicit val Env = new ThreadLocalResources {}
+  implicit val Env = new ThreadLocalResources {
+    override def logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
+  }
   def dbName(name: String) =
     Naming.dbName(name)
       .replace("_1", "1") // no underscore before 1 in our database names
@@ -616,7 +617,6 @@ object QuereaseTests {
         }
       case c: QueryBuilder#CastExpr => c.exp.sql
     }
-    GlobalEnv.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn
