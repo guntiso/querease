@@ -184,8 +184,15 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
           resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
     s"  }"
   }
+  private val scalaKeywords: Set[String] = Set( // TODO remove when upgraded to latest mojoz
+    "abstract", "case", "catch", "class", "def", "do", "else", "extends",
+    "false", "final", "finally", "for", "forSome", "if", "implicit", "import", "lazy",
+    "match", "new", "null", "object", "override", "package", "private", "protected",
+    "return", "sealed", "super", "this", "throw", "trait", "true", "try", "type",
+    "val", "var", "while", "with", "yield")
   def scalaNameString(name: String) =
-    if (SimpleIdentR.pattern.matcher(name).matches) name else s"`$name`"
+    if (SimpleIdentR.pattern.matcher(name).matches && !(scalaKeywords contains name)) name
+    else s"`$name`"
   override def createScalaClassString(viewDef: ViewDefBase[FieldDefBase[Type]]) = {
     Seq(super.createScalaClassString(viewDef), scalaObjectString(viewDef))
       .filter(_ != null).filter(_ != "").mkString(nl)

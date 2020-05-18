@@ -711,6 +711,20 @@ object resolver_test_person_8 {
       .unique[java.lang.Long]
   }
 }
+class resolver_test_person_9 extends Dto {
+  var name: String = null
+  var mother_id: java.lang.Long = null
+  def resolve_mother_id(surname: String, `type`: String) = {
+    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(this.toMap ++ Map("surname" -> surname, "type" -> `type`)))
+      .unique[java.lang.Long]
+  }
+}
+object resolver_test_person_9 {
+  def resolve_mother_id(name: String, surname: String, `type`: String) = {
+    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(Map("name" -> name, "surname" -> surname, "type" -> `type`)))
+      .unique[java.lang.Long]
+  }
+}
 class self_ref_test_account_1 extends Dto {
   var full_name: String = null
 }

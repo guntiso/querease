@@ -278,6 +278,12 @@ table: person p8
 fields:
 - mother = ^person_multitable_choice_resolver_implied_2.full_name ->
 
+name: resolver_test_person_9
+table: person p9
+fields:
+- name
+- mother_id -> = person[name = :name & surname = :surname & :type = 'person']{id}
+
 # test alias clash resolvement in implicit resolver joins
 name: resolver_alias_clash_test_person_7_a
 table: person
