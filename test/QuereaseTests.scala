@@ -604,19 +604,7 @@ object QuereaseTests {
   def getConnection = DriverManager.getConnection(url, user, password)
   def setEnv(conn: Connection = getConnection) = {
     conn.setAutoCommit(false)
-    // FIXME clean up this dialect BS when tresql fixed
-    import org.tresql.parsing.Null
-    import org.tresql.QueryBuilder
-    Env.dialect = HSQLDialect orElse {
-      case e: QueryBuilder#SelectExpr =>
-        val b = e.builder
-        e match {
-          case s @ b.SelectExpr(List(b.Table(b.ConstExpr(Null), _, _, _, _)), _, _, _, _, _, _, _, _, _) =>
-            s.copy(tables = List(s.tables.head.copy(table = b.IdentExpr(List("(values(0))"))))).sql
-          case _ => e.defaultSQL
-        }
-      case c: QueryBuilder#CastExpr => c.exp.sql
-    }
+    Env.dialect = HSQLDialect
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn

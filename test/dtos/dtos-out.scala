@@ -29,13 +29,13 @@ class account_with_bank extends DtoWithId {
   var last_modified: java.sql.Timestamp = null
   var bank: account_with_bank_bank = null
   def resolve_bank_id = {
-    tresql"""{:bank.'id'}"""(Env.withParams(this.toMap))
+    tresql"""{:bank.id}"""(Env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object account_with_bank {
   def resolve_bank_id(bank: account_with_bank_bank) = {
-    tresql"""{:bank.'id'}"""(Env.withParams(Map("bank" -> Option(bank).map(_.toMap).orNull)))
+    tresql"""{:bank.id}"""(Env.withParams(Map("bank" -> Option(bank).map(_.toMap).orNull)))
       .unique[java.lang.Long]
   }
 }
@@ -283,21 +283,21 @@ class person_with_complex_type_resolvers_1 extends DtoWithId {
   var mother: person_with_complex_type_resolvers_1_mother = null
   var father: person_with_complex_type_resolvers_1_father = null
   def resolve_mother_id = {
-    tresql"""{checked_resolve(coalesce(:mother.'name', :mother.'surname'), array(person[name = :mother.'name' & surname = :mother.'surname']{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.'name', 'null'), coalesce(:mother.'surname', 'null')))}"""(Env.withParams(this.toMap))
+    tresql"""{checked_resolve(coalesce(:mother.name, :mother.surname), array(person[name = :mother.name & surname = :mother.surname]{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.name, 'null'), coalesce(:mother.surname, 'null')))}"""(Env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
   def resolve_father_id = {
-    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname'), array(person[name = :father.'name' & surname = :father.'surname']{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null')))}"""(Env.withParams(this.toMap))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname), array(person[name = :father.name & surname = :father.surname]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null')))}"""(Env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object person_with_complex_type_resolvers_1 {
   def resolve_mother_id(mother: person_with_complex_type_resolvers_1_mother) = {
-    tresql"""{checked_resolve(coalesce(:mother.'name', :mother.'surname'), array(person[name = :mother.'name' & surname = :mother.'surname']{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.'name', 'null'), coalesce(:mother.'surname', 'null')))}"""(Env.withParams(Map("mother" -> Option(mother).map(_.toMap).orNull)))
+    tresql"""{checked_resolve(coalesce(:mother.name, :mother.surname), array(person[name = :mother.name & surname = :mother.surname]{id}@(2)), 'Failed to identify value of "mother" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:mother.name, 'null'), coalesce(:mother.surname, 'null')))}"""(Env.withParams(Map("mother" -> Option(mother).map(_.toMap).orNull)))
       .unique[java.lang.Long]
   }
   def resolve_father_id(father: person_with_complex_type_resolvers_1_father) = {
-    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname'), array(person[name = :father.'name' & surname = :father.'surname']{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull)))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname), array(person[name = :father.name & surname = :father.surname]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull)))
       .unique[java.lang.Long]
   }
 }
@@ -338,13 +338,13 @@ class person_with_complex_type_resolvers_2 extends DtoWithId {
   var sex: String = null
   var father: person_with_complex_type_resolvers_2_father = null
   def resolve_father_id(`father.is_resolver_disabled`: java.lang.Boolean) = {
-    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname', :father.'is_resolver_disabled'?), array(person[name = :father.'name' & surname = :father.'surname' & !:father.'is_resolver_disabled'?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null'), coalesce(:father.'is_resolver_disabled'?, 'null')))}"""(Env.withParams(this.toMap ++ Map("father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, :father.is_resolver_disabled?), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), coalesce(:father.is_resolver_disabled?, 'null')))}"""(Env.withParams(this.toMap ++ Map("father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
       .unique[java.lang.Long]
   }
 }
 object person_with_complex_type_resolvers_2 {
   def resolve_father_id(father: person_with_complex_type_resolvers_2_father, `father.is_resolver_disabled`: java.lang.Boolean) = {
-    tresql"""{checked_resolve(coalesce(:father.'name', :father.'surname', :father.'is_resolver_disabled'?), array(person[name = :father.'name' & surname = :father.'surname' & !:father.'is_resolver_disabled'?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.'name', 'null'), coalesce(:father.'surname', 'null'), coalesce(:father.'is_resolver_disabled'?, 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull, "father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, :father.is_resolver_disabled?), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), coalesce(:father.is_resolver_disabled?, 'null')))}"""(Env.withParams(Map("father" -> Option(father).map(_.toMap).orNull, "father.is_resolver_disabled" -> `father.is_resolver_disabled`)))
       .unique[java.lang.Long]
   }
 }
