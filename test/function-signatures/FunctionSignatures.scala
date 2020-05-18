@@ -12,4 +12,5 @@ trait PostgresFunctionSignatures {
   def array(query: Any): Any
   def coalesce[T](pars: T*): T
   def concat_ws(sep: String, str: Any*): String
+  def nullif(a: Integer, b: Integer): Integer
 }
