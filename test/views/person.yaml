@@ -290,6 +290,12 @@ fields:
 - name
 - mother_id -> = person[name = :name & surname = :surname & :'creative param name' = 'person']{id}
 
+name: resolver_test_person_9_c
+table: person p9
+fields:
+- name
+- mother_id -> = person[name = :name & surname = :surname & :'creative.param.name' = 'person']{id}
+
 name: resolver_test_person_10
 table: person p9
 fields:

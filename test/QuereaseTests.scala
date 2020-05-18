@@ -269,6 +269,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       ResolverTestPerson9A.resolve_mother_id("Some", "Mother", "person") shouldBe motherId
       ResolverTestPerson9A.resolve_mother_id(name = "Some", surname = "Mother", `type` = "person") shouldBe motherId
       ResolverTestPerson9B.resolve_mother_id(name = "Some", surname = "Mother", `creative param name` = "person") shouldBe motherId
+      ResolverTestPerson9C.resolve_mother_id(name = "Some", surname = "Mother", `creative.param.name` = "person") shouldBe motherId
 
       qe.countAll[ResolverTestPerson10](Map("name" -> "Alfrēds")) shouldBe 1
       qe.countAll[ResolverTestPerson10](Map("name" -> "Marija" )) shouldBe 2
