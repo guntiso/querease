@@ -6,7 +6,9 @@ import java.sql.{Connection, DriverManager, Timestamp}
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
-import org.tresql.Env
+import org.tresql.{Env => GlobalEnv}
+import org.tresql.Resources
+import org.tresql.ThreadLocalResources
 import org.tresql.dialects.HSQLDialect
 import org.tresql.LogTopic
 import dto._
@@ -23,8 +25,6 @@ import scala.compat.Platform
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
-
-  implicit val resources = Env
 
   "querease" should "do something" in {
     executeStatements(statements: _*)
@@ -556,6 +556,7 @@ class QuereaseTests extends FlatSpec with Matchers {
 }
 
 object QuereaseTests {
+  implicit val Env = new ThreadLocalResources {}
   def dbName(name: String) =
     Naming.dbName(name)
       .replace("_1", "1") // no underscore before 1 in our database names
@@ -597,19 +598,19 @@ object QuereaseTests {
   def setEnv(conn: Connection = getConnection) = {
     conn.setAutoCommit(false)
     // FIXME clean up this dialect BS when tresql fixed
+    import org.tresql.parsing.Null
     import org.tresql.QueryBuilder
-    import org.tresql.QueryParser
     Env.dialect = HSQLDialect orElse {
       case e: QueryBuilder#SelectExpr =>
         val b = e.builder
         e match {
-          case s @ b.SelectExpr(List(b.Table(b.ConstExpr(QueryParser.Null), _, _, _, _)), _, _, _, _, _, _, _, _, _) =>
+          case s @ b.SelectExpr(List(b.Table(b.ConstExpr(Null), _, _, _, _)), _, _, _, _, _, _, _, _, _) =>
             s.copy(tables = List(s.tables.head.copy(table = b.IdentExpr(List("(values(0))"))))).sql
           case _ => e.defaultSQL
         }
       case c: QueryBuilder#CastExpr => c.exp.sql
     }
-    Env.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
+    GlobalEnv.logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
     Env.conn = conn

@@ -116,12 +116,12 @@ sourceGenerators in Test += Def.task {
       List(
         "package dto",
         "",
-        "import test.{ Dto, DtoWithId }",
         "import org.tresql._",
-        "import org.tresql.implicits._",
         if  (scalaVersion.value.startsWith("2.10."))
             "import org.tresql.CoreTypes._"
         else null,
+        "import test.{ Dto, DtoWithId }",
+        "import test.QuereaseTests.Env",
         "").filter(_ != null),
       viewDefs,
       Nil)

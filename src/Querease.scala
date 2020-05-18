@@ -14,10 +14,9 @@ import org.tresql.ArrayResult
 import org.tresql.ORT
 import org.tresql.Query
 import org.tresql.QueryParser
-import org.tresql.QueryParser.Ident
-import org.tresql.QueryParser.Null
-import org.tresql.QueryParser.Traverser
-import org.tresql.QueryParser.{ traverser, parseExp }
+import org.tresql.parsing.Ident
+import org.tresql.parsing.Null
+import org.tresql.parsing.{Query => QueryParser_Query}
 
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
@@ -344,10 +343,10 @@ trait QueryStringBuilder { this: Querease =>
 
   def qualify(view: ViewDef, expression: String,
     pathToAlias: Map[List[String], String], ignoreUnknownPaths: Boolean = false): String = {
-    QueryParser.transformTresql(expression, {
+    parser.transformTresql(expression, {
       // do not transform subqueries (skip deeper analysis)
-      case q: QueryParser.Query => q
-      case ident @ Ident(i) =>
+      case q: QueryParser_Query => q
+      case ident @ Ident(i) if !i.startsWith("^") =>
         if (i.lengthCompare(1) == 0)
           if (tableMetadata.col(view.table, i.head).isDefined)
             Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
@@ -482,7 +481,8 @@ trait QueryStringBuilder { this: Querease =>
       .filterNot(_ == null)
       .map(t => List(t))
       .toSet
-    val IdentifierExtractor: QueryParser.Traverser[List[List[String]]] = {
+    import parser.Traverser
+    val IdentifierExtractor: Traverser[List[List[String]]] = {
       identifiers => {
         case i: Ident => i.ident :: identifiers
       }
@@ -492,10 +492,10 @@ trait QueryStringBuilder { this: Querease =>
       .map(_.expression)
       .filter(_ != null)
       .filter(_.trim != "")
-      .map(QueryParser.parseExp)
+      .map(parser.parseExp)
       // do not collect identifiers from subqueries (skip deeper analysis)
-      .map(QueryParser.transformer({ case q: QueryParser.Query => Null }))
-      .flatMap(x => QueryParser.traverser(IdentifierExtractor)(Nil)(x))
+      .map(parser.transformer({ case q: QueryParser_Query => Null }))
+      .flatMap(x => parser.traverser(IdentifierExtractor)(Nil)(x))
       .filter(_.lengthCompare(1) > 0)
       .map(_ dropRight 1)
       .toSet

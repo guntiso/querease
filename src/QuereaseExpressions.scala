@@ -23,6 +23,8 @@ object QuereaseExpressions {
   trait Parser extends QueryParsers with ExpTransformer {
     def extractVariables(exp: String) =
       traverser(variableExtractor)(Nil)(parseExp(exp)).reverse
+    def transformTresql(tresql: String, transformer: Transformer): String =
+      this.transformer(transformer)(parseExp(tresql)).tresql
   }
   abstract class DefaultParser extends Parser {
     val cache: Option[CacheBase[Exp]]
@@ -141,6 +143,7 @@ trait QuereaseExpressions { this: Querease =>
   /** Returns expression transformer */
   protected def expressionTransformer: parser.TransformerWithState[Context] = parser.transformerWithState { ctx =>
     import parser._
+    import org.tresql.parsing._
     val viewName = Option(ctx.viewDef).map(_.name).orNull
     def fullContextName =
       s"${ctx.mdContext.name} of $viewName${Option(ctx.fieldName).map("." + _).getOrElse("")}"

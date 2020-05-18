@@ -5,6 +5,9 @@ import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.Type
 
+import org.tresql.parsing.Ident
+import org.tresql.parsing.Variable
+
 import scala.collection.immutable.Seq
 
 /** Generates scala code and adds resolver methods for convenience */
@@ -80,13 +83,16 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       resolverParams: String,
       resolverTargetType: String
   ): String = {
+    val resources = resourcesWithParams(resolverParams)
     if (useTresqlInterpolator)
-      s"    tresql$q3{$resolverExpression}$q3(Env.withParams($resolverParams))" + nl +
+      s"    tresql$q3{$resolverExpression}$q3($resources)" + nl +
       s"      .unique[$resolverTargetType]" + nl
     else
-      s"    Query($q3{$resolverExpression}$q3)(Env.withParams($resolverParams))" + nl +
+      s"    Query($q3{$resolverExpression}$q3)($resources)" + nl +
       s"      .unique[$resolverTargetType]" + nl
   }
+  def resourcesWithParams(params: String): String =
+    s"Env.withParams($params)"
   private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], name: String): Boolean = {
     def findField(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
       Option(viewDef)

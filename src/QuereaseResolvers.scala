@@ -1,5 +1,7 @@
 package querease
 
+import org.tresql.parsing.Ident
+
 trait QuereaseResolvers { this: Querease =>
 
         import parser._
