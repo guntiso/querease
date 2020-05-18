@@ -257,17 +257,18 @@ class QuereaseTests extends FlatSpec with Matchers {
       child.resolve_mother_id shouldBe motherId
       child.resolve_father_id shouldBe fatherId
 
-      val person9 = new ResolverTestPerson9
+      val person9 = new ResolverTestPerson9A
       person9.name = "Some"
       (intercept[java.sql.SQLException] {
         person9.resolve_mother_id(surname = "Mother", `type` = "crocodile")
-      }).getMessage shouldBe """Failed to identify value of "mother_id" (from resolver_test_person_9) - Some, Mother, crocodile"""
+      }).getMessage shouldBe """Failed to identify value of "mother_id" (from resolver_test_person_9_a) - Some, Mother, crocodile"""
       person9.resolve_mother_id(surname = "Mother", `type` = "person") shouldBe motherId
       (intercept[java.sql.SQLException] {
-        ResolverTestPerson9.resolve_mother_id(name = "Some", surname = "Mother", `type` = "crocodile")
-      }).getMessage shouldBe """Failed to identify value of "mother_id" (from resolver_test_person_9) - Some, Mother, crocodile"""
-      ResolverTestPerson9.resolve_mother_id("Some", "Mother", "person") shouldBe motherId
-      ResolverTestPerson9.resolve_mother_id(name = "Some", surname = "Mother", `type` = "person") shouldBe motherId
+        ResolverTestPerson9A.resolve_mother_id(name = "Some", surname = "Mother", `type` = "crocodile")
+      }).getMessage shouldBe """Failed to identify value of "mother_id" (from resolver_test_person_9_a) - Some, Mother, crocodile"""
+      ResolverTestPerson9A.resolve_mother_id("Some", "Mother", "person") shouldBe motherId
+      ResolverTestPerson9A.resolve_mother_id(name = "Some", surname = "Mother", `type` = "person") shouldBe motherId
+      ResolverTestPerson9B.resolve_mother_id(name = "Some", surname = "Mother", `creative param name` = "person") shouldBe motherId
 
       qe.countAll[ResolverTestPerson10](Map("name" -> "Alfrēds")) shouldBe 1
       qe.countAll[ResolverTestPerson10](Map("name" -> "Marija" )) shouldBe 2

@@ -278,11 +278,17 @@ table: person p8
 fields:
 - mother = ^person_multitable_choice_resolver_implied_2.full_name ->
 
-name: resolver_test_person_9
+name: resolver_test_person_9_a
 table: person p9
 fields:
 - name
 - mother_id -> = person[name = :name & surname = :surname & :type = 'person']{id}
+
+name: resolver_test_person_9_b
+table: person p9
+fields:
+- name
+- mother_id -> = person[name = :name & surname = :surname & :'creative param name' = 'person']{id}
 
 name: resolver_test_person_10
 table: person p9

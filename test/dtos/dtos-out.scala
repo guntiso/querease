@@ -739,17 +739,31 @@ object resolver_test_person_8 {
       .unique[java.lang.Long]
   }
 }
-class resolver_test_person_9 extends Dto {
+class resolver_test_person_9_a extends Dto {
   var name: String = null
   var mother_id: java.lang.Long = null
   def resolve_mother_id(surname: String, `type`: String) = {
-    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(this.toMap ++ Map("surname" -> surname, "type" -> `type`)))
+    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9_a) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(this.toMap ++ Map("surname" -> surname, "type" -> `type`)))
       .unique[java.lang.Long]
   }
 }
-object resolver_test_person_9 {
+object resolver_test_person_9_a {
   def resolve_mother_id(name: String, surname: String, `type`: String) = {
-    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(Map("name" -> name, "surname" -> surname, "type" -> `type`)))
+    tresql"""{checked_resolve(coalesce(:name, :surname, :type), array(person[name = :name & surname = :surname & :type = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9_a) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:type, 'null')))}"""(Env.withParams(Map("name" -> name, "surname" -> surname, "type" -> `type`)))
+      .unique[java.lang.Long]
+  }
+}
+class resolver_test_person_9_b extends Dto {
+  var name: String = null
+  var mother_id: java.lang.Long = null
+  def resolve_mother_id(surname: String, `creative param name`: String) = {
+    tresql"""{checked_resolve(coalesce(:name, :surname, :'creative param name'), array(person[name = :name & surname = :surname & :'creative param name' = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9_b) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:'creative param name', 'null')))}"""(Env.withParams(this.toMap ++ Map("surname" -> surname, "creative param name" -> `creative param name`)))
+      .unique[java.lang.Long]
+  }
+}
+object resolver_test_person_9_b {
+  def resolve_mother_id(name: String, surname: String, `creative param name`: String) = {
+    tresql"""{checked_resolve(coalesce(:name, :surname, :'creative param name'), array(person[name = :name & surname = :surname & :'creative param name' = 'person']{id}@(2)), 'Failed to identify value of "mother_id" (from resolver_test_person_9_b) - ' || concat_ws(', ', coalesce(:name, 'null'), coalesce(:surname, 'null'), coalesce(:'creative param name', 'null')))}"""(Env.withParams(Map("name" -> name, "surname" -> surname, "creative param name" -> `creative param name`)))
       .unique[java.lang.Long]
   }
 }
