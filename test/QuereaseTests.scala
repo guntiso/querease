@@ -206,45 +206,57 @@ class QuereaseTests extends FlatSpec with Matchers {
       val bacNr = "123456789"
       accb.code = "BNP"
       accb.country_code = "FR"
-      accb.id = 10001L
+      accb.id = 10001
       acc.bank = accb
+      acc.resolve_bank_id shouldBe accb.id
+      AccountWithBank.resolve_bank_id(accb) shouldBe accb.id
       acc.billing_account = bacNr
       acc.last_modified = new Timestamp(Platform.currentTime)
       val accountId = qe.save(acc)
       accountId shouldBe 10004
+      qe.get[AccountWithBank](accountId).get.bank.id shouldBe accb.id
 
       var child = new PersonWithComplexTypeResolvers1
       child.name    = "Some"
       child.surname = "Child"
       child.sex     = "M"
-      /* FIXME waiting for tresql fix
       val childId = qe.save(child)
-      childId shouldBe 10005L
+      childId shouldBe 10005
       child = qe.get[PersonWithComplexTypeResolvers1](childId).get
-      */
+      child.mother shouldBe null
+      child.father shouldBe null
+      child.resolve_mother_id shouldBe null
+      child.resolve_father_id shouldBe null
       var mother = new PersonWithComplexTypeResolvers1Mother
       mother.name    = "Some"
       mother.surname = "Mother"
-      val motherId = qe.save(mother)
-      motherId shouldBe 10005
       var father = new PersonWithComplexTypeResolvers1Father
       father.name    = "Some"
       father.surname = "Father"
-      val fatherId = qe.save(father)
-      fatherId shouldBe 10006
-      PersonWithComplexTypeResolvers1.resolve_mother_id(mother) shouldBe motherId
-      PersonWithComplexTypeResolvers1.resolve_father_id(father) shouldBe fatherId
       child.mother = mother
       child.father = father
+      (intercept[java.sql.SQLException] {
+        child.resolve_father_id
+      }).getMessage shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - Some, Father"""
+      (intercept[java.sql.SQLException] {
+        PersonWithComplexTypeResolvers1.resolve_father_id(child.father)
+      }).getMessage shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_1) - Some, Father"""
+      val motherId = qe.save(mother)
+      motherId shouldBe 10006
+      val fatherId = qe.save(father)
+      fatherId shouldBe 10007
+      PersonWithComplexTypeResolvers1.resolve_mother_id(mother) shouldBe motherId
+      PersonWithComplexTypeResolvers1.resolve_father_id(father) shouldBe fatherId
       child.resolve_mother_id shouldBe motherId
       child.resolve_father_id shouldBe fatherId
-      val childId = qe.save(child)
-      childId  shouldBe 10007
+      qe.save(child) shouldBe childId
       child = qe.get[PersonWithComplexTypeResolvers1](childId).get
       child.mother.surname shouldBe "Mother"
       child.mother.sex     shouldBe "F"
       child.father.surname shouldBe "Father"
       child.father.sex     shouldBe "M"
+      child.resolve_mother_id shouldBe motherId
+      child.resolve_father_id shouldBe fatherId
 
       var child2 = qe.get[PersonWithComplexTypeResolvers2](childId).get
       /* FIXME?
@@ -633,16 +645,20 @@ object QuereaseTests {
        ) returns bigint
          if array_length(resolved) > 1 or resolvable is not null and (array_length(resolved) = 0 or resolved[1] is null) then
            signal sqlstate '45000' set message_text = error_message;
-         else
+         elseif array_length(resolved) = 1 then
            return resolved[1];
+         else
+           return null;
          end if""",
     """create function checked_resolve(
          resolvable char varying(1024), resolved char varying(1024) array, error_message char varying(1024)
        ) returns  char varying(1024)
          if array_length(resolved) > 1 or resolvable is not null and (array_length(resolved) = 0 or resolved[1] is null) then
            signal sqlstate '45000' set message_text = error_message;
-         else
+         elseif array_length(resolved) = 1 then
            return resolved[1];
+         else
+           return null;
          end if"""
   )
   val statements = SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs)
