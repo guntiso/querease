@@ -282,9 +282,12 @@ class QuereaseTests extends FlatSpec with Matchers {
       }).getMessage shouldBe """Failed to identify value of "id" (from resolver_test_person_11) - Alfrēds"""
 
       var child2 = qe.get[PersonWithComplexTypeResolvers2](childId).get
-      /* FIXME?
-      child2.resolve_father_id(`father.is_resolver_disabled` = false) shouldBe fatherId
-      child2.resolve_father_id(`father.is_resolver_disabled` = true)  shouldBe ...
+      child2.resolve_father_id(m => m + ("father" -> (m("father").asInstanceOf[Map[String, Any]] ++ Map("is_resolver_disabled" -> false)))) shouldBe fatherId
+      (intercept[java.sql.SQLException] {
+        child2.resolve_father_id(m => m + ("father" -> (m("father").asInstanceOf[Map[String, Any]] ++ Map("is_resolver_disabled" -> true))))
+      }).getMessage shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - Some, Father, true"""
+      /* FIXME waiting for tresql fix
+      child2.resolve_father_id(m => m) shouldBe ...
       */
 
       // sample data
