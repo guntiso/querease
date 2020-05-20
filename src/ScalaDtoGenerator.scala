@@ -127,7 +127,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     val variables = qe.parser.extractVariables(resolverExpression)
     val paramNames: Seq[String] =
       variables.map(v => (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", ""))
-        .zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+        .distinct
         .filterNot(isFieldDefined(viewDef, _))
     val defaultParamsString = "this.toMap"
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
@@ -140,7 +140,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     val variables = qe.parser.extractVariables(resolverExpression)
     val paramNames: Seq[String] =
       variables.map(v => (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", ""))
-        .zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+        .distinct
     val defaultParamsString = ""
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }

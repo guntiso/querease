@@ -297,7 +297,7 @@ fields:
 - mother_id -> = person[name = :name & surname = :surname & :'creative.param.name' = 'person']{id}
 
 name: resolver_test_person_10
-table: person p9
+table: person p10
 fields:
 - name
 - id -> = person[name = :name]{id}
@@ -305,10 +305,28 @@ filter:
 - name
 
 name: resolver_test_person_11
-table: person p9
+table: person p11
 fields:
 - name
 - id -> = person[name = :name]{nullif(0, 0) id}
+
+name: resolver_test_person_12_a
+table: person p12a
+fields:
+- id
+- father = father.name -> = person[name = _ & id > :id]{id}
+
+name: resolver_test_person_12_b
+table: person p12b
+fields:
+- id
+- father = father.name -> = person[name = _ & :id > 0 & id > :id]{id}
+
+name: resolver_test_person_12_c
+table: person p12c
+fields:
+- id
+- father = father.name -> = person[name = :father & :id > 0 & id > :id]{id}
 
 # test alias clash resolvement in implicit resolver joins
 name: resolver_alias_clash_test_person_7_a

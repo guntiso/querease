@@ -2,7 +2,7 @@ package querease
 
 import mojoz.metadata.TableDef
 import org.tresql.{CacheBase, SimpleCacheBase}
-import org.tresql.parsing.{Exp, ExpTransformer, QueryParsers}
+import org.tresql.parsing.{Exp, ExpTransformer, Ident, QueryParsers, Variable}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
@@ -21,10 +21,24 @@ object QuereaseExpressions {
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
 
   trait Parser extends QueryParsers with ExpTransformer {
+    val Placeholder = Variable(null, null, true)
     def extractVariables(exp: String) =
       traverser(variableExtractor)(Nil)(parseExp(exp)).reverse
+    def extractPlaceholdersAndVariables(exp: String) =
+      traverser(placeholderAndVariableExtractor)(Nil)(parseExp(exp)).reverse
     def transformTresql(tresql: String, transformer: Transformer): String =
       this.transformer(transformer)(parseExp(tresql)).tresql
+    /** Extract placeholders and variables in reverse order. Variable names '?' are replaced with index starting with 1 */
+    def placeholderAndVariableExtractor: Traverser[List[Variable]] = {
+      var bindIdx = 0
+      vars => {
+        case v @ Variable("?", _, _) =>
+          bindIdx += 1
+          (v copy bindIdx.toString) :: vars
+        case v: Variable => v :: vars
+        case Ident(List("_")) => Placeholder :: vars
+      }
+    }
   }
   abstract class DefaultParser extends Parser {
     val cache: Option[CacheBase[Exp]]
@@ -62,22 +76,53 @@ trait QuereaseExpressions { this: Querease =>
   )
   val parser: Parser = DefaultParser
 
-  /** Returns error message expression string for resolver
+  /** Returns resolvables expression for inclusion in resolver error message expression
     *
     * @param viewName    view name this expression is from
     * @param fieldName   field name this expression is from or null
     * @param contextName "filter" or "resolver" for now
+    * @param bindVars    placeholder or variable expression strings
     */
-  protected def resolverErrorMessageExpression(viewName: String,
-                                               fieldName: String,
-                                               contextName: String,
-                                               bindVars: List[String]): String = {
-    val varsToStr = bindVars.map(v => s"coalesce($v, 'null')") match {
+  protected def resolvablesMessageExpression(
+      viewName: String, fieldName: String, contextName: String, bindVars: List[String]): String = {
+    val hasPlaceholder = bindVars.exists(_ == "_")
+    if (hasPlaceholder)
+      "coalesce(_, 'null')"
+    else bindVars.map(v => s"coalesce($v, 'null')") match {
       case Nil => "coalesce(_, 'null')"
-      case v :: Nil => v
+      case List(v) => v
       case l => l.mkString("concat_ws(', ', ", ", ", ")")
     }
-    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $varsToStr"""
+  }
+
+  /** Returns error message expression for resolver
+    *
+    * @param viewName    view name this expression is from
+    * @param fieldName   field name this expression is from or null
+    * @param contextName "filter" or "resolver" for now
+    * @param resolvablesExpression   expression for displaying values
+    */
+  protected def resolverErrorMessageExpression(
+      viewName: String, fieldName: String, contextName: String, resolvablesExpression: String): String =
+    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $resolvablesExpression"""
+
+
+  /** Returns resolvables expression for inclusion in resolver, where evaluation to not null enables resolve check.
+    *
+    * @param viewName    view name this expression is from
+    * @param fieldName   field name this expression is from or null
+    * @param contextName "filter" or "resolver" for now
+    * @param bindVars    placeholder or variable expression strings
+    */
+  protected def resolvablesExpression(bindVars: List[String]): String = {
+    val hasPlaceholder = bindVars.exists(_ == "_")
+    if (hasPlaceholder)
+      "_"
+    else bindVars match {
+      case Nil => "_"
+      case List(bv) => bv
+      case l => l.mkString("coalesce(", ", ", ")")
+    }
   }
 
   /** Returns resolver expression string - db function call to check resolver result and throw exception
@@ -110,15 +155,10 @@ trait QuereaseExpressions { this: Querease =>
     *
     * @param queryString
     * @param errorMessage
+    * @param bindVars
     */
-  protected def resolverExpression(queryString: String, errorMessage: String, bindVars: List[String]): String = {
-    val bvOrPlaceholder = bindVars match {
-      case Nil => "_"
-      case List(bv) => bv
-      case l => l.mkString("coalesce(", ", ", ")")
-    }
-    s"checked_resolve($bvOrPlaceholder, array($queryString), $errorMessage)"
-  }
+  protected def resolverExpression(queryString: String, errorMessage: String, bindVars: List[String]): String =
+    s"checked_resolve(${resolvablesExpression(bindVars)}, array($queryString), $errorMessage)"
 
   /** Returns transformed expression
     *
@@ -265,7 +305,6 @@ trait QuereaseExpressions { this: Querease =>
           // OR
           ctx.transformerContext == EqOpCtx &&
           (ctx.mdContext == Filter || ctx.mdContext == Resolver) &&
-          //resolvableVarOpt.isDefined && // has at least one variable to resolve TODO or underscore or query result
           Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
           // FIXME kā atšķirt rezolveri (ar vienu kolonu) no parasta FieldRefRegexp???
         def withLimitQ(q: Query) =
@@ -347,10 +386,11 @@ trait QuereaseExpressions { this: Querease =>
           }
         }
         if (isResolver) {
-          val resolverVars = traverser(variableExtractor)(Nil)(q).reverse
-          val resolverVarsTresql = resolverVars.map(_.tresql)
-          val resolvableName = Option(ctx.fieldName).orElse(resolverVars.headOption.map(_.variable)).orNull
-          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
+          val resolverVars = traverser(placeholderAndVariableExtractor)(Nil)(q).reverse
+          val resolverVarsTresql = resolverVars.map { case Placeholder => "_" case v => v.tresql }.distinct
+          val resolvableName = Option(ctx.fieldName).orElse(resolverVars.filter(_ != Placeholder).headOption.map(_.variable)).orNull
+          val resolvablesExpression = resolvablesMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
+          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolvablesExpression)
           val resolvedQueryStringWithLimit: String =
             resolvedQuery match {
               case q: Query => withLimitQ(q).tresql

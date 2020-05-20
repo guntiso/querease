@@ -280,6 +280,15 @@ class QuereaseTests extends FlatSpec with Matchers {
       (intercept[java.sql.SQLException] {
         ResolverTestPerson11.resolve_id(name = "Alfrēds")
       }).getMessage shouldBe """Failed to identify value of "id" (from resolver_test_person_11) - Alfrēds"""
+      ResolverTestPerson12A.resolve_father_id("Alfrēds", 1) shouldBe 1108
+      ResolverTestPerson12B.resolve_father_id("Alfrēds", 1) shouldBe 1108
+      (intercept[java.sql.SQLException] {
+        ResolverTestPerson12B.resolve_father_id("Alfrēds", 0)
+      }).getMessage shouldBe """Failed to identify value of "father" (from resolver_test_person_12_b) - Alfrēds"""
+      ResolverTestPerson12C.resolve_father_id("Alfrēds", 1) shouldBe 1108
+      (intercept[java.sql.SQLException] {
+        ResolverTestPerson12C.resolve_father_id("Alfrēds", 0)
+      }).getMessage shouldBe """Failed to identify value of "father" (from resolver_test_person_12_c) - Alfrēds, 0"""
 
       var child2 = qe.get[PersonWithComplexTypeResolvers2](childId).get
       child2.resolve_father_id(m => m + ("father" -> (m("father").asInstanceOf[Map[String, Any]] ++ Map("is_resolver_disabled" -> false)))) shouldBe fatherId
