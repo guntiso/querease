@@ -338,13 +338,13 @@ class person_with_complex_type_resolvers_2 extends DtoWithId {
   var sex: String = null
   var father: person_with_complex_type_resolvers_2_father = null
   def resolve_father_id(`[APPLY OTHER]`: Map[String, Any] => Map[String, Any]) = {
-    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, :father.is_resolver_disabled?), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), coalesce(:father.is_resolver_disabled?, 'null')))}"""(Env.withParams(`[APPLY OTHER]`(this.toMap)))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, if_defined_or_else(:father.is_resolver_disabled?, :father.is_resolver_disabled?, null)), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), if_defined_or_else(:father.is_resolver_disabled?, coalesce(:father.is_resolver_disabled?, 'null'), '[missing]')))}"""(Env.withParams(`[APPLY OTHER]`(this.toMap)))
       .unique[java.lang.Long]
   }
 }
 object person_with_complex_type_resolvers_2 {
   def resolve_father_id(father: person_with_complex_type_resolvers_2_father, `[APPLY OTHER]`: Map[String, Any] => Map[String, Any]) = {
-    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, :father.is_resolver_disabled?), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), coalesce(:father.is_resolver_disabled?, 'null')))}"""(Env.withParams(`[APPLY OTHER]`(Map("father" -> Option(father).map(_.toMap).orNull))))
+    tresql"""{checked_resolve(coalesce(:father.name, :father.surname, if_defined_or_else(:father.is_resolver_disabled?, :father.is_resolver_disabled?, null)), array(person[name = :father.name & surname = :father.surname & !:father.is_resolver_disabled?]{id}@(2)), 'Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - ' || concat_ws(', ', coalesce(:father.name, 'null'), coalesce(:father.surname, 'null'), if_defined_or_else(:father.is_resolver_disabled?, coalesce(:father.is_resolver_disabled?, 'null'), '[missing]')))}"""(Env.withParams(`[APPLY OTHER]`(Map("father" -> Option(father).map(_.toMap).orNull))))
       .unique[java.lang.Long]
   }
 }

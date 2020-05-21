@@ -155,8 +155,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
     resolve("exists(person[name = :name?]{id})") should be("exists(person[name = :name?]{id})")
     resolve("person_id in(person[name = :name?]{id})") should be("person_id in(person[name = :name?]{id})")
     resolve("person_id = person[name = :name?]{id}") should be(
-      "person_id = checked_resolve(:name?, array(person[name = :name?]{id}@(2)), " +
-        "'Failed to identify value of \"name\" (from null) - ' || coalesce(:name?, 'null'))")
+      "person_id = checked_resolve(if_defined_or_else(:name?, :name?, null), array(person[name = :name?]{id}@(2)), " +
+        "'Failed to identify value of \"name\" (from null) - ' || if_defined_or_else(:name?, coalesce(:name?, 'null'), '[missing]'))")
   }
 
   "filter sugar syntax" should "handle naming correctly" in {

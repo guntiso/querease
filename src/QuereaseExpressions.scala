@@ -76,6 +76,9 @@ trait QuereaseExpressions { this: Querease =>
   )
   val parser: Parser = DefaultParser
 
+  /** Returns missing var expression for inclusion in resolver error message expression */
+  protected def resolvablesMessageMissingVarExpression(bindVar: String) = "'[missing]'"
+
   /** Returns resolvables expression for inclusion in resolver error message expression
     *
     * @param viewName    view name this expression is from
@@ -85,10 +88,14 @@ trait QuereaseExpressions { this: Querease =>
     */
   protected def resolvablesMessageExpression(
       viewName: String, fieldName: String, contextName: String, bindVars: List[String]): String = {
+    def expr(v: String) =
+      if (v.startsWith(":") && v.endsWith("?"))
+         s"if_defined_or_else($v, coalesce($v, 'null'), ${resolvablesMessageMissingVarExpression(v)})"
+      else s"coalesce($v, 'null')"
     val hasPlaceholder = bindVars.exists(_ == "_")
     if (hasPlaceholder)
       "coalesce(_, 'null')"
-    else bindVars.map(v => s"coalesce($v, 'null')") match {
+    else bindVars.map(expr) match {
       case Nil => "coalesce(_, 'null')"
       case List(v) => v
       case l => l.mkString("concat_ws(', ', ", ", ", ")")
@@ -116,12 +123,16 @@ trait QuereaseExpressions { this: Querease =>
     */
   protected def resolvablesExpression(bindVars: List[String]): String = {
     val hasPlaceholder = bindVars.exists(_ == "_")
+    def expr(v: String) =
+      if (v.startsWith(":") && v.endsWith("?"))
+         s"if_defined_or_else($v, $v, null)"
+      else v
     if (hasPlaceholder)
       "_"
     else bindVars match {
       case Nil => "_"
-      case List(bv) => bv
-      case l => l.mkString("coalesce(", ", ", ")")
+      case List(v) => expr(v)
+      case l => l.map(expr).mkString("coalesce(", ", ", ")")
     }
   }
 

@@ -6,10 +6,8 @@ import java.sql.{Connection, DriverManager, Timestamp}
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
-import org.tresql.Resources
-import org.tresql.ThreadLocalResources
+import org.tresql._
 import org.tresql.dialects.HSQLDialect
-import org.tresql.LogTopic
 import dto._
 import mojoz.metadata._
 import mojoz.metadata.TableMetadata
@@ -27,7 +25,6 @@ class QuereaseTests extends FlatSpec with Matchers {
   "querease" should "do something" in {
     executeStatements(statements: _*)
     executeStatements("CREATE SEQUENCE seq START WITH 10000")
-    println
     setEnv()
     try {
       val bank = new BankListRow
@@ -44,7 +41,6 @@ class QuereaseTests extends FlatSpec with Matchers {
       b2.name should be("Bank 2")
       qe.list[BankListRow](null).head.id should be(10001)
       val banks = qe.list[BankListRow](null, orderBy = "id")
-      banks.map(b => (b.id, b.code, b.name)) foreach println
       banks(0).id should be(10000)
       banks(0).name should be("Bank 1")
       banks(1).id should be(10001)
@@ -199,6 +195,16 @@ class QuereaseTests extends FlatSpec with Matchers {
         toFile(dataPath + "/" + "forefathers-out-produced.txt", producedForefathers)
       expectedForefathers should be(producedForefathers)
 
+      //filter resolver tests with optional bind variable
+      qe.countAll[FilterWithResolverTest1](Map.empty) shouldBe 0
+      qe.countAll[FilterWithResolverTest1](Map("mother" -> null)) shouldBe 0
+      qe.countAll[FilterWithResolverTest1](Map("mother" -> ("Minna" + "Priedīte"))) shouldBe 1
+      qe.countAll[FilterWithResolverTest1](Map("mother" -> ("Helēna" + "Stūrīte"))) shouldBe 6
+      qe.list    [FilterWithResolverTest1](Map("mother" -> ("Helēna" + "Stūrīte"))).size shouldBe 6
+      (intercept[java.sql.SQLException] {
+        qe.countAll[FilterWithResolverTest1](Map("mother" -> "dada"))
+      }).getMessage shouldBe """Failed to identify value of "mother" (from filter_with_resolver_test_1) - dada"""
+
       //resolver test with bind variable from substructure
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
@@ -219,6 +225,8 @@ class QuereaseTests extends FlatSpec with Matchers {
       child.name    = "Some"
       child.surname = "Child"
       child.sex     = "M"
+      child.toSaveableMap.filter(_._1 matches "^\\w+$").toMap shouldBe
+        Map("id" -> null, "name" -> "Some", "surname" -> "Child", "sex" -> "M", "mother" -> null, "father" -> null)
       val childId = qe.save(child)
       childId shouldBe 10005
       child = qe.get[PersonWithComplexTypeResolvers1](childId).get
@@ -295,9 +303,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       (intercept[java.sql.SQLException] {
         child2.resolve_father_id(m => m + ("father" -> (m("father").asInstanceOf[Map[String, Any]] ++ Map("is_resolver_disabled" -> true))))
       }).getMessage shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - Some, Father, true"""
-      /* FIXME waiting for tresql fix
-      child2.resolve_father_id(m => m) shouldBe ...
-      */
+      child2.resolve_father_id(m => m) shouldBe fatherId
 
       // sample data
       val currency = new Currency
@@ -524,14 +530,19 @@ class QuereaseTests extends FlatSpec with Matchers {
     // test resolver in filter
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_1"), Map("mother" -> "mother"))._1 should be(
       "person" +
-      "[mother_id = checked_resolve(:mother?, array(person;person[person.mother_id]person? mother[[mother.name || mother.surname = :mother?]]{person.id}@(2))," +
-      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' || coalesce(:mother?, 'null'))" +
+      "[mother_id = checked_resolve(if_defined_or_else(:mother?, :mother?, null)," +
+      " array(person;person[person.mother_id]person? mother[" +
+      "[if_defined_or_else(:mother?, mother.name || mother.surname = :mother? & person.id ~ '%6', false)]]{person.mother_id}@(2))," +
+      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' ||" +
+      " if_defined_or_else(:mother?, coalesce(:mother?, 'null'), '[missing]'))" +
       "] {person.name}"
     )
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_2"), Map("mother" -> "mother"))._1 should be(
       "person" +
-      "[person[mother_id = checked_resolve(:mother?, array(person[[person.name || ' ' || person.surname || ' (#1)' = :mother?]]{person.id}@(2))," +
-      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' || coalesce(:mother?, 'null'))]{1}" +
+      "[person[mother_id = checked_resolve(if_defined_or_else(:mother?, :mother?, null)," +
+      " array(person[[person.name || ' ' || person.surname || ' (#1)' = :mother?]]{person.id}@(2))," +
+      " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_2) - ' ||" +
+      " if_defined_or_else(:mother?, coalesce(:mother?, 'null'), '[missing]'))]{1}" +
       "] {person.name}"
     )
 
@@ -654,6 +665,7 @@ object QuereaseTests {
     Env.dialect = HSQLDialect
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
+    Env.setMacros(new Macros)
     Env.conn = conn
   }
   def clearEnv = {
