@@ -532,7 +532,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       "person" +
       "[mother_id = checked_resolve(if_defined_or_else(:mother?, :mother?, null)," +
       " array(person;person[person.mother_id]person? mother[" +
-      "[if_defined_or_else(:mother?, mother.name || mother.surname = :mother? & person.id ~ '%6', false)]]{person.mother_id}@(2))," +
+      "[if_defined_or_else(:mother?, mother.name || mother.surname = :mother & person.id ~ '%6', false)]]{person.mother_id}@(2))," +
       " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' ||" +
       " if_defined_or_else(:mother?, coalesce(:mother?, 'null'), '[missing]'))" +
       "] {person.name}"

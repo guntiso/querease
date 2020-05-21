@@ -367,7 +367,7 @@ table: person
 fields:
 - name
 filter:
-- mother_id = ^resolver_test_person_1[if_defined_or_else(:mother?, ^mother = :mother? & id ~ '%6', false)]{mother_id}
+- mother_id = ^resolver_test_person_1[if_defined_or_else(:mother?, ^mother = :mother & id ~ '%6', false)]{mother_id}
 
 name: filter_with_resolver_test_2
 table: person

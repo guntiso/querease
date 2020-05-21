@@ -21,7 +21,7 @@ object QuereaseExpressions {
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
 
   trait Parser extends QueryParsers with ExpTransformer {
-    val Placeholder = Variable(null, null, true)
+    val Placeholder = Variable(null, null, false)
     def extractVariables(exp: String) =
       traverser(variableExtractor)(Nil)(parseExp(exp)).reverse
     def extractPlaceholdersAndVariables(exp: String) =
@@ -398,7 +398,12 @@ trait QuereaseExpressions { this: Querease =>
         }
         if (isResolver) {
           val resolverVars = traverser(placeholderAndVariableExtractor)(Nil)(q).reverse
-          val resolverVarsTresql = resolverVars.map { case Placeholder => "_" case v => v.tresql }.distinct
+          val optionalVarsSet = resolverVars.filter(_.opt).map(_.copy(opt = false).tresql).toSet
+          val resolverVarsTresql = resolverVars.map {
+            case Placeholder => "_"
+            case v if !v.opt => v.tresql
+            case v if  v.opt => v.copy(opt = false).tresql
+          }.distinct.map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
           val resolvableName = Option(ctx.fieldName).orElse(resolverVars.filter(_ != Placeholder).headOption.map(_.variable)).orNull
           val resolvablesExpression = resolvablesMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
           val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolvablesExpression)
