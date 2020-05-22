@@ -164,6 +164,29 @@ object nested_resolver_test_1 {
       .unique[java.lang.Long]
   }
 }
+class optional_params_resolver_test_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var mother_id: java.lang.Long = null
+  var father_id: java.lang.Long = null
+  def resolve_mother_id = {
+    tresql"""{coalesce(if_defined_or_else(:mother_id?, convert(:mother_id, `BIGINT`), convert(:father_id, `BIGINT`)), if_defined_or_else(:id?, convert(:id?, `BIGINT`), -1))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+  def resolve_father_id = {
+    tresql"""{checked_resolve(coalesce(:father_id, if_defined_or_else(:mother_id?, :mother_id?, null), if_defined_or_else(:id?, :id?, null)), array(person[id = coalesce(:father_id, if_defined_or_else(:mother_id?, :mother_id, null), if_defined_or_else(:id?, :id?, null))]{id}@(2)), 'Failed to identify value of "father_id" (from optional_params_resolver_test_1) - ' || concat_ws(', ', coalesce(:father_id, 'null'), if_defined_or_else(:mother_id?, coalesce(:mother_id?, 'null'), '[missing]'), if_defined_or_else(:id?, coalesce(:id?, 'null'), '[missing]')))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object optional_params_resolver_test_1 {
+  def resolve_mother_id(mother_id: Option[java.lang.Long], father_id: java.lang.Long, id: Option[java.lang.Long]) = {
+    tresql"""{coalesce(if_defined_or_else(:mother_id?, convert(:mother_id, `BIGINT`), convert(:father_id, `BIGINT`)), if_defined_or_else(:id?, convert(:id?, `BIGINT`), -1))}"""(Env.withParams(Map("father_id" -> father_id) ++ List(Option(mother_id).filter(_.nonEmpty).map(_.get).map(v => "mother_id" -> v), Option(id).filter(_.nonEmpty).map(_.get).map(v => "id" -> v)).filter(_.nonEmpty).map(_.get).toMap))
+      .unique[java.lang.Long]
+  }
+  def resolve_father_id(father_id: java.lang.Long, mother_id: Option[java.lang.Long], id: Option[java.lang.Long]) = {
+    tresql"""{checked_resolve(coalesce(:father_id, if_defined_or_else(:mother_id?, :mother_id?, null), if_defined_or_else(:id?, :id?, null)), array(person[id = coalesce(:father_id, if_defined_or_else(:mother_id?, :mother_id, null), if_defined_or_else(:id?, :id?, null))]{id}@(2)), 'Failed to identify value of "father_id" (from optional_params_resolver_test_1) - ' || concat_ws(', ', coalesce(:father_id, 'null'), if_defined_or_else(:mother_id?, coalesce(:mother_id?, 'null'), '[missing]'), if_defined_or_else(:id?, coalesce(:id?, 'null'), '[missing]')))}"""(Env.withParams(Map("father_id" -> father_id) ++ List(Option(mother_id).filter(_.nonEmpty).map(_.get).map(v => "mother_id" -> v), Option(id).filter(_.nonEmpty).map(_.get).map(v => "id" -> v)).filter(_.nonEmpty).map(_.get).toMap))
+      .unique[java.lang.Long]
+  }
+}
 class person extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

@@ -119,16 +119,23 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       findField_(descViewDef, nameParts.last)
     }
   }
+  private def getParamNames(expression: String): Seq[String] = {
+    val variables = qe.parser.extractVariables(expression)
+    val optionalVarsSet =
+      variables.filter(_.opt).map(_.copy(opt = false).tresql.replaceAll("^:", "")).toSet
+    variables.map(v => (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", ""))
+      .distinct
+      .map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
+  }
   def instanceResolverDef(
       viewDef: ViewDefBase[FieldDefBase[Type]],
       fieldDef: FieldDefBase[Type],
       resolverExpression: String
   ): String = {
-    val variables = qe.parser.extractVariables(resolverExpression)
-    val paramNames: Seq[String] =
-      variables.map(v => (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", ""))
-        .distinct
-        .filterNot(isFieldDefined(viewDef, _))
+    val paramNames =
+      getParamNames(resolverExpression)
+        .filterNot(n =>
+          isFieldDefined(viewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
     val defaultParamsString = "this.toMap"
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
@@ -137,10 +144,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       fieldDef: FieldDefBase[Type],
       resolverExpression: String
   ): String = {
-    val variables = qe.parser.extractVariables(resolverExpression)
-    val paramNames: Seq[String] =
-      variables.map(v => (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", ""))
-        .distinct
+    val paramNames = getParamNames(resolverExpression)
     val defaultParamsString = ""
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
@@ -152,9 +156,13 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       resolverExpression: String
   ): String = {
     val hasDefaultParams = defaultParamsString != null && defaultParamsString != ""
+    val optionalParamsSet =
+      Option(paramNames).getOrElse(Nil)
+        .filter(_ endsWith "?").filterNot(_ == "?").map(_ dropRight 1).toSet
     val paramNamesReduced =
       Option(paramNames)
         .getOrElse(Nil)
+        .map(n => if ((n endsWith "?") && (n != "?")) n dropRight 1 else n)
         .map { name =>
           if (SimpleIdentR.pattern.matcher(name).matches)
             name
@@ -168,33 +176,43 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
                  nameParts(0)
             else null
           }
-        }.zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1)
+        }.zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1) // distinct (with null) for scala 2.10
     val hasKnownParams = paramNamesReduced.filter(_ != null).nonEmpty
     val notFoundInChild = paramNamesReduced.exists(_ == null)
+    val hasOptionalParams = paramNamesReduced.exists(optionalParamsSet.contains)
     val NotFoundParamName = "`[APPLY OTHER]`"
     def varName(p: String) =
       if (SimpleIdentR.pattern.matcher(p).matches) p
       else Variable(p, Nil, false).tresql.replaceAll("^:", "")
     val paramsKeyValueScalaString =
-      paramNamesReduced.filter(_ != null).map { p =>
+      paramNamesReduced.filter(_ != null).filterNot(optionalParamsSet.contains).map { p =>
         val paramType = resolverParamType(viewDef, varName(p))
         if (paramType.isComplexType)
              s""""$p" -> Option(${scalaNameString(p)}).map(_.toMap).orNull"""
         else s""""$p" -> ${scalaNameString(p)}"""
+      }.mkString(", ")
+    val optionalParamsKeyValueScalaString =
+      paramNamesReduced.filter(_ != null).filter(optionalParamsSet.contains).map { p =>
+        val paramType = resolverParamType(viewDef, varName(p))
+        val value = if (paramType.isComplexType) "Option(v).map(_.toMap).orNull" else "v"
+        s"""Option(${scalaNameString(p)}).filter(_.nonEmpty).map(_.get).map(v => "$p" -> $value)"""
       }.mkString(", ")
     val argsString =
       if (paramNamesReduced.nonEmpty)
         paramNamesReduced.map { p =>
           if (p == null)
             s"$NotFoundParamName: Map[String, Any] => Map[String, Any]"
+          else if (optionalParamsSet contains p)
+            s"""${scalaNameString(p)}: Option[${resolverParamTypeName(viewDef, varName(p))}]"""
           else
             s"""${scalaNameString(p)}: ${resolverParamTypeName(viewDef, varName(p))}"""
         }.mkString("(", ", ", ")")
       else ""
     val paramsStringKnown =
-      List(!(hasDefaultParams || hasKnownParams) -> "Map.empty",
+      List(!(hasDefaultParams || hasKnownParams || hasOptionalParams) -> "Map.empty",
            hasDefaultParams         ->    defaultParamsString,
-           hasKnownParams           ->  s"Map($paramsKeyValueScalaString)"
+           hasKnownParams           ->  s"Map($paramsKeyValueScalaString)",
+           hasOptionalParams        ->  s"List($optionalParamsKeyValueScalaString).filter(_.nonEmpty).map(_.get).toMap"
       ).filter(_._1).map(_._2).mkString(" ++ ")
     val paramsString =
       if (notFoundInChild) s"$NotFoundParamName($paramsStringKnown)" else paramsStringKnown

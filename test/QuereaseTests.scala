@@ -205,6 +205,20 @@ class QuereaseTests extends FlatSpec with Matchers {
         qe.countAll[FilterWithResolverTest1](Map("mother" -> "dada"))
       }).getMessage shouldBe """Failed to identify value of "mother" (from filter_with_resolver_test_1) - dada"""
 
+      // resolver tests with optional bind variable
+      OptionalParamsResolverTest1.resolve_mother_id(null,       null, null      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(null,       null, None      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(null,       null, Some(null)) shouldBe  null
+      OptionalParamsResolverTest1.resolve_mother_id(null,       null, Some(77)  ) shouldBe  77
+      OptionalParamsResolverTest1.resolve_mother_id(null,       null, null      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(None,       null, null      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(Some(null), null, null      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(Some(1000), null, null      ) shouldBe  1000
+      OptionalParamsResolverTest1.resolve_mother_id(null,       22,   null      ) shouldBe  22
+      OptionalParamsResolverTest1.resolve_mother_id(None,       22,   null      ) shouldBe  22
+      OptionalParamsResolverTest1.resolve_mother_id(Some(null), 22,   null      ) shouldBe -1
+      OptionalParamsResolverTest1.resolve_mother_id(Some(1000), 22,   null      ) shouldBe  1000
+
       //resolver test with bind variable from substructure
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
