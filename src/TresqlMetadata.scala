@@ -64,7 +64,7 @@ class TresqlMetadata(
         mojozTable.cols.map("- " + colToString(_)),
         if (table.key.cols.size > 0) "pk: " + table.key.cols.mkString(", ") else Nil,
         if (table.rfs.size > 0) "refs:" else Nil,
-        table.rfs.toSeq.flatMap(tr =>
+        table.rfs.toSeq.sortBy(_._1).flatMap(tr =>
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")
     tableDefs.map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"

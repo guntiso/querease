@@ -1,0 +1,62 @@
+table: account
+columns:
+- id ! long
+- bank_id ! long
+- billing_account ! string
+- last_modified ! dateTime
+pk: id
+refs:
+- bank_id -> bank(id)
+
+table: account_currency
+columns:
+- account_id ! long
+- currency_code ! string
+refs:
+- account_id -> account(id)
+- currency_code -> currency(code)
+
+table: bank
+columns:
+- id ! long
+- code ! string
+- country_code string
+- name ! string
+- name_eng string
+- name_rus string
+pk: id
+refs:
+- country_code -> country(code)
+
+table: country
+columns:
+- code ! string
+- code3 ! string
+- code_n3 ! string
+- name ! string
+- name_eng string
+- name_rus string
+- is_active ! boolean
+- is_eu ! boolean
+pk: code
+
+table: currency
+columns:
+- code ! string
+- name ! string
+- name_eng ! string
+- name_rus ! string
+pk: code
+
+table: person
+columns:
+- id ! long
+- name ! string
+- surname string
+- sex ! string
+- mother_id long
+- father_id long
+pk: id
+refs:
+- mother_id -> person(id)
+- father_id -> person(id)

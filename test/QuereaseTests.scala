@@ -638,6 +638,16 @@ class QuereaseTests extends FlatSpec with Matchers {
       toFile(dtosPath + "/" + "dtos-out-produced.scala", producedDtos)
     expectedDtos shouldBe producedDtos
   }
+
+  "tresql metadata" should "report correct table metadata" in {
+    val md = new TresqlMetadata(qe.tableMetadata.tableDefs)
+    val mdPath = "test/metadata"
+    val expectedMd: String = fileToString(mdPath + "/" + "tresql-table-metadata-out.yaml")
+    val producedMd: String = md.tableMetadataString
+    if (expectedMd != producedMd)
+      toFile(mdPath + "/" + "tresql-table-metadata-out-produced.yaml", producedMd)
+    expectedMd shouldBe producedMd
+  }
 }
 
 object QuereaseTests {
@@ -663,7 +673,9 @@ object QuereaseTests {
      private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
      override lazy val tableMetadata =
        new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
-     override lazy val yamlMetadata = YamlMd.fromFiles(path = "test")
+     override lazy val yamlMetadata =
+        YamlMd.fromFiles(path = "test/tables") ++
+        YamlMd.fromFiles(path = "test/views")
      override lazy val viewDefs = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
        .extendedViewDefs.toMap
