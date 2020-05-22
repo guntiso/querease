@@ -195,7 +195,7 @@ class QuereaseTests extends FlatSpec with Matchers {
         toFile(dataPath + "/" + "forefathers-out-produced.txt", producedForefathers)
       expectedForefathers should be(producedForefathers)
 
-      //filter resolver tests with optional bind variable
+      // filter resolver tests with optional bind variable
       qe.countAll[FilterWithResolverTest1](Map.empty) shouldBe 0
       qe.countAll[FilterWithResolverTest1](Map("mother" -> null)) shouldBe 0
       qe.countAll[FilterWithResolverTest1](Map("mother" -> ("Minna" + "Priedīte"))) shouldBe 1
@@ -204,6 +204,14 @@ class QuereaseTests extends FlatSpec with Matchers {
       (intercept[java.sql.SQLException] {
         qe.countAll[FilterWithResolverTest1](Map("mother" -> "dada"))
       }).getMessage shouldBe """Failed to identify value of "mother" (from filter_with_resolver_test_1) - dada"""
+
+      // filter resolver tests with col expression etc
+      qe.countAll[FilterWithResolverTest3A](Map("mother" -> null)) shouldBe 0
+      qe.countAll[FilterWithResolverTest3A](Map("mother" -> ("Minna" + "Priedīte"))) shouldBe 1
+      qe.countAll[FilterWithResolverTest3A](Map("mother" -> ("Helēna" + "Stūrīte"))) shouldBe 6
+      qe.countAll[FilterWithResolverTest3B](Map("mother" -> null)) shouldBe 0
+      qe.countAll[FilterWithResolverTest3B](Map("mother" -> ("Minna" + "Priedīte"))) shouldBe 1
+      qe.countAll[FilterWithResolverTest3B](Map("mother" -> ("Helēna" + "Stūrīte"))) shouldBe 6
 
       // resolver tests with optional bind variable
       OptionalParamsResolverTest1.resolve_mother_id(null,       null, null      ) shouldBe -1

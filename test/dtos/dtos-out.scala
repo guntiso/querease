@@ -150,6 +150,12 @@ class filter_with_resolver_test_1 extends Dto {
 class filter_with_resolver_test_2 extends Dto {
   var name: String = null
 }
+class filter_with_resolver_test_3_a extends Dto {
+  var name: String = null
+}
+class filter_with_resolver_test_3_b extends Dto {
+  var name: String = null
+}
 class nested_resolver_test_1 extends Dto {
   var other_field: String = null
   var mother: String = null

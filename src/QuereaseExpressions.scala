@@ -19,6 +19,7 @@ object QuereaseExpressions {
 
   private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
+  private val IdentR = s"^$IdentifierPatternString$$".r
 
   trait Parser extends QueryParsers with ExpTransformer {
     val Placeholder = Variable(null, null, false)
@@ -363,7 +364,14 @@ trait QuereaseExpressions { this: Querease =>
                 .map(_.cols.map(_.tresql))
                 .orElse(Option(refFieldName).map(rf => List(rf)))
                 .getOrElse(Nil)
-                .map(colName => new mojoz.metadata.FieldDef(colName))
+                .map {
+                  // FIXME support any expression, allow alias
+                  case IdentR(colName, _) =>
+                    new mojoz.metadata.FieldDef(colName)
+                  case colExpr =>
+                    (new mojoz.metadata.FieldDef(name = null))
+                      .copy(isExpression = true, expression = colExpr)
+                }
                 .map(_.copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias))
             def fieldRefExtractor: Traverser[List[String]] = { fieldRefs => {
               case nestedQ: Query =>

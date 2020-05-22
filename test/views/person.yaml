@@ -384,6 +384,20 @@ fields:
 filter:
 - person[mother_id = ^person_choice_without_resolver[^full_name = :mother?]{id}]{1}
 
+name: filter_with_resolver_test_3_a
+table: person
+fields:
+- name
+filter:
+- mother_id = ^resolver_test_person_1[^mother = :mother]{min(mother_id)}
+
+name: filter_with_resolver_test_3_b
+table: person
+fields:
+- name
+filter:
+- mother_id = (^resolver_test_person_1[^mother = :mother]{mother.id}){min(id)}
+
 # test field-ref in filter
 name: filter_with_field_ref_test_1
 table: person
