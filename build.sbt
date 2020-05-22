@@ -131,7 +131,7 @@ sourceGenerators in Test += Def.task {
 
 initialCommands in console := "import org.tresql._; import querease._; import mojoz.metadata._"
 
-initialCommands in (Test, console) := "import org.tresql._; import querease._; import mojoz.metadata._; import test._"
+initialCommands in (Test, console) := "import dto._; import org.tresql._; import querease._; import mojoz.metadata._; import test._; import QuereaseTests._; setEnv()"
 
 publishTo := version { v: String =>
   val nexus = "https://oss.sonatype.org/"
