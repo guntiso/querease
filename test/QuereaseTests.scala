@@ -403,6 +403,17 @@ class QuereaseTests extends FlatSpec with Matchers {
       bankWithAcc.accounts(0).last_modified = null
       bankWithAcc.toMap shouldBe Map("id" -> accb.id, "code" -> "b2", "name" -> "Bank 2 updated name",
         "accounts" -> List(Map("id" -> accountId, "billing_account" -> bacNr, "last_modified" -> null)))
+
+      // save with lookup tests
+      var accwb2 = qe.get[AccountWithBank2](accountId).get
+      accwb2.toSaveableMap shouldBe Map("id" -> accountId, "billing_account" -> bacNr,
+        "bank_id" -> Map("id" -> accb.id, "code" -> "b2", "*country_code" -> null))
+      accwb2.billing_account = bacNr2
+      accwb2.bank.code = "b2-upd"
+      qe.save(accwb2)
+      accwb2 = qe.get[AccountWithBank2](accountId).get
+      accwb2.toSaveableMap shouldBe Map("id" -> accountId, "billing_account" -> bacNr2,
+        "bank_id" -> Map("id" -> accb.id, "code" -> "b2-upd", "*country_code" -> null))
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {

@@ -39,6 +39,16 @@ object account_with_bank {
       .unique[java.lang.Long]
   }
 }
+class account_with_bank_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var billing_account: String = null
+  var bank: account_with_bank_2_bank = null
+}
+class account_with_bank_2_bank extends DtoWithId {
+  var id: java.lang.Long = null
+  var code: String = null
+  var country_code: String = null
+}
 class account_with_bank_bank extends DtoWithId {
   var id: java.lang.Long = null
   var code: String = null

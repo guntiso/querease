@@ -75,3 +75,15 @@ fields:
     - country.code
 filter:
 - bank_id
+
+name: account_with_bank_2
+table: account
+fields:
+- id
+- billing_account
+- bank:
+    table: bank
+    fields:
+    - id
+    - code
+    - country.code
