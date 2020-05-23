@@ -423,6 +423,46 @@ object person_with_complex_type_resolvers_2_father {
       .unique[String]
   }
 }
+class person_with_parents_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var mother: person_with_parents_1_mother = null
+  var father: person_with_parents_1_father = null
+}
+class person_with_parents_1_father extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  def resolve_sex = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object person_with_parents_1_father {
+  def resolve_sex(sex: String) = {
+    tresql"""{coalesce(:sex, 'M')}"""(Env.withParams(Map("sex" -> sex)))
+      .unique[String]
+  }
+}
+class person_with_parents_1_mother extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  def resolve_sex = {
+    tresql"""{coalesce(:sex, 'F')}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object person_with_parents_1_mother {
+  def resolve_sex(sex: String) = {
+    tresql"""{coalesce(:sex, 'F')}"""(Env.withParams(Map("sex" -> sex)))
+      .unique[String]
+  }
+}
 class ref_expression_test_person_2b extends DtoWithId {
   var id: java.lang.Long = null
   var mother: String = null

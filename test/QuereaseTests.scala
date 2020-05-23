@@ -414,6 +414,32 @@ class QuereaseTests extends FlatSpec with Matchers {
       accwb2 = qe.get[AccountWithBank2](accountId).get
       accwb2.toSaveableMap shouldBe Map("id" -> accountId, "billing_account" -> bacNr2,
         "bank_id" -> Map("id" -> accb.id, "code" -> "b2-upd", "*country_code" -> null))
+      // save with lookup tests - auto-resolve ambiguity from alias
+      var pwp = new PersonWithParents1
+      pwp.name = "With"
+      pwp.surname = "Parents"
+      pwp.sex = "M"
+      pwp.father = new PersonWithParents1Father
+      pwp.father.name = "Father-With"
+      pwp.father.surname = "Child"
+      pwp.mother = new PersonWithParents1Mother
+      pwp.mother.name = "Mother-With"
+      pwp.mother.surname = "Child"
+      val pwpId = qe.save(pwp)
+      pwp = qe.get[PersonWithParents1](pwpId).get
+      val pwpMotherId = pwp.mother.id
+      val pwpFatherId = pwp.father.id
+      pwp.mother.name shouldBe "Mother-With"
+      pwp.mother.name = "Mother-With-Upd"
+      qe.save(pwp)
+      pwp = qe.get[PersonWithParents1](pwpId).get
+      pwpMotherId shouldBe pwp.mother.id
+      pwpFatherId shouldBe pwp.father.id
+      pwp.mother.name shouldBe "Mother-With-Upd"
+      pwp.father = null
+      qe.save(pwp)
+      qe.get[Person](pwpId).get.mother_id shouldBe pwpMotherId
+      qe.get[Person](pwpId).get.father_id shouldBe null
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {

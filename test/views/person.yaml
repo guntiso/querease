@@ -7,6 +7,28 @@ fields:
 - mother_id
 - father_id
 
+name:     person_with_parents_1
+table:    person p
+fields:
+- id
+- name
+- surname
+- sex
+- mother :
+    table:  person m
+    fields:
+    - id
+    - name
+    - surname
+    - sex -> = coalesce(_, 'F')
+- father :
+    table:  person f
+    fields:
+    - id
+    - name
+    - surname
+    - sex -> = coalesce(_, 'M')
+
 name:  person_info
 table: person p
 fields:
