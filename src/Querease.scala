@@ -371,7 +371,20 @@ trait QueryStringBuilder { this: Querease =>
       )
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
-      val joinToParent = Option(f.joinToParent) getOrElse ""
+      val joinToParent = Option(f.joinToParent).orElse {
+        if (view.table != null && childViewDef.table != null) {
+          val t1 = Option(view.tableAlias).getOrElse(view.table)
+          val t2 = Option(childViewDef.tableAlias).getOrElse(childViewDef.table)
+          tableMetadata.tableDef(view).refs
+            .find(r => r.defaultRefTableAlias == f.name && r.refTable == childViewDef.table)
+            .map { r =>
+              r.cols.zip(r.refCols).map {
+                case (col, refCol) => s"$t1.$col = $t2.$refCol"
+              }.mkString("[", " & ", "]")
+            }
+        }
+        else None
+      }.getOrElse("")
       val sortDetails = Option(f.orderBy match {
         case null => childViewDef.orderBy match {
           case null | Nil =>

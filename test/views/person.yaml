@@ -143,9 +143,7 @@ fields:
     - name
     - surname
     - sex -> = coalesce(_, 'F')
-# FIXME imply join from alias!
-# father -> = person[name = :father.name & surname = :father.surname]{id} :
-- father [p.father_id = f.id] -> = person[name = :father.name & surname = :father.surname]{id} :
+- father -> = person[name = :father.name & surname = :father.surname]{id} :
     table:  person f
     save-to:
     fields:
