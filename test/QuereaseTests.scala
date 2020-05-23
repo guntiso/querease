@@ -229,10 +229,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       OptionalParamsResolverTest1.resolve_mother_id(Some(null), 22,   null      ) shouldBe -1
       OptionalParamsResolverTest1.resolve_mother_id(Some(1000), 22,   null      ) shouldBe  1000
 
-      //resolver test with bind variable from substructure
+      // resolver test with bind variable from substructure
       val acc = new AccountWithBank
       val accb = new AccountWithBankBank
       val bacNr = "123456789"
+      val bacNr2 = "111-222"
       accb.code = "BNP"
       accb.country_code = "FR"
       accb.id = 10001
@@ -373,6 +374,35 @@ class QuereaseTests extends FlatSpec with Matchers {
       (intercept[java.sql.SQLException] {
         resolverTestAccountCurrency1.resolve_currency_code
       }).getMessage shouldBe """Failed to identify value of "currency_name" (from resolver_test_account_currency_1) - Euro-Z"""
+
+      // save with children test
+      var bankWithAcc = qe.get[BankWithAccounts1](accb.id).get
+      bankWithAcc.accounts(0).last_modified = null
+      bankWithAcc.toMap shouldBe Map("id" -> accb.id, "code" -> "b2", "name" -> "Bank 2 updated name",
+        "accounts" -> List(Map("id" -> accountId, "billing_account" -> bacNr, "last_modified" -> null)))
+      bankWithAcc.accounts(0).billing_account = bacNr2
+      qe.save(bankWithAcc) // child update
+      qe.get[AccountWithBank](accountId).get.bank.id shouldBe accb.id
+      qe.get[AccountWithBank](accountId).get.billing_account shouldBe bacNr2
+      bankWithAcc = qe.get[BankWithAccounts1](accb.id).get
+      bankWithAcc.accounts(0).last_modified = null
+      bankWithAcc.toMap shouldBe Map("id" -> accb.id, "code" -> "b2", "name" -> "Bank 2 updated name",
+        "accounts" -> List(Map("id" -> accountId, "billing_account" -> bacNr2, "last_modified" -> null)))
+      bankWithAcc.accounts(0).billing_account = bacNr
+      qe.save(bankWithAcc) // child update
+      val acc2 = new BankWithAccounts1Accounts
+      acc2.billing_account = bacNr2
+      bankWithAcc.accounts = acc2 :: bankWithAcc.accounts
+      qe.save(bankWithAcc) // child add
+      qe.countAll[AccountWithBank](Map("bank_id" -> accb.id)) shouldBe 2
+      bankWithAcc = qe.get[BankWithAccounts1](accb.id).get
+      bankWithAcc.accounts = bankWithAcc.accounts.reverse.tail
+      qe.save(bankWithAcc) // child delete
+      qe.countAll[AccountWithBank](Map("bank_id" -> accb.id)) shouldBe 1
+      bankWithAcc = qe.get[BankWithAccounts1](accb.id).get
+      bankWithAcc.accounts(0).last_modified = null
+      bankWithAcc.toMap shouldBe Map("id" -> accb.id, "code" -> "b2", "name" -> "Bank 2 updated name",
+        "accounts" -> List(Map("id" -> accountId, "billing_account" -> bacNr, "last_modified" -> null)))
     } finally clearEnv
   }
   "objects" should "produce correct save-to maps" in {

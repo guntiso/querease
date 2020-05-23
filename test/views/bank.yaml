@@ -8,6 +8,21 @@ fields:
  - name
 order: ~id
 
+name:   bank_with_accounts_1
+table:  bank
+fields:
+- id
+- code
+- name
+- accounts[+-=] * :
+    table:  account
+    fields:
+    - id
+    - billing_account
+    - last_modified -> = now()
+    order:
+    - id
+
 name: bank_list_row_with_filter
 table: bank
 fields:

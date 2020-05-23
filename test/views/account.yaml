@@ -73,3 +73,5 @@ fields:
     - id
     - code
     - country.code
+filter:
+- bank_id
