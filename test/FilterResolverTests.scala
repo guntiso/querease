@@ -12,7 +12,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val FieldRefs = "^blah".split("\\s+").toSet
   private val IntervalOps = "< <=".split("\\s+").toSet
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
-  private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d", "a<<")
+  private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d")//, "a<<")
 
   val transformer = new Querease with ScalaDtoQuereaseIo
 
@@ -255,12 +255,10 @@ class FilterResolverTests extends FlatSpec with Matchers {
       }
     }
   }
-/*
   "filter sugar syntax resolver" should "bypass everything else" in {
     OtherFilters foreach { other =>
       resolve(other) should be(other)
       resolve(other, b) should be(other)
     }
   }
-*/
 }
