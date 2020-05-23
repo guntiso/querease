@@ -2,6 +2,8 @@ package test
 
 import java.io.PrintWriter
 import java.sql.{Connection, DriverManager, Timestamp}
+import java.text.SimpleDateFormat
+import java.util.Date
 
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
@@ -651,8 +653,24 @@ class QuereaseTests extends FlatSpec with Matchers {
 }
 
 object QuereaseTests {
+  class ThreadLocalDateFormat(val pattern: String) extends ThreadLocal[SimpleDateFormat] {
+    override def initialValue = { val f = new SimpleDateFormat(pattern); f.setLenient(false); f }
+    def apply(date: Date) = get.format(date)
+    def format(date: Date) = get.format(date)
+  }
+  val Timestamp = new ThreadLocalDateFormat("yyyy.MM.dd HH:mm:ss.SSS")
+
   implicit val Env = new ThreadLocalResources {
-    override def logger = (msg, _, topic) => if (topic != LogTopic.sql_with_params) println(msg)
+    override def logger = { (msg, _, topic) =>
+      val topicName = topic match {
+        case LogTopic.info   => "info  "
+        case LogTopic.params => "params"
+        case LogTopic.sql    => "sql --"
+        case LogTopic.tresql => "tresql"
+        case LogTopic.sql_with_params => null
+      }
+      if (topicName != null) println(Timestamp(new Date()) + s"  [$topicName]  $msg")
+    }
   }
   def dbName(name: String) =
     Naming.dbName(name)
