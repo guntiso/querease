@@ -674,11 +674,18 @@ class QuereaseTests extends FlatSpec with Matchers {
   "tresql metadata" should "report correct table metadata" in {
     val md = new TresqlMetadata(qe.tableMetadata.tableDefs)
     val mdPath = "test/metadata"
-    val expectedMd: String = fileToString(mdPath + "/" + "tresql-table-metadata-out.yaml")
+    val mdFilePath: String = mdPath + "/" + "tresql-table-metadata-out.yaml"
+    val expectedMd: String = fileToString(mdFilePath)
     val producedMd: String = md.tableMetadataString
     if (expectedMd != producedMd)
       toFile(mdPath + "/" + "tresql-table-metadata-out-produced.yaml", producedMd)
     expectedMd shouldBe producedMd
+    // roundtrip test
+    val mdFromFile = (new TresqlMetadataFactory).create(Map("tableMetadataFile" -> mdFilePath)).metadata.asInstanceOf[TresqlMetadata]
+    val roundtripProducedMd = mdFromFile.tableMetadataString
+    if (expectedMd != roundtripProducedMd)
+      toFile(mdPath + "/" + "tresql-table-metadata-out-produced-round.yaml", roundtripProducedMd)
+    expectedMd shouldBe roundtripProducedMd
   }
 }
 
