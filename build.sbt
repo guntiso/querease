@@ -121,7 +121,7 @@ sourceGenerators in Test += Def.task {
             "import org.tresql.CoreTypes._"
         else null,
         "import test.{ Dto, DtoWithId }",
-        "import test.QuereaseTests.Env",
+        "import test.QuereaseDbTests.Env",
         "").filter(_ != null),
       viewDefs,
       Nil)
