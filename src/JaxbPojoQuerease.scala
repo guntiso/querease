@@ -106,7 +106,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
         if (t == classOf[Int] || t == classOf[java.lang.Integer])
           new java.lang.Integer(d.toInt)
         else if (t == classOf[Long] || t == classOf[java.lang.Long])
-          new java.lang.Long(d.toLong)
+          java.lang.Long.valueOf(d.toLong)
         else if (t == classOf[Double] || t == classOf[java.lang.Double])
           d.doubleValue.asInstanceOf[Object]
         else if (t == classOf[java.math.BigDecimal])
@@ -119,7 +119,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
         if (t == classOf[Int] || t == classOf[java.lang.Integer])
           i
         else if (t == classOf[Long] || t == classOf[java.lang.Long])
-          new java.lang.Long(i.toLong)
+          java.lang.Long.valueOf(i.toLong)
         else if (t == classOf[Double] || t == classOf[java.lang.Double])
           i.doubleValue.asInstanceOf[Object]
         else if (t == classOf[java.math.BigDecimal])

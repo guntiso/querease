@@ -67,7 +67,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
       banksHv(0).total should be(2)
 
       def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
-        def toId(id: Long) = new java.lang.Long(id + 1000)
+        def toId(id: Long) = java.lang.Long.valueOf(id + 1000)
         val p = new Person
         p.id = toId(id)
         p.name = name
