@@ -67,7 +67,7 @@ object QuereasePostgresTests {
   )
   val createPostgresObjectsStatements =
     Seq(
-      "drop schema querease cascade",
+      "drop schema if exists querease cascade",
       "create schema querease authorization querease"
     ) ++
     SqlWriter.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
