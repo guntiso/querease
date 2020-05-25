@@ -95,7 +95,7 @@ fields:
 - x_.sibling2
 order:
 - sibling1
-- x_.sibling2
+- null x_.sibling2
 
 name:  siblings_alt
 table: person p
@@ -109,7 +109,7 @@ fields:
 - x_.sibling2
 order:
 - name
-- x_.sibling2
+- null x_.sibling2
 
 # hierarchy
 name:  father_tree
@@ -379,7 +379,7 @@ name: optional_params_resolver_test_1
 table: person p1
 fields:
 - id
-- mother_id -> = coalesce(if_defined_or_else(:mother_id?, convert(:mother_id, `BIGINT`), convert(:father_id, `BIGINT`)), if_defined_or_else(:id?, convert(:id?, `BIGINT`), -1))
+- mother_id -> = coalesce(if_defined_or_else(:mother_id?, :mother_id::bigint, :father_id::bigint), if_defined_or_else(:id?, :id?::bigint, -1))
 - father_id -> = person[id = coalesce(:father_id, if_defined_or_else(:mother_id?, :mother_id, null), if_defined_or_else(:id?, :id?, null))]{id}
 
 # test resolver in resolver
@@ -395,7 +395,7 @@ table: person
 fields:
 - name
 filter:
-- mother_id = ^resolver_test_person_1[if_defined_or_else(:mother?, ^mother = :mother & id ~ '%6', false)]{mother_id}
+- mother_id = ^resolver_test_person_1[if_defined_or_else(:mother?, ^mother = :mother & id::text ~ '%6', false)]{mother_id}
 
 name: filter_with_resolver_test_2
 table: person
@@ -416,7 +416,7 @@ table: person
 fields:
 - name
 filter:
-- mother_id = (^resolver_test_person_1[^mother = :mother]{mother.id}){min(id)}
+- mother_id = (^resolver_test_person_1[^mother = :mother]{mother.id}) x {min(id)}
 
 # test field-ref in filter
 name: filter_with_field_ref_test_1

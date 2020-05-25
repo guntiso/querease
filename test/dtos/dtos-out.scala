@@ -206,7 +206,7 @@ class optional_params_resolver_test_1 extends DtoWithId {
   var mother_id: java.lang.Long = null
   var father_id: java.lang.Long = null
   def resolve_mother_id = {
-    tresql"""{coalesce(if_defined_or_else(:mother_id?, convert(:mother_id, `BIGINT`), convert(:father_id, `BIGINT`)), if_defined_or_else(:id?, convert(:id?, `BIGINT`), -1))}"""(Env.withParams(this.toMap))
+    tresql"""{coalesce(if_defined_or_else(:mother_id?, :mother_id::bigint, :father_id::bigint), if_defined_or_else(:id?, :id?::bigint, -1))}"""(Env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
   def resolve_father_id = {
@@ -216,7 +216,7 @@ class optional_params_resolver_test_1 extends DtoWithId {
 }
 object optional_params_resolver_test_1 {
   def resolve_mother_id(mother_id: Option[java.lang.Long], father_id: java.lang.Long, id: Option[java.lang.Long]) = {
-    tresql"""{coalesce(if_defined_or_else(:mother_id?, convert(:mother_id, `BIGINT`), convert(:father_id, `BIGINT`)), if_defined_or_else(:id?, convert(:id?, `BIGINT`), -1))}"""(Env.withParams(Map("father_id" -> father_id) ++ List(Option(mother_id).filter(_.nonEmpty).map(_.get).map(v => "mother_id" -> v), Option(id).filter(_.nonEmpty).map(_.get).map(v => "id" -> v)).filter(_.nonEmpty).map(_.get).toMap))
+    tresql"""{coalesce(if_defined_or_else(:mother_id?, :mother_id::bigint, :father_id::bigint), if_defined_or_else(:id?, :id?::bigint, -1))}"""(Env.withParams(Map("father_id" -> father_id) ++ List(Option(mother_id).filter(_.nonEmpty).map(_.get).map(v => "mother_id" -> v), Option(id).filter(_.nonEmpty).map(_.get).map(v => "id" -> v)).filter(_.nonEmpty).map(_.get).toMap))
       .unique[java.lang.Long]
   }
   def resolve_father_id(father_id: java.lang.Long, mother_id: Option[java.lang.Long], id: Option[java.lang.Long]) = {

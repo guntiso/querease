@@ -2,20 +2,30 @@ package test
 
 import java.sql.DriverManager
 import mojoz.metadata.out.SqlWriter
+import org.tresql.CoreTypes
+import org.tresql.QueryBuilder
 import org.tresql.dialects.HSQLDialect
 import QuereaseDbTests.{setEnv, executeStatements}
 import QuereaseTests.qe
 
 class QuereaseHsqldbTests extends QuereaseDbTests {
   import QuereaseHsqldbTests._
+  override def dbName = "hsqldb"
   override def setEnv: Unit = setHsqldbEnv
   override def createDbObjects = executeStatements(createHsqldbObjectsStatements: _*)
 }
 
 object QuereaseHsqldbTests {
   Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
+  // TODO clean up when tresql fixed
+  private val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
+    case c: QueryBuilder#CastExpr => c.typ match {
+      case "bigint" => s"convert(${c.exp.sql}, BIGINT)"
+      case _ => c.exp.sql
+    }
+  }
   def getHsqldbConnection = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb", "SA", "")
-  def setHsqldbEnv = setEnv(HSQLDialect, getHsqldbConnection)
+  def setHsqldbEnv = setEnv(hsqlDialect, getHsqldbConnection)
   val hsqldb_custom_functions_statements = Seq(
     """create function array_length(sql_array bigint array) returns int
        language java deterministic no sql
@@ -47,5 +57,6 @@ object QuereaseHsqldbTests {
   val createHsqldbObjectsStatements =
     SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
     hsqldb_custom_functions_statements ++
-    Seq("CREATE SEQUENCE seq START WITH 10000")
+    Seq("CREATE SEQUENCE seq START WITH 10000",
+        "SET DATABASE COLLATION \"Latvian\"")
 }

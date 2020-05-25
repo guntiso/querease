@@ -2,6 +2,8 @@ Agnis
 Einārs
   Normunds
   Rolands
+Ēriks
+  Jorens
 Jānis
 Jānis
   Alfrēds
@@ -13,5 +15,3 @@ Pēteris
       Andris
         Kristers
       Guntis
-Ēriks
-  Jorens

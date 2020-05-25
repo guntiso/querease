@@ -8,9 +8,9 @@ Rolands Briedis
 Ineta Broča
 Marija Broča
   Ēriks Bročs
+Ēriks Bročs
 Jorens Bročs
   Ēriks Bročs
-Ēriks Bročs
 Aina Dorna
   Alfrēds Stūrītis, Jānis Stūrīts
 Valda Dorna
@@ -21,6 +21,7 @@ Sandra Kumpiņa
 Šarlote Kumpiņa
   Agnis Kumpiņš
 Agnis Kumpiņš
+Kristīne Ķiploka
 Anna Ozola
   Alfrēds Stūrītis, Jānis Stūrīts
 Dace Ozola
@@ -38,9 +39,9 @@ Andris Ozols
   Juris Ozols, Aleksandrs Priedītis, Pēteris Priedītis
 Guntis Ozols
   Juris Ozols, Aleksandrs Priedītis, Pēteris Priedītis
+Jānis Ozols
 Juris Ozols
   Aleksandrs Priedītis, Pēteris Priedītis
-Jānis Ozols
 Kristers Ozols
   Andris Ozols, Juris Ozols, Aleksandrs Priedītis, Pēteris Priedītis
 Minna Priedīte
@@ -55,4 +56,3 @@ Elmārs Stūrītis
 Ojārs Stūrītis
   Alfrēds Stūrītis, Jānis Stūrīts
 Jānis Stūrīts
-Kristīne Ķiploka

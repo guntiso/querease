@@ -22,7 +22,9 @@ libraryDependencies ++= Seq(
   "org.mojoz" %% "mojoz" % mojozV,
   // test
   "org.hsqldb" % "hsqldb" % "2.3.1" % "test",
-  "org.scalatest" %% "scalatest" % "3.1.1" % "test"
+  "com.typesafe" % "config" % "1.2.0" % "test",
+  "org.scalatest" %% "scalatest" % "3.1.1" % "test",
+  "org.postgresql" % "postgresql" % "42.2.5" % "test",
 )
 
 scalaSource in Compile := baseDirectory(_ / "src").value
@@ -51,6 +53,7 @@ resolvers ++= Seq(
 )
 
 unmanagedResourceDirectories in Test := baseDirectory(b => Seq(
+  b / "test" / "conf",
   b / "test" / "data",
   b / "test" / "tables",
   b / "test" / "views"
