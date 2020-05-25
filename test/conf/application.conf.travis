@@ -1,6 +1,1 @@
-querease.postgresql {
-  available = true
-  jdbc.url = "jdbc:postgresql://localhost:5432/querease"
-  user = querease
-  password = querease
-}
+querease.postgresql.available = true
