@@ -114,11 +114,11 @@ trait QuereaseExpressions { this: Querease =>
     * @param viewName    view name this expression is from
     * @param fieldName   field name this expression is from or null
     * @param contextName "filter" or "resolver" for now
-    * @param resolvablesExpression   expression for displaying values
+    * @param resolvablesMessageExpression   expression for displaying values
     */
   protected def resolverErrorMessageExpression(
-      viewName: String, fieldName: String, contextName: String, resolvablesExpression: String): String =
-    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $resolvablesExpression"""
+      viewName: String, fieldName: String, contextName: String, resolvablesMessageExpression: String): String =
+    s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $resolvablesMessageExpression"""
 
   /** Returns error message expression for resolver
     *
