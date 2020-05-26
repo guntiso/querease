@@ -1,6 +1,9 @@
 package querease
 
+import mojoz.metadata.FieldDef.FieldDefBase
+import mojoz.metadata.ViewDef.ViewDefBase
 import mojoz.metadata.TableDef
+import mojoz.metadata.Type
 import org.tresql.{CacheBase, SimpleCacheBase}
 import org.tresql.parsing.{Exp, ExpTransformer, Ident, QueryParsers, Variable}
 
@@ -20,6 +23,7 @@ object QuereaseExpressions {
   private[querease] val IdentifierPatternString = "([\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*\\.)*[\\p{IsLatin}_$][\\p{IsLatin}\\d_$]*"
   private[querease] val IdentifierExtractor = s"($IdentifierPatternString).*".r
   private val IdentR = s"^$IdentifierPatternString$$".r
+  private val SimpleIdentR = ("^[_\\p{IsLatin}][_\\p{IsLatin}0-9]*$").r
 
   trait Parser extends QueryParsers with ExpTransformer {
     val Placeholder = Variable(null, null, false)
@@ -88,16 +92,18 @@ trait QuereaseExpressions { this: Querease =>
     * @param bindVars    placeholder or variable expression strings
     */
   protected def resolvablesMessageExpression(
-      viewName: String, fieldName: String, contextName: String, bindVars: List[String]): String = {
-    def expr(v: String) =
+      viewName: String, fieldName: String, contextName: String, bindVars: List[(String, Option[Type])]): String = {
+    def expr(v: String, typeOpt: Option[Type]) = {
+      val cast = if (typeOpt.isDefined && typeOpt.get.name == "string") "" else "::text"
       if (v.startsWith(":") && v.endsWith("?"))
-         s"if_defined_or_else($v, coalesce($v, 'null'), ${resolvablesMessageMissingVarExpression(v)})"
-      else s"coalesce($v, 'null')"
-    val hasPlaceholder = bindVars.exists(_ == "_")
-    if (hasPlaceholder)
-      "coalesce(_, 'null')"
-    else bindVars.map(expr) match {
-      case Nil => "coalesce(_, 'null')"
+         s"if_defined_or_else($v, coalesce($v$cast, 'null'), ${resolvablesMessageMissingVarExpression(v)})"
+      else s"coalesce($v$cast, 'null')"
+    }
+    val placeholder = bindVars.find(_._1 == "_")
+    if (placeholder.isDefined)
+      expr("_", placeholder.get._2)
+    else bindVars.map(v => expr(v._1, v._2)) match {
+      case Nil => expr("_", None)
       case List(v) => v
       case l => l.mkString("concat_ws(', ', ", ", ", ")")
     }
@@ -114,6 +120,18 @@ trait QuereaseExpressions { this: Querease =>
       viewName: String, fieldName: String, contextName: String, resolvablesExpression: String): String =
     s"""'Failed to identify value of "$fieldName" (from $viewName) - ' || $resolvablesExpression"""
 
+  /** Returns error message expression for resolver
+    *
+    * @param viewName    view name this expression is from
+    * @param fieldName   field name this expression is from or null
+    * @param contextName "filter" or "resolver" for now
+    * @param bindVars    placeholder or variable expression strings
+    */
+  protected def resolverErrorMessageExpression(
+      viewName: String, fieldName: String, contextName: String, bindVars: List[(String, Option[Type])]): String =
+    resolverErrorMessageExpression(viewName, fieldName, contextName,
+      resolvablesMessageExpression(viewName, fieldName, contextName, bindVars))
+
 
   /** Returns resolvables expression for inclusion in resolver, where evaluation to not null enables resolve check.
     *
@@ -122,18 +140,21 @@ trait QuereaseExpressions { this: Querease =>
     * @param contextName "filter" or "resolver" for now
     * @param bindVars    placeholder or variable expression strings
     */
-  protected def resolvablesExpression(bindVars: List[String]): String = {
-    val hasPlaceholder = bindVars.exists(_ == "_")
-    def expr(v: String) =
+  protected def resolvablesExpression(
+      viewName: String, fieldName: String, contextName: String, bindVars: List[(String, Option[Type])]): String = {
+    val hasPlaceholder = bindVars.find(_._1 == "_").isDefined
+    def expr(v: String, typeOpt: Option[Type]) = {
+      val cast = if (typeOpt.isDefined && typeOpt.get.name == "string") "" else "::text"
       if (v.startsWith(":") && v.endsWith("?"))
-         s"if_defined_or_else($v, $v, null)"
-      else v
+         s"if_defined_or_else($v, $v$cast, null)"
+      else s"$v$cast"
+    }
     if (hasPlaceholder)
       "_"
     else bindVars match {
-      case Nil => "_"
-      case List(v) => expr(v)
-      case l => l.map(expr).mkString("coalesce(", ", ", ")")
+      case Nil => expr("_", None)
+      case List(v) => expr(v._1, v._2)
+      case l => l.map(v => expr(v._1, v._2)).mkString("coalesce(", ", ", ")")
     }
   }
 
@@ -165,12 +186,58 @@ trait QuereaseExpressions { this: Querease =>
     * $$ language plpgsql immutable;
     * }}}
     *
+    * @param resolvablesExpression
     * @param queryString
     * @param errorMessage
-    * @param bindVars
     */
-  protected def resolverExpression(queryString: String, errorMessage: String, bindVars: List[String]): String =
-    s"checked_resolve(${resolvablesExpression(bindVars)}, array($queryString), $errorMessage)"
+  protected def resolverExpression(resolvablesExpression: String, queryString: String, errorMessage: String): String =
+    s"checked_resolve($resolvablesExpression, array($queryString), $errorMessage)"
+
+  protected def resolverExpression(
+      viewName: String, fieldName: String, contextName: String, queryString: String, bindVars: List[String]): String = {
+    val bindVarsTyped = bindVarsWithTypeOpt(viewName, fieldName, contextName, bindVars)
+    val resolvables   = resolvablesExpression(viewName, fieldName, contextName, bindVarsTyped)
+    val errorMessage  = resolverErrorMessageExpression(viewName, fieldName, contextName, bindVarsTyped)
+    resolverExpression(resolvables, queryString, errorMessage)
+  }
+
+  // TODO to be fixed for nested resolvers?
+  protected def bindVarsWithTypeOpt(
+      viewName: String, fieldName: String, contextName: String, bindVars: List[String]): List[(String, Option[Type])] =
+    viewDefOption(viewName).map { viewDef =>
+      bindVars.map { name =>
+        val varName = if (name == "_") Option(fieldName).map(":" + _).getOrElse("?") else name
+        val v = parser.extractVariables(varName).head
+        val path = (if (v.opt) v.copy(opt = false) else v).tresql.replaceAll("^:", "")
+        val typeOpt = findField(viewDef, path).map(_.type_).filter(_.name != null)
+        (name, typeOpt)
+      }
+    }.getOrElse(bindVars.map(_ -> None))
+
+  def findField(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Option[FieldDefBase[Type]] = {
+    def findField_(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
+      Option(viewDef)
+        .map(_.fields)
+        .filter(_ != null)
+        .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == name))
+    if (SimpleIdentR.pattern.matcher(path).matches)
+      findField_(viewDef, path)
+    else {
+      val nameParts =
+        parser.extractVariables(if (path == "?") path else ":" + path)
+          .flatMap(v => v.variable :: v.members)
+      val descViewDef =
+        nameParts.dropRight(1).foldLeft(Option(viewDef)) {
+          case (vOpt, n) =>
+            vOpt flatMap { v =>
+              findField(v, n)
+                .filter(_.type_.isComplexType)
+                .flatMap(f => viewDefOption(f.type_.name))
+            }
+        }.getOrElse(null)
+      findField_(descViewDef, nameParts.last)
+    }
+  }
 
   /** Returns transformed expression
     *
@@ -413,8 +480,6 @@ trait QuereaseExpressions { this: Querease =>
             case v if  v.opt => v.copy(opt = false).tresql
           }.distinct.map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
           val resolvableName = Option(ctx.fieldName).orElse(resolverVars.filter(_ != Placeholder).headOption.map(_.variable)).orNull
-          val resolvablesExpression = resolvablesMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolverVarsTresql)
-          val errorMessage = resolverErrorMessageExpression(viewName, resolvableName, ctx.mdContext.name, resolvablesExpression)
           val resolvedQueryStringWithLimit: String =
             resolvedQuery match {
               case q: Query => withLimitQ(q).tresql
@@ -423,7 +488,9 @@ trait QuereaseExpressions { this: Querease =>
                 sys.error("Unexpected query class: " + Option(x).map(_.getClass.getName).orNull +
                   s" in $fullContextName")
             }
-          parseExp(resolverExpression(resolvedQueryStringWithLimit, errorMessage, resolverVarsTresql))
+          parseExp(resolverExpression(
+            viewName, resolvableName, ctx.mdContext.name, resolvedQueryStringWithLimit, resolverVarsTresql
+          ))
         } else if (ctx.addParensToSubquery) {
           parseExp("(" + resolvedQuery.tresql + ")")
         } else {

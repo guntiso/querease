@@ -320,7 +320,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
       interceptedSqlExceptionMessage {
         ResolverTestPerson12B.resolve_father_id("Alfrēds", 0)
       } shouldBe """Failed to identify value of "father" (from resolver_test_person_12_b) - Alfrēds"""
-      /* FIXME fails on Postgres
       ResolverTestPerson12C.resolve_father_id("Alfrēds", 1) shouldBe 1108
       interceptedSqlExceptionMessage {
         ResolverTestPerson12C.resolve_father_id("Alfrēds", 0)
@@ -332,7 +331,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
         child2.resolve_father_id(m => m + ("father" -> (m("father").asInstanceOf[Map[String, Any]] ++ Map("is_resolver_disabled" -> true))))
       } shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - Some, Father, true"""
       child2.resolve_father_id(m => m) shouldBe fatherId
-      */
 
       // sample data
       val currency = new Currency

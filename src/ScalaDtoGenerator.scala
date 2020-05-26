@@ -94,31 +94,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   def resourcesWithParams(params: String): String =
     s"Env.withParams($params)"
   private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Boolean =
-    findField(viewDef, path).nonEmpty
-  def findField(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Option[FieldDefBase[Type]] = {
-    def findField_(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
-      Option(viewDef)
-        .map(_.fields)
-        .filter(_ != null)
-        .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == name))
-    if (SimpleIdentR.pattern.matcher(path).matches)
-      findField_(viewDef, path)
-    else {
-      val nameParts =
-        qe.parser.extractVariables(if (path == "?") path else ":" + path)
-          .flatMap(v => v.variable :: v.members)
-      val descViewDef =
-        nameParts.dropRight(1).foldLeft(Option(viewDef)) {
-          case (vOpt, n) =>
-            vOpt flatMap { v =>
-              findField(v, n)
-                .filter(_.type_.isComplexType)
-                .flatMap(f => qe.viewDefOption(f.type_.name))
-            }
-        }.getOrElse(null)
-      findField_(descViewDef, nameParts.last)
-    }
-  }
+    qe.findField(viewDef, path).nonEmpty
   private def getParamNames(expression: String): Seq[String] = {
     val variables = qe.parser.extractVariables(expression)
     val optionalVarsSet =
@@ -262,7 +238,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   def resolverTargetTypeName(f: FieldDefBase[Type]): String =
     scalaSimpleTypeName(resolverTargetType(f))
   def resolverParamType(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): Type =
-    findField(viewDef, paramName)
+    qe.findField(viewDef, paramName)
       .map(_.type_)
       .orElse(Option(qe.metadataConventions.fromExternal(paramName, None, None)._1))
       .filterNot(_.name == null)
