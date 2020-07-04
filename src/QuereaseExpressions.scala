@@ -259,6 +259,15 @@ trait QuereaseExpressions { this: Querease =>
     ).tresql
   }
 
+  /** Used by expression transformer */
+  protected def isResolverToBeTransformed(ctx: Context, q: org.tresql.parsing.Query): Boolean = {
+    ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
+    // OR
+    ctx.transformerContext == EqOpCtx &&
+    (ctx.mdContext == Filter || ctx.mdContext == Resolver) &&
+    Option(q.cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
+  }
+
   /** Returns expression transformer */
   protected def expressionTransformer: parser.TransformerWithState[Context] = parser.transformerWithState { ctx =>
     import parser._
@@ -379,13 +388,6 @@ trait QuereaseExpressions { this: Querease =>
         With(w.tables.map(expressionTransformer(nctx)).asInstanceOf[List[WithTable]], expressionTransformer(ctx)(w.query))
       case q @ Query(tables, filter, cols, group, order, offset, limit) =>
         val isViewRef = tables.size == 1 && tables.head.tresql.startsWith("^")
-        val isResolver =
-          ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
-          // OR
-          ctx.transformerContext == EqOpCtx &&
-          (ctx.mdContext == Filter || ctx.mdContext == Resolver) &&
-          Option(cols).map(_.cols).filter(_ != null).getOrElse(Nil).size == 1
-          // FIXME kā atšķirt rezolveri (ar vienu kolonu) no parasta FieldRefRegexp???
         def withLimitQ(q: Query) =
           (if (q.limit == null) q.copy(limit = Const(2)) else q)
         // TODO transform all fieldrefs of this query
@@ -471,7 +473,7 @@ trait QuereaseExpressions { this: Querease =>
                 s" in $fullContextName parsed from: $resolvedQueryString")
           }
         }
-        if (isResolver) {
+        if (isResolverToBeTransformed(ctx, q)) {
           val resolverVars = traverser(placeholderAndVariableExtractor)(Nil)(q).reverse
           val optionalVarsSet = resolverVars.filter(_.opt).map(_.copy(opt = false).tresql).toSet
           val resolverVarsTresql = resolverVars.map {
