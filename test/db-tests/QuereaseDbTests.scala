@@ -208,6 +208,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
       interceptedSqlExceptionMessage {
         qe.countAll[FilterWithResolverTest1](Map("mother" -> "dada"))
       } shouldBe """Failed to identify value of "mother" (from filter_with_resolver_test_1) - dada"""
+      //
+      qe.countAll[FilterWithResolverTest4](Map.empty) shouldBe 37
+      qe.countAll[FilterWithResolverTest4](Map("mother" -> null)) shouldBe 0
+      qe.countAll[FilterWithResolverTest4](Map("mother" -> ("Minna Priedīte (#1)"))) shouldBe 1
+      qe.countAll[FilterWithResolverTest4](Map("mother" -> ("Helēna Stūrīte (#1)"))) shouldBe 6
+      qe.list    [FilterWithResolverTest4](Map("mother" -> ("Helēna Stūrīte (#1)"))).size shouldBe 6
+      interceptedSqlExceptionMessage {
+        qe.countAll[FilterWithResolverTest4](Map("mother" -> "dada"))
+      } shouldBe """Failed to identify value of "mother" (from filter_with_resolver_test_4) - dada"""
 
       // filter resolver tests with col expression etc
       qe.countAll[FilterWithResolverTest3A](Map("mother" -> null)) shouldBe 0
