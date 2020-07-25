@@ -66,7 +66,9 @@ private[querease] object DtoReflection {
       val setters =
         (for (
           m <- dtoClass.getMethods
-          if m.getName.endsWith("_$eq") && m.getParameterTypes.length == 1
+          if m.getName.endsWith("_$eq") &&
+            java.lang.reflect.Modifier.isPublic(m.getModifiers) &&
+            m.getParameterTypes.length == 1
         ) yield {
           val name = m.getName.dropRight(4)
           name -> (m -> manifest(name, dto, m.getParameterTypes()(0)))
