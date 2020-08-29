@@ -94,8 +94,6 @@ sourceGenerators in Test += Def.task {
     val outDir: File = (sourceManaged in Test).value
     import querease._
     import mojoz.metadata._
-    import mojoz.metadata.FieldDef._
-    import mojoz.metadata.ViewDef._
     import mojoz.metadata.in._
     import mojoz.metadata.out._
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
