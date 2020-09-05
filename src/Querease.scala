@@ -649,6 +649,41 @@ trait QueryStringBuilder { this: Querease =>
     })
   }).toMap
 */
+  def cursorData(data: Any, cursor_prefix: String, header: Map[String, Any]): Map[String, List[Map[String, Any]]] = {
+    def addHeader(cursor_prefix: String, header: Map[String, Any], result: Map[String, List[Map[String, Any]]]) =
+      result.map { case (k, v) => k -> v.map(header ++ _
+        .map { r => if (header.contains(r._1)) (cursor_prefix + "_" + r._1, r._2) else r }
+      )}
+
+    def merge(m1: Map[String, List[Map[String, Any]]], m2: Map[String, List[Map[String, Any]]]) =
+      m2.foldLeft(m1) { (r, e) =>
+        val (k, v) = e
+        if (r contains k) r + (k -> (r(k) ++ v)) else r + e
+      }
+
+    data match {
+      case l: List[_] =>
+        l.foldLeft(Map[String, List[Map[String, Any]]]()) { (r, d) => merge(r, cursorData(d, cursor_prefix, header))}
+      case m: Map[String, _] =>
+        val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
+        addHeader(cursor_prefix, header,
+          children.flatMap { case (k, v) => cursorData(v, cursor_prefix + "_" + k, header)}) ++
+          Map(cursor_prefix -> List(header))
+      case x => sys.error(s"Cannot process bind data, unknown value: $x")
+    }
+  }
+
+  def cursors(data: Map[String, List[Map[String, Any]]]): String = {
+    data.flatMap {
+      case (_, rows) if rows.isEmpty => Nil
+      case (cursor_name, rows) =>
+        val cols = rows.head.keys.toList
+        val body = rows.zipWithIndex
+          .map { case (_, i) => cols.map(c => s":${i + 1}.$c").mkString("{", ", ", "}") }
+          .mkString(" + ")
+        List(s"$cursor_name(# ${cols.mkString(", ")}) { $body }")
+    }.mkString(", ")
+  }
 }
 
 trait OracleQueryStringBuilder extends QueryStringBuilder { this: Querease =>
