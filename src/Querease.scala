@@ -234,6 +234,16 @@ trait QueryStringBuilder { this: Querease =>
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
+  /** All queries and dml-s from viewDef for compilation - to test viewDef. Used by sbt-mojoz plugin */
+  def allQueryStrings(viewDef: ViewDef): collection.immutable.Seq[String] = {
+    if (viewDef.fields != null && viewDef.fields.nonEmpty &&
+         (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
+      List(
+        queryStringAndParams(viewDef, Map.empty)._1
+      )
+    else Nil
+  }
+
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
     def unusedName(index: Int): String =
