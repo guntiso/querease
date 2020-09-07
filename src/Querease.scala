@@ -675,8 +675,7 @@ trait QueryStringBuilder { this: Querease =>
       case m: Map[String@unchecked, _] =>
         val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
         children.flatMap { case (k, v) =>
-          val childCursorPrefix = cursor_prefix + "_" + k
-          addHeader(k, header, cursorData(v, childCursorPrefix, header))
+          addHeader(k, header, cursorData(v, cursor_prefix + "_" + k, header))
         } ++ Map(cursor_prefix -> Vector(header))
       case l: Iterable[_] =>
         l.foldLeft(Map[String, Vector[Map[String, Any]]]()) { (r, d) => merge(r, cursorData(d, cursor_prefix, header))}
