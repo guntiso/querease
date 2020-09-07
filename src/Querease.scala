@@ -660,9 +660,9 @@ trait QueryStringBuilder { this: Querease =>
   }).toMap
 */
   def cursorData(data: Any, cursor_prefix: String, header: Map[String, Any]): Map[String, Vector[Map[String, Any]]] = {
-    def addHeader(cursor_prefix: String, header: Map[String, Any], result: Map[String, Vector[Map[String, Any]]]) =
+    def addHeader(prefix: String, header: Map[String, Any], result: Map[String, Vector[Map[String, Any]]]) =
       result.map { case (k, v) => k -> v.map(header ++ _
-        .map { r => if (header.contains(r._1)) (cursor_prefix + "_" + r._1, r._2) else r }
+        .map { r => if (header.contains(r._1)) (prefix + "_" + r._1, r._2) else r }
       )}
 
     def merge(m1: Map[String, Vector[Map[String, Any]]], m2: Map[String, Vector[Map[String, Any]]]) =
@@ -674,9 +674,10 @@ trait QueryStringBuilder { this: Querease =>
     data match {
       case m: Map[String@unchecked, _] =>
         val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
-        addHeader(cursor_prefix, header,
-          children.flatMap { case (k, v) => cursorData(v, cursor_prefix + "_" + k, header)}) ++
-          Map(cursor_prefix -> Vector(header))
+        children.flatMap { case (k, v) =>
+          val childCursorPrefix = cursor_prefix + "_" + k
+          addHeader(k, header, cursorData(v, childCursorPrefix, header))
+        } ++ Map(cursor_prefix -> Vector(header))
       case l: Iterable[_] =>
         l.foldLeft(Map[String, Vector[Map[String, Any]]]()) { (r, d) => merge(r, cursorData(d, cursor_prefix, header))}
       case x => sys.error(s"Cannot process bind data, unknown value: $x")
