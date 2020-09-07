@@ -196,7 +196,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     new Iterator[B] with AutoCloseable {
       private val result = Query(query, params)
       override def hasNext = result.hasNext
-      override def next = convertRow[B](result.next)
+      override def next() = convertRow[B](result.next())
       override def close = result.close
     }
 
@@ -672,7 +672,7 @@ trait QueryStringBuilder { this: Querease =>
       }
 
     data match {
-      case m: Map[String, _] =>
+      case m: Map[String@unchecked, _] =>
         val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
         addHeader(cursor_prefix, header,
           children.flatMap { case (k, v) => cursorData(v, cursor_prefix + "_" + k, header)}) ++
@@ -684,14 +684,13 @@ trait QueryStringBuilder { this: Querease =>
   }
 
   def cursors(data: Map[String, Vector[Map[String, Any]]]): String = {
-    data.flatMap {
-      case (_, rows) if rows.isEmpty => Nil
-      case (cursor_name, rows) =>
+    data.collect {
+      case (cursor_name, rows) if rows.nonEmpty =>
         val cols = rows.head.keys.toList
         val body = rows.zipWithIndex
           .map { case (_, i) => cols.map(c => s":${i + 1}.$c").mkString("{", ", ", "}") }
           .mkString(" + ")
-        List(s"$cursor_name(# ${cols.mkString(", ")}) { $body }")
+        s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
     }.mkString(", ")
   }
 }
