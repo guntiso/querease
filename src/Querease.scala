@@ -676,7 +676,7 @@ trait QueryStringBuilder { this: Querease =>
         val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
         children.flatMap { case (k, v) =>
           addHeader(k, header, cursorData(v, cursor_prefix + "_" + k, header))
-        } ++ Map(cursor_prefix -> Vector(header))
+        } ++ Map(cursor_prefix -> (if (header.nonEmpty) Vector(header) else Vector()))
       case l: Iterable[_] =>
         l.foldLeft(Map[String, Vector[Map[String, Any]]]()) { (r, d) => merge(r, cursorData(d, cursor_prefix, header))}
       case x => sys.error(s"Cannot process bind data, unknown value: $x")
