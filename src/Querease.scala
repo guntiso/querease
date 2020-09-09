@@ -13,14 +13,12 @@ import org.tresql.InsertResult
 import org.tresql.ArrayResult
 import org.tresql.ORT
 import org.tresql.Query
-import org.tresql.QueryParser
 import org.tresql.parsing.Ident
 import org.tresql.parsing.Null
 import org.tresql.parsing.{Query => QueryParser_Query}
 
 import mojoz.metadata.in.Join
 import mojoz.metadata.in.JoinsParser
-import mojoz.metadata._
 
 class NotFoundException(msg: String) extends Exception(msg)
 
