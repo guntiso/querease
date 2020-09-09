@@ -37,28 +37,24 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def save[B <: DTO](
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
-    transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
       tablesToSaveTo(viewDef(ManifestFactory.classType(pojo.getClass))),
       pojo,
       extraPropsToSave,
-      transform,
       forceInsert,
       filterAndParams)
 
   def saveTo[B <: DTO](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
-    transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
     saveToMultiple(
       Seq(tableName),
       pojo,
       extraPropsToSave,
-      transform,
       forceInsert,
       filterAndParams)
 
@@ -66,23 +62,21 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     tables: Seq[String],
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
-    transform: (Map[String, Any]) => Map[String, Any] = m => m,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long = {
     val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
       else Map())
-    val transf = if (transform != null) transform else (m: Map[String, Any]) => m
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
       val result =
         if (tables.lengthCompare(1) == 0)
-          ORT.insert(tables.head, transf(propMap),
+          ORT.insert(tables.head, propMap,
             Option(filterAndParams).map(_._1) orNull)
         else
-          ORT.insertMultiple(transf(propMap), tables: _*)(
+          ORT.insertMultiple(propMap, tables: _*)(
             Option(filterAndParams).map(_._1) orNull)
       val (insertedRowCount, id) = result match {
         case x: InsertResult => (x.count.get, x.id getOrElse null)
@@ -99,10 +93,10 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       }
     } else {
       val updatedRowCount = if (tables.lengthCompare(1) == 0)
-        ORT.update(tables(0), transf(propMap),
+        ORT.update(tables(0), propMap,
           Option(filterAndParams).map(_._1) orNull)
       else
-        ORT.updateMultiple(transf(propMap), tables: _*)(
+        ORT.updateMultiple(propMap, tables: _*)(
           Option(filterAndParams).map(_._1) orNull)
       if (updatedRowCount == 0) throw new NotFoundException(
         s"Record not updated in table(s): ${tables.mkString(",")}")
