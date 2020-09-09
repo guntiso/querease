@@ -283,7 +283,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     val generator = new ScalaDtoGenerator(qe)
     val dtosPath = "test/dtos"
     val expectedDtos: String = fileToString(dtosPath + "/" + "dtos-out.scala")
-    val producedDtos: String = generator.createScalaClassesString(Nil, qe.viewDefs.values.toList.sortBy(_.name), Nil)
+    val producedDtos: String = generator.createScalaClassesString(Nil, qe.nameToViewDef.values.toList.sortBy(_.name), Nil)
     if (expectedDtos != producedDtos)
       toFile(dtosPath + "/" + "dtos-out-produced.scala", producedDtos)
     expectedDtos shouldBe producedDtos
@@ -330,11 +330,11 @@ object QuereaseTests {
      override lazy val yamlMetadata =
         YamlMd.fromFiles(path = "test/tables") ++
         YamlMd.fromFiles(path = "test/views")
-     override lazy val viewDefs = YamlViewDefLoader(
+     override lazy val nameToViewDef = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
        .extendedViewDefs.toMap
      override protected lazy val viewNameToFieldOrdering =
-       viewDefs.map(kv => (kv._1, new FieldOrdering(
+       nameToViewDef.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields
           .map(f => Option(f.alias) getOrElse f.name)
           .zipWithIndex.toMap)

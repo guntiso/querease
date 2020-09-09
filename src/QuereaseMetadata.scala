@@ -40,10 +40,10 @@ trait QuereaseMetadata {
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, functionSignaturesClass)
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
-  protected lazy val viewDefs: Map[String, ViewDef] =
+  lazy val nameToViewDef: Map[String, ViewDef] =
     YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
       .extendedViewDefs.asInstanceOf[Map[String, ViewDef]]
-  protected lazy val viewNameToFieldOrdering = viewDefs.map(kv => (kv._1, FieldOrdering(kv._2)))
+  protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
@@ -51,7 +51,7 @@ trait QuereaseMetadata {
   def fieldOrderingOption[T <: AnyRef: Manifest]: Option[Ordering[String]] = fieldOrderingOption(viewName[T])
   def fieldOrdering[T <: AnyRef](implicit mf: Manifest[T]): Ordering[String] = fieldOrderingOption[T]
     .getOrElse(throw FieldOrderingNotFoundException(s"Field ordering for view $mf not found"))
-  def viewDefOption(viewName: String): Option[ViewDef] = viewDefs.get(viewName)
+  def viewDefOption(viewName: String): Option[ViewDef] = nameToViewDef.get(viewName)
   def viewDef(viewName: String) = viewDefOption(viewName)
     .getOrElse(throw ViewNotFoundException(s"View definition for $viewName not found"))
   def viewDefOption[T <: AnyRef: Manifest]: Option[ViewDef] = viewDefOption(viewName[T])

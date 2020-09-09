@@ -104,7 +104,7 @@ sourceGenerators in Test += Def.task {
     val xViewDefs = viewDefLoader.extendedViewDefs
     val qe = new Querease with ScalaDtoQuereaseIo {
       override lazy val tableMetadata = tableMd
-      override lazy val viewDefs = xViewDefs.asInstanceOf[Map[String, ViewDef]]
+      override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
     }
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) = Naming.camelize(name)
