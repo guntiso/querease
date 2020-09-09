@@ -64,6 +64,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
     filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long = {
+    validate(pojo, Option(filterAndParams).flatMap(p => Option(p._2)).getOrElse(Map()))
     val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
@@ -103,6 +104,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       else id.get
     }
   }
+
+  /** Subclasses may override this method and throw exception */
+  def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {}
 
   def countAll[B <: DTO: Manifest](params: Map[String, Any],
     extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
