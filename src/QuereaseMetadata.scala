@@ -1,6 +1,5 @@
 package querease
 
-import org.tresql.compiling.CompilerFunctionMetadata
 import org.tresql.compiling.TresqlFunctionSignatures
 import mojoz.metadata._
 import mojoz.metadata.TableDef.TableDefBase

@@ -318,7 +318,7 @@ trait Dto { self =>
   //creating map from object
   def toSaveableMap(implicit qe: QE): Map[String, Any] = setters.toList.flatMap { m =>
     val propName = m._1
-    scala.util.Try(getClass.getMethod(propName).invoke(this)).toOption.map {
+    Try(getClass.getMethod(propName).invoke(this)).toOption.map {
       saveableValue(qe)(propName)(_)
     } getOrElse Nil
   }.groupBy { case (_, _: Seq[_]) => "s" case _ => "v" } //child objects from different lists can be put into one table
