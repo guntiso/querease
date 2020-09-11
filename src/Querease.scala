@@ -109,49 +109,49 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {}
 
   def countAll[B <: DTO: Manifest](params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+    extraFilter: String = null, extraParams: Map[String, Any] = Map())(
       implicit resources: Resources) = {
-      countAll_(viewDef[B], params, extraFilterAndParams)
+      countAll_(viewDef[B], params, extraFilter, extraParams)
   }
   protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+    extraFilter: String = null, extraParams: Map[String, Any] = Map())(
       implicit resources: Resources): Int = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(viewDef, params, 0, 0, "", extraFilterAndParams, true)
+      queryStringAndParams(viewDef, params, 0, 0, "", extraFilter, extraParams, true)
     import org.tresql.CoreTypes._
     Query.unique[Int](tresqlQueryString, paramsMap)
   }
 
   def list[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      extraFilter: String = null, extraParams: Map[String, Any] = Map())(
         implicit resources: Resources): List[B] = {
-    result(params, offset, limit, orderBy, extraFilterAndParams).toList
+    result(params, offset, limit, orderBy, extraFilter, extraParams).toList
   }
   def result[B <: DTO: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilterAndParams: (String, Map[String, Any]) = (null, Map()))(
+      extraFilter: String = null, extraParams: Map[String, Any] = Map())(
         implicit resources: Resources): CloseableResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
-        offset, limit, orderBy, extraFilterAndParams)
+        offset, limit, orderBy, extraFilter, extraParams)
     result(q, p)
   }
 
-  def get[B <: DTO](id: Long, extraFilterAndParams: (String, Map[String, Any]) = null)(
+  def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
     // TODO do not use id and long, get key from tableDef
     val qualifier = baseFieldsQualifier(viewDef[B])
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val extraQ = extraFilterAndParams match {
-      case null | (null, _) | ("", _) => s"${prefix}id = :id"
-      case (x, _) => s"[$x] & [${prefix}id = :id]"
+    val extraQ = extraFilter match {
+      case null | "" => s"${prefix}id = :id"
+      case x => s"[$x] & [${prefix}id = :id]"
     }
-    val extraP = extraFilterAndParams match {
-      case null | (_, null) => Map[String, Any]()
-      case (_, m) => m
+    val extraP = extraParams match {
+      case null => Map[String, Any]()
+      case m => m
     }
     val (q, p) = queryStringAndParams(viewDef[B],
-      Map("id" -> id), 0, 2, "", (extraQ, extraP))
+      Map("id" -> id), 0, 2, "", extraQ, extraP)
     val result = list(q, p)
     if (result.lengthCompare(1) > 0)
       sys.error("Too many rows returned by query for get method for " + mf)
@@ -268,11 +268,11 @@ trait QueryStringBuilder { this: Querease =>
   }
   def queryStringAndParams(view: ViewDef, params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
-    extraFilterAndParams: (String, Map[String, Any]) = (null, Map()),
+    extraFilter: String = null, extraParams: Map[String, Any] = Map(),
     countAll: Boolean = false): (String, Map[String, Any]) = {
 
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
-    val where = this.where(view, Option(extraFilterAndParams).map(_._1).orNull, pathToAlias)
+    val where = this.where(view, extraFilter, pathToAlias)
     val groupBy = this.groupBy(view)
     val having = this.having(view)
     val simpleCountAll = countAll && groupBy == "" && having == ""
@@ -285,7 +285,7 @@ trait QueryStringBuilder { this: Querease =>
     val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
     // Env log q
     // TODO param name?
-    (q, values ++ extraFilterAndParams._2 ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
+    (q, values ++ extraParams ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
   def queryString(view: ViewDef, fields: Seq[FieldDef], exprFields: Seq[FieldDef], filter: String): String = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view, (fields ++ exprFields).filter(_ != null))
@@ -324,7 +324,7 @@ trait QueryStringBuilder { this: Querease =>
     else true
   val filteredParams = Option(params).getOrElse(
     new ListRequestType(0, 0, Array(), Array())).copy(Filter =
-      paramsFilter.filter(f => !extraFilterAndParams._2.contains(f.Field)).filter(isFilterable).toArray)
+      paramsFilter.filter(f => !extraParams.contains(f.Field)).filter(isFilterable).toArray)
   import filteredParams.{ Sort => sort, Offset => offset }
   //LIMIT threshold
   // TODO support overridable maxLimit?
@@ -588,7 +588,7 @@ trait QueryStringBuilder { this: Querease =>
   /*
   val where = (filter.map(f =>
     queryColExpression(fieldNameToDef(f._2.Field)) + " " + comparison(f._2.Comparison) +
-      " :" + f._1) ++ Option(extraFilterAndParams._1).filter(_ != ""))
+      " :" + f._1) ++ Option(extraFilter).filter(_ != ""))
     .mkString("[", " & ", "]") match { case "[]" => "" case a => a }
   */
   def where(view: ViewDef, extraFilter: String, pathToAlias: Map[List[String], String] = null): String =
