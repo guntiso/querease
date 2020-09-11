@@ -2,7 +2,6 @@ package querease
 
 import scala.annotation.tailrec
 import scala.language.postfixOps
-import scala.collection.mutable
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
@@ -535,11 +534,11 @@ trait QueryStringBuilder { this: Querease =>
       else if (view.tableAlias == null && !needsBaseTable &&
         parsedJoins.lengthCompare(0) > 0) null // TODO ?
       else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
-    val pathToAlias = mutable.Map[List[String], String]()
+    val pathToAlias = collection.mutable.Map[List[String], String]()
     pathToAlias ++= joined.map(j => List(j) -> j).toMap
-    val usedNames = mutable.Set[String]()
+    val usedNames = collection.mutable.Set[String]()
     usedNames ++= joined
-    val aliasToTable = mutable.Map[String, String]()
+    val aliasToTable = collection.mutable.Map[String, String]()
     if (baseQualifier != null) {
       pathToAlias += (List(baseQualifier) -> baseQualifier)
       usedNames += baseQualifier
