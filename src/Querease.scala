@@ -37,47 +37,49 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
+    filter: String = null,
+    params: Map[String, Any] = null)(implicit resources: Resources): Long =
     saveToMultiple(
       tablesToSaveTo(viewDef(ManifestFactory.classType(pojo.getClass))),
       pojo,
       extraPropsToSave,
       forceInsert,
-      filterAndParams)
+      filter,
+      params)
 
   def saveTo[B <: DTO](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long =
+    filter: String = null,
+    params: Map[String, Any] = null)(implicit resources: Resources): Long =
     saveToMultiple(
       Seq(tableName),
       pojo,
       extraPropsToSave,
       forceInsert,
-      filterAndParams)
+      filter,
+      params)
 
   def saveToMultiple[B <: DTO](
     tables: Seq[String],
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
-    filterAndParams: (String, Map[String, Any]) = null)(implicit resources: Resources): Long = {
-    validate(pojo, Option(filterAndParams).flatMap(p => Option(p._2)).getOrElse(Map()))
+    filter: String = null,
+    params: Map[String, Any] = null)(implicit resources: Resources): Long = {
+    validate(pojo, Option(params).getOrElse(Map()))
     val pojoPropMap = toSaveableMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
-      else Map()) ++ (if (filterAndParams != null && filterAndParams._2 != null) filterAndParams._2
-      else Map())
+      else Map()) ++ Option(params).getOrElse(Map())
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
       val result =
         if (tables.lengthCompare(1) == 0)
-          ORT.insert(tables.head, propMap,
-            Option(filterAndParams).map(_._1) orNull)
+          ORT.insert(tables.head, propMap, filter)
         else
-          ORT.insertMultiple(propMap, tables: _*)(
-            Option(filterAndParams).map(_._1) orNull)
+          ORT.insertMultiple(propMap, tables: _*)(filter)
       val (insertedRowCount, id) = result match {
         case x: InsertResult => (x.count.get, x.id getOrElse null)
         case a: ArrayResult[_] => //if array result consider last element as insert result
@@ -93,11 +95,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       }
     } else {
       val updatedRowCount = if (tables.lengthCompare(1) == 0)
-        ORT.update(tables(0), propMap,
-          Option(filterAndParams).map(_._1) orNull)
+        ORT.update(tables(0), propMap, filter)
       else
-        ORT.updateMultiple(propMap, tables: _*)(
-          Option(filterAndParams).map(_._1) orNull)
+        ORT.updateMultiple(propMap, tables: _*)(filter)
       if (updatedRowCount == 0) throw new NotFoundException(
         s"Record not updated in table(s): ${tables.mkString(",")}")
       else id.get
@@ -195,11 +195,10 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       override def close = result.close
     }
 
-  def delete[B <: DTO](instance: B, filterAndParams: (String, Map[String, Any]) = null)(
+  def delete[B <: DTO](instance: B, filter: String = null, params: Map[String, Any] = null)(
     implicit resources: Resources) = {
     val view = viewDef(ManifestFactory.classType(instance.getClass))
     val keyMap = this.keyMap(instance)
-    val (filter, params) = Option(filterAndParams).getOrElse((null, null))
     val result = ORT.delete(
       view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
       keyMap.head._2,
