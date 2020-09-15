@@ -5,7 +5,7 @@ import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 
 import scala.collection.immutable.Seq
-import querease._
+import org.mojoz.querease._
 
 class FilterResolverTests extends FlatSpec with Matchers {
   private val Identifiers = "blah some_ident1".split("\\s+").toSet

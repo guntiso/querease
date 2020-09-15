@@ -1,6 +1,6 @@
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
-import querease._
+import org.mojoz.querease._
 
 class CursorsTests extends FlatSpec with Matchers {
 

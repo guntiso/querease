@@ -68,7 +68,7 @@ unmanagedClasspath in Test +=
 
 scalacOptions in Test := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8",
   "-Xmacro-settings:" + List(
-    "metadataFactoryClass=querease.TresqlMetadataFactory",
+    "metadataFactoryClass=org.mojoz.querease.TresqlMetadataFactory",
     "tableMetadataFile=" + new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
     "functions=test.FunctionSignatures",
     "macros=org.tresql.Macros"
@@ -76,7 +76,7 @@ scalacOptions in Test := Seq("-unchecked", "-deprecation", "-feature", "-encodin
 )
 
 resourceGenerators in Test += Def.task {
-  import querease._
+  import org.mojoz.querease._
   import mojoz.metadata._
   import mojoz.metadata.in._
   import mojoz.metadata.out._
@@ -92,7 +92,7 @@ sourceGenerators in Test += Def.task {
     // TODO val cacheDirectory = streams.value.cacheDirectory
     val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
     val outDir: File = (sourceManaged in Test).value
-    import querease._
+    import org.mojoz.querease._
     import mojoz.metadata._
     import mojoz.metadata.in._
     import mojoz.metadata.out._
@@ -130,12 +130,12 @@ sourceGenerators in Test += Def.task {
     Seq(file) // FIXME where's my cache?
 }.taskValue
 
-initialCommands in console := "import org.tresql._; import querease._; import mojoz.metadata._"
+initialCommands in console := "import org.tresql._; import org.mojoz.querease._; import mojoz.metadata._"
 
 initialCommands in (Test, console) := Seq(
   "import dto._",
   "import org.tresql._",
-  "import querease._",
+  "import org.mojoz.querease._",
   "import mojoz.metadata._",
   "import test._",
   "import QuereaseTests._",

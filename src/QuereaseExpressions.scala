@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import mojoz.metadata.FieldDef.FieldDefBase
 import mojoz.metadata.ViewDef.ViewDefBase

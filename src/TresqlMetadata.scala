@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import java.io.File
 

@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import org.tresql.parsing.Ident
 

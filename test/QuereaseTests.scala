@@ -18,7 +18,7 @@ import mojoz.metadata.in.YamlMd
 import mojoz.metadata.in.YamlTableDefLoader
 import mojoz.metadata.in.YamlViewDefLoader
 import mojoz.metadata.out.SqlWriter
-import querease._
+import org.mojoz.querease._
 
 
 class QuereaseTests extends FlatSpec with Matchers {

@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import org.tresql.compiling.TresqlFunctionSignatures
 import mojoz.metadata._

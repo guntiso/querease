@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import org.tresql.compiling.Compiler
 import org.tresql.{ CacheBase, SimpleCacheBase }

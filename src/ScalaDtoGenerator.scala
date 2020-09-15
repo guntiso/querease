@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import mojoz.metadata.out.ScalaClassWriter
 import mojoz.metadata.FieldDef.FieldDefBase

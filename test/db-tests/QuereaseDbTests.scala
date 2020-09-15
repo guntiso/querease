@@ -8,7 +8,7 @@ import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
-import querease.TresqlMetadata
+import org.mojoz.querease.TresqlMetadata
 import QuereaseTests._
 
 

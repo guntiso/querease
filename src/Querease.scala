@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import scala.annotation.tailrec
 import scala.language.postfixOps

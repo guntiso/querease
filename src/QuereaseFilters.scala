@@ -1,4 +1,4 @@
-package querease
+package org.mojoz.querease
 
 import scala.collection.immutable.Seq
 
