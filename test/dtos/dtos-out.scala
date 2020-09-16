@@ -553,6 +553,46 @@ object resolver_alias_clash_test_person_8_b {
       .unique[java.lang.Long]
   }
 }
+class resolver_override_test_01 extends resolver_test_person_11 with DtoWithId {
+  // override var name: String = null
+  // override var id: java.lang.Long = null
+  def resolve_name = {
+    tresql"""{checked_resolve(:name, array(person[name = :name]{'X' name}@(2)), 'Failed to identify value of "name" (from resolver_override_test_01) - ' || coalesce(:name, 'null'))}"""(Env.withParams(this.toMap))
+      .unique[String]
+  }
+  override def resolve_id = {
+    tresql"""{checked_resolve(:name, array(person[name = :name || 'X']{nullif(0, 0) id}@(2)), 'Failed to identify value of "id" (from resolver_override_test_01) - ' || coalesce(:name, 'null'))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object resolver_override_test_01 {
+  def resolve_name(name: String) = {
+    tresql"""{checked_resolve(:name, array(person[name = :name]{'X' name}@(2)), 'Failed to identify value of "name" (from resolver_override_test_01) - ' || coalesce(:name, 'null'))}"""(Env.withParams(Map("name" -> name)))
+      .unique[String]
+  }
+  def resolve_id(name: String) = {
+    tresql"""{checked_resolve(:name, array(person[name = :name || 'X']{nullif(0, 0) id}@(2)), 'Failed to identify value of "id" (from resolver_override_test_01) - ' || coalesce(:name, 'null'))}"""(Env.withParams(Map("name" -> name)))
+      .unique[java.lang.Long]
+  }
+}
+class resolver_override_test_02 extends resolver_test_person_11 with DtoWithId {
+  var name: String = null
+  // override var id: java.lang.Long = null
+}
+class resolver_override_test_03 extends resolver_override_test_02 with DtoWithId {
+  var name: String = null
+  // override var id: java.lang.Long = null
+  override def resolve_id = {
+    tresql"""{checked_resolve(:name, array(person[name = :name || 'Y']{nullif(0, 0) id}@(2)), 'Failed to identify value of "id" (from resolver_override_test_03) - ' || coalesce(:name, 'null'))}"""(Env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object resolver_override_test_03 {
+  def resolve_id(name: String) = {
+    tresql"""{checked_resolve(:name, array(person[name = :name || 'Y']{nullif(0, 0) id}@(2)), 'Failed to identify value of "id" (from resolver_override_test_03) - ' || coalesce(:name, 'null'))}"""(Env.withParams(Map("name" -> name)))
+      .unique[java.lang.Long]
+  }
+}
 class resolver_test_account_1 extends DtoWithId {
   var id: java.lang.Long = null
   var code: String = null

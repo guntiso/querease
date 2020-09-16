@@ -475,3 +475,19 @@ fields:
 - full_name = ^filter_with_field_ref_test_1.full_name[this]
 filter:
 - ^filter_with_field_ref_test_1.full_name[this] = :full_name
+
+name: resolver_override_test_01
+extends: resolver_test_person_11
+fields:
+- name -> name = person[name = _]{'X' name}
+- id   ->   id = person[name = :name || 'X']{nullif(0, 0) id}
+
+name: resolver_override_test_02
+extends: resolver_test_person_11
+fields:
+- id = 0
+
+name: resolver_override_test_03
+extends: resolver_override_test_02
+fields:
+- id   ->   id = person[name = :name || 'Y']{nullif(0, 0) id}

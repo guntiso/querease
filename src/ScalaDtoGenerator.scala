@@ -8,6 +8,7 @@ import org.mojoz.metadata.Type
 import org.tresql.parsing.Ident
 import org.tresql.parsing.Variable
 
+import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 
 /** Generates scala code and adds resolver methods for convenience */
@@ -30,23 +31,42 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   private def resolverDefs(
       viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers,
+      manageOverrides: Boolean,
       shouldGenerateResolverDef: (MojozViewDefBase, MojozFieldDefBase, String) => Boolean,
-      generateResolverDef: (MojozViewDefBase, MojozFieldDefBase, String) => String
+      generateResolverDef: (MojozViewDefBase, MojozFieldDefBase, Boolean, String) => String
   ): Seq[String] = {
-    viewDef.fields
-      .flatMap { f =>
-        qe.allResolvers(
-          viewDef.asInstanceOf[this.qe.ViewDef],
-          f.asInstanceOf[this.qe.FieldDef]
-        ).map { exp =>
-          val resolverExpression = transformResolverExpression(exp, f)
-          if  (shouldGenerateResolverDef(viewDef, f, resolverExpression))
-               generateResolverDef(viewDef, f, resolverExpression)
-          else null
-        }
+    def resolverExp(viewDef: MojozViewDefBase, f: MojozFieldDefBase) =
+      qe.allResolvers(
+        viewDef.asInstanceOf[this.qe.ViewDef],
+        f.asInstanceOf[this.qe.FieldDef]
+      ).map { exp =>
+        transformResolverExpression(exp, f)
+      }.collect {
+        case exp if shouldGenerateResolverDef(viewDef, f, exp) => exp
       }
+    def resolvers(viewDef: MojozViewDefBase, fields: Seq[MojozFieldDefBase], manageOverrides: Boolean): Seq[String] =
+      fields.flatMap { f => resolverExp(viewDef, f).map { resolverExpression =>
+        val isOverride =
+          if (manageOverrides && f.isOverride) {
+            val fieldName = Option(f.alias).getOrElse(f.name)
+            // FIXME isOverride detection: match resolver parameter signatures!
+            @tailrec
+            def hasSuperResolver(viewDef: MojozViewDefBase): Boolean = {
+              val fSuperOpt = viewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+              if (fSuperOpt.nonEmpty && resolvers(viewDef, fSuperOpt.toList, manageOverrides = false).nonEmpty)
+                true
+              else if (viewDef.extends_ != null)
+                hasSuperResolver(qe.viewDef(viewDef.extends_))
+              else false
+            }
+            hasSuperResolver(qe.viewDef(viewDef.extends_))
+          } else false
+        generateResolverDef(viewDef, f, isOverride, resolverExpression)
+      }}
       .filterNot(_ == null)
       .filterNot(_ == "")
+      .toSeq
+    resolvers(viewDef, viewDef.fields, manageOverrides)
       .map(_ + nl)
   }
   def shouldGenerateInstanceResolverDefs: Boolean = true
@@ -54,14 +74,14 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
-    resolverDefs(viewDef, qe, shouldGenerateInstanceResolverDef, instanceResolverDef)
+    resolverDefs(viewDef, qe, manageOverrides = true, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
   def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
       viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
-    resolverDefs(viewDef, qe, shouldGenerateCompanionResolverDef, companionResolverDef)
+    resolverDefs(viewDef, qe, manageOverrides = false, shouldGenerateCompanionResolverDef, companionResolverDef)
   }
   def resolverDefBodyPrefix: String = ""
   def shouldGenerateInstanceResolverDef(
@@ -106,6 +126,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   def instanceResolverDef(
       viewDef: MojozViewDefBase,
       fieldDef: MojozFieldDefBase,
+      isOverride: Boolean,
       resolverExpression: String
   ): String = {
     val xViewDef = qe.nameToViewDef(viewDef.name)
@@ -114,20 +135,22 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
         .filterNot(n =>
           isFieldDefined(xViewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
     val defaultParamsString = "this.toMap"
-    resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
+    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultParamsString, resolverExpression)
   }
   def companionResolverDef(
       viewDef: MojozViewDefBase,
       fieldDef: MojozFieldDefBase,
+      isOverride: Boolean,
       resolverExpression: String
   ): String = {
     val paramNames = getParamNames(resolverExpression)
     val defaultParamsString = ""
-    resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
+    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultParamsString, resolverExpression)
   }
   def resolverDef(
       viewDef: MojozViewDefBase,
       fieldDef: MojozFieldDefBase,
+      isOverride: Boolean,
       paramNames: Seq[String],
       defaultParamsString: String,
       resolverExpression: String
@@ -194,7 +217,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       ).filter(_._1).map(_._2).mkString(" ++ ")
     val paramsString =
       if (notFoundInChild) s"$NotFoundParamName($paramsStringKnown)" else paramsStringKnown
-    s"  def resolve_${resolverTargetColName(fieldDef)}$argsString = $resolverDefBodyPrefix{" + nl +
+    val override_ = if (isOverride) "override " else ""
+    s"  ${override_}def resolve_${resolverTargetColName(fieldDef)}$argsString = $resolverDefBodyPrefix{" + nl +
           resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
     s"  }"
   }
