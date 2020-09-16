@@ -108,10 +108,11 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       fieldDef: MojozFieldDefBase,
       resolverExpression: String
   ): String = {
+    val xViewDef = qe.nameToViewDef(viewDef.name)
     val paramNames =
       getParamNames(resolverExpression)
         .filterNot(n =>
-          isFieldDefined(viewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
+          isFieldDefined(xViewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
     val defaultParamsString = "this.toMap"
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
@@ -131,6 +132,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       defaultParamsString: String,
       resolverExpression: String
   ): String = {
+    val xViewDef = qe.nameToViewDef(viewDef.name)
     val hasDefaultParams = defaultParamsString != null && defaultParamsString != ""
     val optionalParamsSet =
       Option(paramNames).getOrElse(Nil)
@@ -142,7 +144,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
         .map { name =>
           if (SimpleIdentR.pattern.matcher(name).matches)
             name
-          else if (isFieldDefined(viewDef, name))
+          else if (isFieldDefined(xViewDef, name))
             qe.parser.extractVariables(":" + name).map(_.variable).head
           else {
             val nameParts =
