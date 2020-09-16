@@ -1,9 +1,9 @@
 package org.mojoz.querease
 
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.TableDef
-import mojoz.metadata.Type
+import org.mojoz.metadata.FieldDef.FieldDefBase
+import org.mojoz.metadata.ViewDef.ViewDefBase
+import org.mojoz.metadata.TableDef
+import org.mojoz.metadata.Type
 import org.tresql.{CacheBase, SimpleCacheBase}
 import org.tresql.parsing.{Exp, ExpTransformer, Ident, QueryParsers, Variable}
 
@@ -436,9 +436,9 @@ trait QuereaseExpressions { this: Querease =>
                 .map {
                   // FIXME support any expression, allow alias
                   case IdentR(colName, _) =>
-                    new mojoz.metadata.FieldDef(colName)
+                    new org.mojoz.metadata.FieldDef(colName)
                   case colExpr =>
-                    (new mojoz.metadata.FieldDef(name = null))
+                    (new org.mojoz.metadata.FieldDef(name = null))
                       .copy(isExpression = true, expression = colExpr)
                 }
                 .map(_.copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias))

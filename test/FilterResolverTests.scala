@@ -1,6 +1,6 @@
 package test
 
-import mojoz.metadata._
+import org.mojoz.metadata._
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 
@@ -21,31 +21,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
   def resolveBlahA(f: String, b: String = null) = transformer.transformFilter(f, viewBlahA, b)
   def resolveBlahExpr(f: String, b: String = null) = transformer.transformFilter(f, viewBlahExpr, b)
   private val b = "base"
-  private val f: FieldDef[Type] =
-    FieldDef(
-      table = null,
-      tableAlias = null,
-      name = null,
-      alias = null,
-      options = null,
-      isCollection = false,
-      maxOccurs = null,
-      isExpression = false,
-      expression = null,
-      saveTo = null,
-      resolver = null,
-      nullable = true,
-      initial = null,
-      isForcedCardinality = false,
-      type_ = null,
-      enum = null,
-      joinToParent = null,
-      orderBy = null,
-      isI18n = false,
-      comments = null,
-      extras = null
-    )
-  private val v: ViewDef[FieldDef[Type]] =
+  private val f: MojozFieldDef = new FieldDef(null, null)
+  private val v: MojozViewDef  =
     ViewDef(
       name = null,
       table = null,
@@ -56,8 +33,6 @@ class FilterResolverTests extends FlatSpec with Matchers {
       having = Nil,
       orderBy = Nil,
       extends_  = null,
-      draftOf = null,
-      detailsOf = null,
       comments = null,
       fields = Nil,
       saveTo = Nil,

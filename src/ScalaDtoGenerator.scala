@@ -1,9 +1,9 @@
 package org.mojoz.querease
 
-import mojoz.metadata.out.ScalaClassWriter
-import mojoz.metadata.FieldDef.FieldDefBase
-import mojoz.metadata.ViewDef.ViewDefBase
-import mojoz.metadata.Type
+import org.mojoz.metadata.out.ScalaGenerator
+import org.mojoz.metadata.MojozFieldDefBase
+import org.mojoz.metadata.MojozViewDefBase
+import org.mojoz.metadata.Type
 
 import org.tresql.parsing.Ident
 import org.tresql.parsing.Variable
@@ -11,16 +11,16 @@ import org.tresql.parsing.Variable
 import scala.collection.immutable.Seq
 
 /** Generates scala code and adds resolver methods for convenience */
-class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
+class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val SimpleIdentR = ("^" + ident + "$").r
   private val q3 = "\"\"\"" // https://github.com/scala/bug/issues/6476
-  override def scalaClassTraits(viewDef: ViewDefBase[FieldDefBase[Type]]): Seq[String] =
+  override def scalaClassTraits(viewDef: MojozViewDefBase): Seq[String] =
     if (viewDef.fields.exists(f => Option(f.alias).getOrElse(f.name) == "id" && f.type_.name == "long"))
       List("DtoWithId")
     else List("Dto")
   def useTresqlInterpolator = true
-  def transformResolverExpression(expression: String, field: FieldDefBase[Type]): String = {
+  def transformResolverExpression(expression: String, field: MojozFieldDefBase): String = {
     import qe.parser._
     transformer {
       case Ident(List("_")) if field != null =>
@@ -28,10 +28,10 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     } (parseExp(expression)).tresql
   }
   private def resolverDefs(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
+      viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers,
-      shouldGenerateResolverDef: (ViewDefBase[FieldDefBase[Type]], FieldDefBase[Type], String) => Boolean,
-      generateResolverDef: (ViewDefBase[FieldDefBase[Type]], FieldDefBase[Type], String) => String
+      shouldGenerateResolverDef: (MojozViewDefBase, MojozFieldDefBase, String) => Boolean,
+      generateResolverDef: (MojozViewDefBase, MojozFieldDefBase, String) => String
   ): Seq[String] = {
     viewDef.fields
       .flatMap { f =>
@@ -51,29 +51,29 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   }
   def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
+      viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
   def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
+      viewDef: MojozViewDefBase,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, shouldGenerateCompanionResolverDef, companionResolverDef)
   }
   def resolverDefBodyPrefix: String = ""
   def shouldGenerateInstanceResolverDef(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
-      fieldDef: FieldDefBase[Type],
+      viewDef: MojozViewDefBase,
+      fieldDef: MojozFieldDefBase,
       resolverExpression: String
   ): Boolean = {
     resolverExpression != null && resolverExpression != ""
   }
   def shouldGenerateCompanionResolverDef(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
-      fieldDef: FieldDefBase[Type],
+      viewDef: MojozViewDefBase,
+      fieldDef: MojozFieldDefBase,
       resolverExpression: String
   ): Boolean = {
     resolverExpression != null && resolverExpression != ""
@@ -93,7 +93,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
   }
   def resourcesWithParams(params: String): String =
     s"Env.withParams($params)"
-  private def isFieldDefined(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Boolean =
+  private def isFieldDefined(viewDef: MojozViewDefBase, path: String): Boolean =
     qe.findField(viewDef, path).nonEmpty
   private def getParamNames(expression: String): Seq[String] = {
     val variables = qe.parser.extractVariables(expression)
@@ -104,8 +104,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
       .map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
   }
   def instanceResolverDef(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
-      fieldDef: FieldDefBase[Type],
+      viewDef: MojozViewDefBase,
+      fieldDef: MojozFieldDefBase,
       resolverExpression: String
   ): String = {
     val paramNames =
@@ -116,8 +116,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
   def companionResolverDef(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
-      fieldDef: FieldDefBase[Type],
+      viewDef: MojozViewDefBase,
+      fieldDef: MojozFieldDefBase,
       resolverExpression: String
   ): String = {
     val paramNames = getParamNames(resolverExpression)
@@ -125,8 +125,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     resolverDef(viewDef, fieldDef, paramNames, defaultParamsString, resolverExpression)
   }
   def resolverDef(
-      viewDef: ViewDefBase[FieldDefBase[Type]],
-      fieldDef: FieldDefBase[Type],
+      viewDef: MojozViewDefBase,
+      fieldDef: MojozFieldDefBase,
       paramNames: Seq[String],
       defaultParamsString: String,
       resolverExpression: String
@@ -196,20 +196,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
           resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
     s"  }"
   }
-  private val scalaKeywords: Set[String] = Set( // TODO remove when upgraded to latest mojoz
-    "abstract", "case", "catch", "class", "def", "do", "else", "extends",
-    "false", "final", "finally", "for", "forSome", "if", "implicit", "import", "lazy",
-    "match", "new", "null", "object", "override", "package", "private", "protected",
-    "return", "sealed", "super", "this", "throw", "trait", "true", "try", "type",
-    "val", "var", "while", "with", "yield")
-  def scalaNameString(name: String) =
-    if (SimpleIdentR.pattern.matcher(name).matches && !(scalaKeywords contains name)) name
-    else s"`$name`"
-  override def createScalaClassString(viewDef: ViewDefBase[FieldDefBase[Type]]) = {
-    Seq(super.createScalaClassString(viewDef), scalaObjectString(viewDef))
-      .filter(_ != null).filter(_ != "").mkString(nl)
-  }
-  def scalaObjectString(viewDef: ViewDefBase[FieldDefBase[Type]]): String = {
+  override def scalaObjectString(viewDef: MojozViewDefBase): String = {
     val className = scalaClassName(viewDef.name)
     val resolverDefs = (qe match {
       case resolvers: QuereaseResolvers if shouldGenerateCompanionResolverDefs =>
@@ -223,34 +210,30 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaClassWriter(qe.typeDefs) {
     } else null
   }
 
-  def resolverTargetColName(f: FieldDefBase[Type]): String =
+  def resolverTargetColName(f: MojozFieldDefBase): String =
     Option(f.saveTo) getOrElse f.name
-  def resolverTargetType(f: FieldDefBase[Type]): Type = {
+  def resolverTargetType(f: MojozFieldDefBase): Type = {
     val colName = resolverTargetColName(f)
     Option(f.table)
       .flatMap(qe.tableMetadata.tableDefOption)
       .flatMap(_.cols.find(_.name == colName))
       .map(_.type_)
-      .orElse(Option(qe.metadataConventions.fromExternal(colName, None, None)._1))
+      .orElse(Option(qe.metadataConventions.typeFromExternal(colName, None)))
       .filterNot(_.name == null)
       .getOrElse(new Type("string"))
   }
-  def resolverTargetTypeName(f: FieldDefBase[Type]): String =
+  def resolverTargetTypeName(f: MojozFieldDefBase): String =
     scalaSimpleTypeName(resolverTargetType(f))
-  def resolverParamType(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): Type =
+  def resolverParamType(viewDef: MojozViewDefBase, paramName: String): Type =
     qe.findField(viewDef, paramName)
       .map(_.type_)
-      .orElse(Option(qe.metadataConventions.fromExternal(paramName, None, None)._1))
+      .orElse(Option(qe.metadataConventions.typeFromExternal(paramName, None)))
       .filterNot(_.name == null)
       .getOrElse(new Type("string"))
-  def resolverParamTypeName(viewDef: ViewDefBase[FieldDefBase[Type]], paramName: String): String =
+  def resolverParamTypeName(viewDef: MojozViewDefBase, paramName: String): String =
     scalaTypeName(resolverParamType(viewDef, paramName))
-  def scalaTypeName(type_ : Type): String =
-    if  (type_.isComplexType)
-         scalaComplexTypeName(type_)
-    else scalaSimpleTypeName(type_)
 
-  override def scalaBodyExtra(viewDef: ViewDefBase[FieldDefBase[Type]]): String = qe match {
+  override def scalaBodyExtra(viewDef: MojozViewDefBase): String = qe match {
     case resolvers: QuereaseResolvers if shouldGenerateInstanceResolverDefs =>
       instanceResolverDefs(viewDef, resolvers).mkString
     case _ => ""

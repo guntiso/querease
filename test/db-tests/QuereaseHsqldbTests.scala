@@ -1,7 +1,7 @@
 package test
 
 import java.sql.DriverManager
-import mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata.out.SqlWriter
 import org.tresql.CoreTypes
 import org.tresql.QueryBuilder
 import org.tresql.dialects.HSQLDialect

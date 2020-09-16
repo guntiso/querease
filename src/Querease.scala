@@ -16,8 +16,8 @@ import org.tresql.parsing.Ident
 import org.tresql.parsing.Null
 import org.tresql.parsing.{Query => QueryParser_Query}
 
-import mojoz.metadata.in.Join
-import mojoz.metadata.in.JoinsParser
+import org.mojoz.metadata.in.Join
+import org.mojoz.metadata.in.JoinsParser
 
 class NotFoundException(msg: String) extends Exception(msg)
 
@@ -160,6 +160,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def create[B <: DTO](params: Map[String, Any] = Map.empty)(
       implicit mf: Manifest[B], resources: Resources): B = {
     val view = this.viewDef
+    /* FIXME 'initial'
     if (view.fields.exists(_.initial != null)) {
       val query =
         view.fields.map { f =>
@@ -179,8 +180,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
         sys.error("Too many rows returned by query for create method for " + mf)
       result.head
     } else {
+    */
       mf.runtimeClass.newInstance.asInstanceOf[B]
-    }
+    // }
   }
 
   def list[B <: DTO: Manifest](query: String, params: Map[String, Any])(
@@ -304,7 +306,7 @@ trait QueryStringBuilder { this: Querease =>
   /*
   val paramsFilter =
     Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
-  import mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
+  import org.mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
   val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
   // FIXME extra order by, injection-safe!
   val safeExpr = List("decode(cnt, null, 0, 1)",

@@ -4,7 +4,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % "10.0.0",
-  "org.mojoz" %% "mojoz" % "1.2.1"
+  "org.mojoz" %% "mojoz" % "2.0.0-SNAPSHOT"
 )
 
 unmanagedSourceDirectories in Compile := baseDirectory(b => Seq(

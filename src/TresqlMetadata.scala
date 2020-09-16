@@ -10,13 +10,13 @@ import org.tresql.metadata.Procedure
 import org.tresql.metadata.{Ref => TresqlRef}
 import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
-import mojoz.metadata.io._
-import mojoz.metadata.in._
-import mojoz.metadata.Type
-import mojoz.metadata.TypeDef
-import mojoz.metadata.TypeMetadata
-import mojoz.metadata.TableDef.{TableDefBase => TableDef}
-import mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
+import org.mojoz.metadata.io._
+import org.mojoz.metadata.in._
+import org.mojoz.metadata.Type
+import org.mojoz.metadata.TypeDef
+import org.mojoz.metadata.TypeMetadata
+import org.mojoz.metadata.TableDef.{TableDefBase => TableDef}
+import org.mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],

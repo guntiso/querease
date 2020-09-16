@@ -6,12 +6,12 @@ import org.tresql.parsing.Braces
 import org.tresql.parsing.Exp
 import org.tresql.parsing.Obj
 
-import mojoz.metadata.in.Join
-import mojoz.metadata.in.JoinsParser
-import mojoz.metadata.ColumnDef
-import mojoz.metadata.TableDef.{ TableDefBase => TableDef }
-import mojoz.metadata.Type
-import mojoz.metadata.TypeDef
+import org.mojoz.metadata.in.Join
+import org.mojoz.metadata.in.JoinsParser
+import org.mojoz.metadata.ColumnDef
+import org.mojoz.metadata.TableDef.{ TableDefBase => TableDef }
+import org.mojoz.metadata.Type
+import org.mojoz.metadata.TypeDef
 
 import scala.collection.immutable.Seq
 import scala.language.reflectiveCalls

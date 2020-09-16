@@ -1,4 +1,5 @@
 name: account
+table:  account
 fields:
 - id ?
 - bank_id

@@ -11,13 +11,12 @@ import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import org.tresql.dialects.HSQLDialect
 import dto._
-import mojoz.metadata._
-import mojoz.metadata.TableMetadata
-import mojoz.metadata.in.I18nRules
-import mojoz.metadata.in.YamlMd
-import mojoz.metadata.in.YamlTableDefLoader
-import mojoz.metadata.in.YamlViewDefLoader
-import mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata._
+import org.mojoz.metadata.TableMetadata
+import org.mojoz.metadata.in.YamlMd
+import org.mojoz.metadata.in.YamlTableDefLoader
+import org.mojoz.metadata.in.YamlViewDefLoader
+import org.mojoz.metadata.out.SqlWriter
 import org.mojoz.querease._
 
 
@@ -283,7 +282,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     val generator = new ScalaDtoGenerator(qe)
     val dtosPath = "test/dtos"
     val expectedDtos: String = fileToString(dtosPath + "/" + "dtos-out.scala")
-    val producedDtos: String = generator.createScalaClassesString(Nil, qe.nameToViewDef.values.toList.sortBy(_.name), Nil)
+    val producedDtos: String = generator.generateScalaSource(Nil, qe.nameToViewDef.values.toList.sortBy(_.name), Nil)
     if (expectedDtos != producedDtos)
       toFile(dtosPath + "/" + "dtos-out-produced.scala", producedDtos)
     expectedDtos shouldBe producedDtos
@@ -307,6 +306,45 @@ class QuereaseTests extends FlatSpec with Matchers {
   }
 }
 
+object Naming {
+  def dbName(name: String) = {
+    val parts = dasherize(name).split("[\\-\\_]")
+    val hadPrefix = name.startsWith("_")
+    val hadSuffix = name.endsWith("_")
+    val clean = parts.toList
+      .map(_.toLowerCase)
+      .mkString("_")
+      .replace("__", "_")
+    (hadPrefix, hadSuffix) match {
+      case (true, true) => "_" + clean + "_"
+      case (true, false) => "_" + clean
+      case (false, true) => clean + "_"
+      case (false, false) => clean
+    }
+  }
+  def dasherize(name: String) = {
+    val (upper, digit, other) = (1, 2, 3)
+    val buf = new StringBuilder(name.length() * 2)
+    var charType = 0
+    var prevCharType = 0
+    for (i <- 0 to (name.length - 1)) {
+      val c = name.charAt(i)
+      if (Character.isUpperCase(c)) charType = upper
+      else if (Character.isDigit(c)) charType = digit
+      else charType = other
+      if (i > 0
+        && charType != prevCharType
+        && !(prevCharType == upper && charType == other)) {
+        buf.append('-')
+      }
+      if (charType == upper) buf.append(Character.toLowerCase(c))
+      else buf.append(c)
+      prevCharType = charType
+    }
+    buf.toString
+  }
+}
+
 object QuereaseTests {
   def dbName(name: String) =
     Naming.dbName(name)
@@ -324,7 +362,6 @@ object QuereaseTests {
 
      override type DTO = Dto
 
-     private val i18nRules = I18nRules.suffixI18n(tableMetadata, Set("_eng", "_rus"))
      override lazy val tableMetadata =
        new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
      override lazy val yamlMetadata =
@@ -332,7 +369,7 @@ object QuereaseTests {
         YamlMd.fromFiles(path = "test/views")
      override lazy val nameToViewDef = YamlViewDefLoader(
        tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
-       .extendedViewDefs.toMap
+       .nameToViewDef.toMap
      override protected lazy val viewNameToFieldOrdering =
        nameToViewDef.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields

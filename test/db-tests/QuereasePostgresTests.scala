@@ -4,7 +4,7 @@ import java.sql.DriverManager
 import com.typesafe.config.ConfigFactory
 
 import java.sql.DriverManager
-import mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata.out.SqlWriter
 import org.tresql.dialects.PostgresqlDialect
 import QuereaseDbTests.{setEnv, executeStatements}
 import QuereaseTests.qe

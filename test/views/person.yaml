@@ -1,4 +1,5 @@
 name: person
+table:  person
 fields:
 - id
 - name
@@ -42,7 +43,7 @@ fields:
 - paternal_grandmother = father.mother.name
 - paternal_grandfather = father.father.name
 - children * [p.id in (c.mother_id, c.father_id)] person_name
-- father *..1 [f.id = p.father_id]:
+- father [f.id = p.father_id]:
     table:  person f
     fields:
       - name
@@ -73,7 +74,7 @@ fields:
     table:  person c
     fields: name
     order:  name
-- father *..1 [f.id = p.father_id]:
+- father [f.id = p.father_id]:
     table:  person f
     fields:
       - name

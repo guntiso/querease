@@ -16,7 +16,7 @@ crossScalaVersions := Seq(
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 val tresqlV = "10.0.0"
-val mojozV = "1.2.1"
+val mojozV = "2.0.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
@@ -77,9 +77,9 @@ scalacOptions in Test := Seq("-unchecked", "-deprecation", "-feature", "-encodin
 
 resourceGenerators in Test += Def.task {
   import org.mojoz.querease._
-  import mojoz.metadata._
-  import mojoz.metadata.in._
-  import mojoz.metadata.out._
+  import org.mojoz.metadata._
+  import org.mojoz.metadata.in._
+  import org.mojoz.metadata.out._
   val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
   val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
   val file = new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath)
@@ -93,27 +93,28 @@ sourceGenerators in Test += Def.task {
     val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
     val outDir: File = (sourceManaged in Test).value
     import org.mojoz.querease._
-    import mojoz.metadata._
-    import mojoz.metadata.in._
-    import mojoz.metadata.out._
+    import org.mojoz.metadata._
+    import org.mojoz.metadata.in._
+    import org.mojoz.metadata.out._
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
     val viewDefLoader = YamlViewDefLoader(tableMd, yamlMd,
       new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs)))
-    val viewDefs = viewDefLoader.viewDefs
-    val xViewDefs = viewDefLoader.extendedViewDefs
+    val plainViewDefs = viewDefLoader.plainViewDefs
+    val xViewDefs = viewDefLoader.nameToViewDef
     val qe = new Querease with ScalaDtoQuereaseIo {
       override lazy val tableMetadata = tableMd
       override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
     }
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
-      override def scalaClassName(name: String) = Naming.camelize(name)
+      override def scalaClassName(name: String) =
+        name.split("[_\\-\\.]+").toList.map(_.toLowerCase.capitalize).mkString
       override def useTresqlInterpolator =
         !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not available for old scala
         !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?
     }
     val file = outDir / "Dtos.scala"
-    val contents = ScalaBuilder.createScalaClassesString(
+    val contents = ScalaBuilder.generateScalaSource(
       List(
         "package dto",
         "",
@@ -124,19 +125,19 @@ sourceGenerators in Test += Def.task {
         "import test.{ Dto, DtoWithId }",
         "import test.QuereaseDbTests.Env",
         "").filter(_ != null),
-      viewDefs,
+      plainViewDefs,
       Nil)
     IO.write(file, contents)
     Seq(file) // FIXME where's my cache?
 }.taskValue
 
-initialCommands in console := "import org.tresql._; import org.mojoz.querease._; import mojoz.metadata._"
+initialCommands in console := "import org.tresql._; import org.mojoz.querease._; import org.mojoz.metadata._"
 
 initialCommands in (Test, console) := Seq(
   "import dto._",
   "import org.tresql._",
   "import org.mojoz.querease._",
-  "import mojoz.metadata._",
+  "import org.mojoz.metadata._",
   "import test._",
   "import QuereaseTests._",
   "import QuereaseDbTests._",

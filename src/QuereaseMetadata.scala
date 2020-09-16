@@ -1,11 +1,11 @@
 package org.mojoz.querease
 
 import org.tresql.compiling.TresqlFunctionSignatures
-import mojoz.metadata._
-import mojoz.metadata.TableDef.TableDefBase
-import mojoz.metadata.ColumnDef.ColumnDefBase
-import mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
-import mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
+import org.mojoz.metadata._
+import org.mojoz.metadata.TableDef.TableDefBase
+import org.mojoz.metadata.ColumnDef.ColumnDefBase
+import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
+import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 import scala.collection.immutable.Seq
 
 case class ViewNotFoundException(message: String) extends Exception(message)
@@ -13,8 +13,8 @@ case class FieldOrderingNotFoundException(message: String) extends Exception(mes
 
 trait QuereaseMetadata {
 
-  type FieldDef = mojoz.metadata.FieldDef[Type]
-  type ViewDef = mojoz.metadata.ViewDef[FieldDef]
+  type FieldDef = org.mojoz.metadata.FieldDef[Type]
+  type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
@@ -41,7 +41,7 @@ trait QuereaseMetadata {
 
   lazy val nameToViewDef: Map[String, ViewDef] =
     YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
-      .extendedViewDefs.asInstanceOf[Map[String, ViewDef]]
+      .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)

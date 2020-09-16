@@ -57,7 +57,7 @@ trait QuereaseResolvers { this: Querease =>
                 t.uk.exists(_.cols == Seq(fSaveTo)))
               .map { t =>
                 val saveToField =
-                  new mojoz.metadata.FieldDef(fSaveTo)
+                  new org.mojoz.metadata.FieldDef(fSaveTo)
                     .copy(table = t.name /* TODO?  tableAlias = refViewDef.tableAlias*/)
                 val expression = Option(f.expression).getOrElse(name)
                 queryString(view, Seq(saveToField), Seq(f), s"$expression = _")
@@ -75,7 +75,7 @@ trait QuereaseResolvers { this: Querease =>
                 val expression = Option(refFieldDef.expression).getOrElse(refFieldDef.name)
                 // TODO check refTable in view tables?
                 val refColField =
-                  new mojoz.metadata.FieldDef(refCol)
+                  new org.mojoz.metadata.FieldDef(refCol)
                     .copy(table = refViewDef.table, tableAlias = refViewDef.tableAlias)
                 queryString(refViewDef, Seq(refColField), Seq(refFieldDef), s"$expression = _")
               }
