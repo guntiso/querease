@@ -104,6 +104,32 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     }
   }
 
+  import QuereaseMetadata.AugmentedQuereaseViewDef
+  def validationsQueryString(viewDef: ViewDef): Option[String] = Option(
+    if (viewDef.validations != null && viewDef.validations.nonEmpty)
+      "messages(# idx, msg) {" +
+        viewDef.validations.zipWithIndex.map {
+          case (v, i) => s"{ $i idx, if_not($v) msg }"
+        }.mkString(" + ") +
+      "} messages[msg != null] { msg } #(idx)"
+    else null
+  )
+  def validationsQueryStrings(viewDef: ViewDef): Seq[String] = {
+    val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
+    def vqsRecursively(viewDef: ViewDef): Seq[String] = {
+      if (visited contains viewDef.name) Nil
+      else {
+        visited += viewDef.name
+        validationsQueryString(viewDef).toList ++
+          viewDef.fields.flatMap { f =>
+            if (f.type_.isComplexType)
+              vqsRecursively(this.viewDef(f.type_.name))
+            else Nil
+          }
+      }
+    }
+    vqsRecursively(viewDef)
+  }
   /** Subclasses may override this method and throw exception */
   def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {}
 
@@ -237,7 +263,7 @@ trait QueryStringBuilder { this: Querease =>
         queryStringAndParams(viewDef, Map.empty)._1
       )
     else Nil
-  }
+  } ++ validationsQueryStrings(viewDef)
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
