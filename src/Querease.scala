@@ -160,7 +160,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def create[B <: DTO](params: Map[String, Any] = Map.empty)(
       implicit mf: Manifest[B], resources: Resources): B = {
     val view = this.viewDef
-    /* FIXME 'initial'
+    import QuereaseMetadata.AugmentedQuereaseFieldDef
     if (view.fields.exists(_.initial != null)) {
       val query =
         view.fields.map { f =>
@@ -180,9 +180,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
         sys.error("Too many rows returned by query for create method for " + mf)
       result.head
     } else {
-    */
       mf.runtimeClass.newInstance.asInstanceOf[B]
-    // }
+    }
   }
 
   def list[B <: DTO: Manifest](query: String, params: Map[String, Any])(

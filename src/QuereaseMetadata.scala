@@ -39,9 +39,12 @@ trait QuereaseMetadata {
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, functionSignaturesClass)
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
-  lazy val nameToViewDef: Map[String, ViewDef] =
+  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
     YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
+  }
+  def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
+    mojozViewDefs.mapValues(toQuereaseViewDef).toMap
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
@@ -59,4 +62,96 @@ trait QuereaseMetadata {
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
+
+  protected def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
+    import scala.collection.JavaConverters._
+    val Initial = "initial"
+    val Validations = "validations"
+    def getExtraOpt(f: FieldDef, key: String) =
+      Option(f.extras).flatMap(_ get key).map {
+        case s: String => s
+        case i: Int => i.toString
+        case l: Long => l.toString
+        case d: Double => d.toString
+        case bd: BigDecimal => bd.toString
+        case b: Boolean => b.toString
+        case null => null
+        case x => sys.error(
+          s"Expecting String, AnyVal, BigDecimal value or no value, viewDef field, key: ${viewDef.name}.${f.name}, $key")
+    }
+    def getStringSeq(name: String, extras: Map[String, Any]): Seq[String] = {
+      getSeq(name, extras) map {
+        case s: java.lang.String => s
+        case m: java.util.Map[_, _] =>
+          if (m.size == 1) m.entrySet.asScala.toList(0).getKey.toString
+          else m.toString // TODO error?
+        case x => x.toString
+      }
+    }
+    def getSeq(name: String, extras: Map[String, Any]): Seq[_] =
+      Option(extras).flatMap(_ get name) match {
+        case Some(s: java.lang.String) => Seq(s)
+        case Some(a: java.util.ArrayList[_]) => a.asScala.toList
+        case None => Nil
+        case Some(null) => Seq("")
+        case Some(x) => Seq(x)
+      }
+    import QuereaseMetadata._
+    val qeFields = viewDef.fields map { f =>
+      val initial = getExtraOpt(f, Initial).orNull
+      f.updateExtras(_ => QuereaseFieldDef(initial))
+    }
+    val validations = getStringSeq(Validations, viewDef.extras)
+    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(validations))
+  }
+}
+
+object QuereaseMetadata {
+  trait QuereaseViewDefExtras {
+    val validations: Seq[String]
+  }
+
+  private [querease] case class QuereaseViewDef(
+    validations: Seq[String] = Nil
+  ) extends QuereaseViewDefExtras
+
+  trait QuereaseFieldDefExtras {
+    val initial: String
+  }
+
+  private [querease] case class QuereaseFieldDef(
+    initial: String = null
+  ) extends QuereaseFieldDefExtras
+
+  val QuereaseViewExtrasKey = "querease-view-extras"
+  val QuereaseFieldExtrasKey = "querease-field-extras"
+  trait ExtrasMap {
+    protected def updateExtrasMap(extras: Map[String, Any]): Any
+    protected def extrasMap: Map[String, Any]
+
+    private def extrasMapOrEmpty: Map[String, Any] = Option(extrasMap).getOrElse(Map())
+    protected def updateExtras[T, E](key: String, updater: E => E, default: E): T =
+      updateExtrasMap(extrasMapOrEmpty + (key -> updater(extras(key, default)))).asInstanceOf[T]
+    protected def extras[E](key: String, default: E): E = extrasMapOrEmpty.getOrElse(key, default).asInstanceOf[E]
+  }
+  implicit class AugmentedQuereaseViewDef(viewDef: QuereaseMetadata#ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
+    private val defaultExtras = QuereaseViewDef()
+    private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
+    override val validations = quereaseExtras.validations
+    def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): QuereaseMetadata#ViewDef =
+      updateExtras(QuereaseViewExtrasKey, updater, defaultExtras)
+
+    override protected def updateExtrasMap(extras: Map[String, Any]) = viewDef.copy(extras = extras)
+    override protected def extrasMap = viewDef.extras
+  }
+  implicit class AugmentedQuereaseFieldDef(fieldDef: QuereaseMetadata#FieldDef) extends QuereaseFieldDefExtras with ExtrasMap {
+    private val defaultExtras = QuereaseFieldDef()
+    val quereaseExtras = extras(QuereaseFieldExtrasKey, defaultExtras)
+    override val initial = quereaseExtras.initial
+    def updateExtras(updater: QuereaseFieldDef => QuereaseFieldDef): QuereaseMetadata#FieldDef =
+      updateExtras(QuereaseFieldExtrasKey, updater, defaultExtras)
+
+    override protected def updateExtrasMap(extras: Map[String, Any]): Any = fieldDef.copy(extras = extras)
+    override protected def extrasMap = fieldDef.extras
+  }
 }
