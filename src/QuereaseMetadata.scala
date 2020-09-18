@@ -39,12 +39,13 @@ trait QuereaseMetadata {
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, functionSignaturesClass)
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
-  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
+  lazy val viewDefLoader: YamlViewDefLoader =
     YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
+  import QuereaseMetadata.toQuereaseViewDefs
+  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
+    viewDefLoader
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
-  def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
-    mojozViewDefs.mapValues(toQuereaseViewDef).toMap
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
@@ -62,48 +63,6 @@ trait QuereaseMetadata {
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
-
-  protected def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
-    import scala.collection.JavaConverters._
-    val Initial = "initial"
-    val Validations = "validations"
-    def getExtraOpt(f: FieldDef, key: String) =
-      Option(f.extras).flatMap(_ get key).map {
-        case s: String => s
-        case i: Int => i.toString
-        case l: Long => l.toString
-        case d: Double => d.toString
-        case bd: BigDecimal => bd.toString
-        case b: Boolean => b.toString
-        case null => null
-        case x => sys.error(
-          s"Expecting String, AnyVal, BigDecimal value or no value, viewDef field, key: ${viewDef.name}.${f.name}, $key")
-    }
-    def getStringSeq(name: String, extras: Map[String, Any]): Seq[String] = {
-      getSeq(name, extras) map {
-        case s: java.lang.String => s
-        case m: java.util.Map[_, _] =>
-          if (m.size == 1) m.entrySet.asScala.toList(0).getKey.toString
-          else m.toString // TODO error?
-        case x => x.toString
-      }
-    }
-    def getSeq(name: String, extras: Map[String, Any]): Seq[_] =
-      Option(extras).flatMap(_ get name) match {
-        case Some(s: java.lang.String) => Seq(s)
-        case Some(a: java.util.ArrayList[_]) => a.asScala.toList
-        case None => Nil
-        case Some(null) => Seq("")
-        case Some(x) => Seq(x)
-      }
-    import QuereaseMetadata._
-    val qeFields = viewDef.fields map { f =>
-      val initial = getExtraOpt(f, Initial).orNull
-      f.updateExtras(_ => QuereaseFieldDef(initial))
-    }
-    val validations = getStringSeq(Validations, viewDef.extras)
-    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(validations))
-  }
 }
 
 object QuereaseMetadata {
@@ -153,5 +112,49 @@ object QuereaseMetadata {
 
     override protected def updateExtrasMap(extras: Map[String, Any]): Any = fieldDef.copy(extras = extras)
     override protected def extrasMap = fieldDef.extras
+  }
+
+  def toQuereaseViewDefs(mojozViewDefs: Map[String, MojozViewDef]): Map[String, MojozViewDef] =
+    mojozViewDefs.mapValues(toQuereaseViewDef).toMap
+
+  def toQuereaseViewDef(viewDef: MojozViewDef): MojozViewDef = {
+    import scala.collection.JavaConverters._
+    val Initial = "initial"
+    val Validations = "validations"
+    def getExtraOpt(f: MojozFieldDef, key: String) =
+      Option(f.extras).flatMap(_ get key).map {
+        case s: String => s
+        case i: Int => i.toString
+        case l: Long => l.toString
+        case d: Double => d.toString
+        case bd: BigDecimal => bd.toString
+        case b: Boolean => b.toString
+        case null => null
+        case x => sys.error(
+          s"Expecting String, AnyVal, BigDecimal value or no value, viewDef field, key: ${viewDef.name}.${f.name}, $key")
+    }
+    def getStringSeq(name: String, extras: Map[String, Any]): Seq[String] = {
+      getSeq(name, extras) map {
+        case s: java.lang.String => s
+        case m: java.util.Map[_, _] =>
+          if (m.size == 1) m.entrySet.asScala.toList(0).getKey.toString
+          else m.toString // TODO error?
+        case x => x.toString
+      }
+    }
+    def getSeq(name: String, extras: Map[String, Any]): Seq[_] =
+      Option(extras).flatMap(_ get name) match {
+        case Some(s: java.lang.String) => Seq(s)
+        case Some(a: java.util.ArrayList[_]) => a.asScala.toList
+        case None => Nil
+        case Some(null) => Seq("")
+        case Some(x) => Seq(x)
+      }
+    val qeFields = viewDef.fields map { f =>
+      val initial = getExtraOpt(f, Initial).orNull
+      f.updateExtras(_ => QuereaseFieldDef(initial))
+    }
+    val validations = getStringSeq(Validations, viewDef.extras)
+    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(validations))
   }
 }
