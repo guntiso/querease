@@ -16,7 +16,7 @@ import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
 import org.mojoz.metadata.in.YamlViewDefLoader
-import org.mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata.out.SqlGenerator
 import org.mojoz.querease._
 
 

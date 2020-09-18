@@ -1,7 +1,7 @@
 package test
 
 import java.sql.DriverManager
-import org.mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.CoreTypes
 import org.tresql.QueryBuilder
 import org.tresql.dialects.HSQLDialect
@@ -55,7 +55,7 @@ object QuereaseHsqldbTests {
          end if"""
   )
   val createHsqldbObjectsStatements =
-    SqlWriter.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
+    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
     hsqldb_custom_functions_statements ++
     Seq("CREATE SEQUENCE seq START WITH 10000",
         "SET DATABASE COLLATION \"Latvian\"")

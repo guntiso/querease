@@ -4,7 +4,7 @@ import java.sql.DriverManager
 import com.typesafe.config.ConfigFactory
 
 import java.sql.DriverManager
-import org.mojoz.metadata.out.SqlWriter
+import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.dialects.PostgresqlDialect
 import QuereaseDbTests.{setEnv, executeStatements}
 import QuereaseTests.qe
@@ -70,7 +70,7 @@ object QuereasePostgresTests {
       "drop schema if exists querease cascade",
       "create schema querease authorization querease"
     ) ++
-    SqlWriter.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
+    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
     postgres_custom_functions_statements ++
     Seq("CREATE SEQUENCE seq START WITH 10000",
         "commit"
