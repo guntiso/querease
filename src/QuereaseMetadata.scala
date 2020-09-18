@@ -105,7 +105,7 @@ object QuereaseMetadata {
   }
   implicit class AugmentedQuereaseFieldDef(fieldDef: QuereaseMetadata#FieldDef) extends QuereaseFieldDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseFieldDef()
-    val quereaseExtras = extras(QuereaseFieldExtrasKey, defaultExtras)
+    private val quereaseExtras = extras(QuereaseFieldExtrasKey, defaultExtras)
     override val initial = quereaseExtras.initial
     def updateExtras(updater: QuereaseFieldDef => QuereaseFieldDef): QuereaseMetadata#FieldDef =
       updateExtras(QuereaseFieldExtrasKey, updater, defaultExtras)
