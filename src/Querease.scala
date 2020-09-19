@@ -20,6 +20,7 @@ import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
 
 class NotFoundException(msg: String) extends Exception(msg)
+case class ValidationResult(path: List[Any], messages: List[String])
 
 abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseExpressions with FilterTransformer { this: QuereaseIo =>
 
@@ -129,6 +130,42 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       }
     }
     vqsRecursively(viewDef)
+  }
+  def validationResults[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): List[ValidationResult] = {
+    def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
+      validationsQueryString(viewDef) match {
+        case Some(query) =>
+          Query(query, obj).map(_.s("msg")).toList
+        case _ => Nil
+      }
+    def validateViewAndSubviews(path: List[Any], viewDef: ViewDef, obj: Map[String, Any],
+                                res: List[ValidationResult]): List[ValidationResult] = {
+      val viewRes =
+        validateView(viewDef, obj ++ params) match {
+          case errs if errs.nonEmpty => List(ValidationResult(path.reverse, errs))
+          case _ => Nil
+        }
+      viewDef.fields
+        .collect { case f if f.type_.isComplexType => (f.name, nameToViewDef(f.type_.name)) }
+        .foldLeft(viewRes ::: res) { (r, nv) =>
+          val (n, vd) = nv
+          def maybeAddParent(m: Map[String, Any]) =
+            if(!m.contains("_parent")) m + ("_parent" -> obj) else m
+          obj.get(n).map {
+            case m: Map[String, _]@unchecked =>
+              validateViewAndSubviews(n :: path, vd, maybeAddParent(m), r)
+            case l: List[Map[String, _]@unchecked] =>
+              val p = n :: path
+              l.zipWithIndex.foldLeft(r){ (r1, owi) =>
+                val (o, i) = owi
+                validateViewAndSubviews(i :: p, vd, maybeAddParent(o), r1)
+              }
+            case _ => r
+          }.getOrElse(r)
+        }
+    }
+    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    validateViewAndSubviews(Nil, view, toMap(pojo), Nil).reverse
   }
   /** Subclasses may override this method and throw exception */
   def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {}
