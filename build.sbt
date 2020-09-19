@@ -29,19 +29,6 @@ libraryDependencies ++= Seq(
 
 scalaSource in Compile := baseDirectory(_ / "src").value
 
-autoAPIMappings := true
-apiMappings ++= {
-  val fcp = (fullClasspath in Compile).value
-  val scalaMajorV = scalaVersion.value.substring(0, 4)
-  val mappings: Map[String, String] =
-    fcp.files.map(_.getName).filter(_ startsWith "tresql")
-      .map(tresqljar => (tresqljar, s"https://oss.sonatype.org/service/local/repositories/public/archive/org/tresql/tresql_$scalaMajorV/$tresqlV/tresql_$scalaMajorV-$tresqlV-javadoc.jar/!/index.html")).toMap ++
-    fcp.files.map(_.getName).filter(_ startsWith "mojoz")
-      .map(mojozjar => (mojozjar, s"https://oss.sonatype.org/service/local/repositories/public/archive/org/mojoz/mojoz_$scalaMajorV/$mojozV/mojoz_$scalaMajorV-$mojozV-javadoc.jar/!/index.html")).toMap
-  fcp.files.filter(f => mappings.contains(f.getName))
-    .map(f => (f, new java.net.URL(mappings(f.getName)))).toMap
-}
-
 scalacOptions in (Compile, doc) ++= (baseDirectory in
  LocalProject("querease")).map {
    bd => Seq("-sourcepath", bd.getAbsolutePath,
