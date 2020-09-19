@@ -11,8 +11,17 @@ import org.tresql.parsing.Variable
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
 
+object ScalaDtoGenerator {
+  /** exposes parameter types for override management */
+  case class ResolverScala(
+    parameterTypes: Seq[String],
+    resolver: String
+  )
+}
+
 /** Generates scala code and adds resolver methods for convenience */
 class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
+  import ScalaDtoGenerator.ResolverScala
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val SimpleIdentR = ("^" + ident + "$").r
   private val q3 = "\"\"\"" // https://github.com/scala/bug/issues/6476
@@ -33,7 +42,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       qe: Querease with QuereaseResolvers,
       manageOverrides: Boolean,
       shouldGenerateResolverDef: (MojozViewDefBase, MojozFieldDefBase, String) => Boolean,
-      generateResolverDef: (MojozViewDefBase, MojozFieldDefBase, Boolean, String) => String
+      generateResolver: (MojozViewDefBase, MojozFieldDefBase, Boolean, String) => ResolverScala
   ): Seq[String] = {
     def resolverExp(viewDef: MojozViewDefBase, f: MojozFieldDefBase) =
       qe.allResolvers(
@@ -44,30 +53,38 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       }.collect {
         case exp if shouldGenerateResolverDef(viewDef, f, exp) => exp
       }
-    def resolvers(viewDef: MojozViewDefBase, fields: Seq[MojozFieldDefBase], manageOverrides: Boolean): Seq[String] =
+    def resolvers(viewDef: MojozViewDefBase, fields: Seq[MojozFieldDefBase], manageOverrides: Boolean): Seq[ResolverScala] =
       fields.flatMap { f => resolverExp(viewDef, f).map { resolverExpression =>
         val isOverride =
           if (manageOverrides && f.isOverride) {
             val fieldName = Option(f.alias).getOrElse(f.name)
-            // FIXME isOverride detection: match resolver parameter signatures!
+            val pSearch =
+              Option(generateResolver(viewDef, f, false, resolverExpression))
+                .filterNot(_.resolver == null)
+                .filterNot(_.resolver == "")
+                .map(_.parameterTypes)
+                .orNull
             @tailrec
-            def hasSuperResolver(viewDef: MojozViewDefBase): Boolean = {
+            def hasMatchingSuperResolver(viewDef: MojozViewDefBase): Boolean = {
               val fSuperOpt = viewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == fieldName)
-              if (fSuperOpt.nonEmpty && resolvers(viewDef, fSuperOpt.toList, manageOverrides = false).nonEmpty)
+              if (fSuperOpt.nonEmpty &&
+                  resolvers(viewDef, fSuperOpt.toList, manageOverrides = false)
+                    .exists(_.parameterTypes == pSearch))
                 true
               else if (viewDef.extends_ != null)
-                hasSuperResolver(qe.viewDef(viewDef.extends_))
+                hasMatchingSuperResolver(qe.viewDef(viewDef.extends_))
               else false
             }
-            hasSuperResolver(qe.viewDef(viewDef.extends_))
+            pSearch != null && hasMatchingSuperResolver(qe.viewDef(viewDef.extends_))
           } else false
-        generateResolverDef(viewDef, f, isOverride, resolverExpression)
+        generateResolver(viewDef, f, isOverride, resolverExpression)
       }}
       .filterNot(_ == null)
-      .filterNot(_ == "")
+      .filterNot(_.resolver == null)
+      .filterNot(_.resolver == "")
       .toSeq
     resolvers(viewDef, viewDef.fields, manageOverrides)
-      .map(_ + nl)
+      .map(_.resolver + nl)
   }
   def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
@@ -128,35 +145,35 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       fieldDef: MojozFieldDefBase,
       isOverride: Boolean,
       resolverExpression: String
-  ): String = {
+  ): ResolverScala = {
     val xViewDef = qe.nameToViewDef(viewDef.name)
     val paramNames =
       getParamNames(resolverExpression)
         .filterNot(n =>
           isFieldDefined(xViewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
-    val defaultParamsString = "this.toMap"
-    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultParamsString, resolverExpression)
+    val defaultArgsString = "this.toMap"
+    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultArgsString, resolverExpression)
   }
   def companionResolverDef(
       viewDef: MojozViewDefBase,
       fieldDef: MojozFieldDefBase,
       isOverride: Boolean,
       resolverExpression: String
-  ): String = {
+  ): ResolverScala = {
     val paramNames = getParamNames(resolverExpression)
-    val defaultParamsString = ""
-    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultParamsString, resolverExpression)
+    val defaultArgsString = ""
+    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultArgsString, resolverExpression)
   }
   def resolverDef(
       viewDef: MojozViewDefBase,
       fieldDef: MojozFieldDefBase,
       isOverride: Boolean,
       paramNames: Seq[String],
-      defaultParamsString: String,
+      defaultArgsString: String,
       resolverExpression: String
-  ): String = {
+  ): ResolverScala = {
     val xViewDef = qe.nameToViewDef(viewDef.name)
-    val hasDefaultParams = defaultParamsString != null && defaultParamsString != ""
+    val hasDefaultArgs = defaultArgsString != null && defaultArgsString != ""
     val optionalParamsSet =
       Option(paramNames).getOrElse(Nil)
         .filter(_ endsWith "?").filterNot(_ == "?").map(_ dropRight 1).toSet
@@ -198,29 +215,37 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
         val value = if (paramType.isComplexType) "Option(v).map(_.toMap).orNull" else "v"
         s"""Option(${scalaNameString(p)}).filter(_.nonEmpty).map(_.get).map(v => "$p" -> $value)"""
       }.mkString(", ")
-    val argsString =
-      if (paramNamesReduced.nonEmpty)
-        paramNamesReduced.map { p =>
-          if (p == null)
-            s"$NotFoundParamName: Map[String, Any] => Map[String, Any]"
-          else if (optionalParamsSet contains p)
-            s"""${scalaNameString(p)}: Option[${resolverParamTypeName(viewDef, varName(p))}]"""
-          else
-            s"""${scalaNameString(p)}: ${resolverParamTypeName(viewDef, varName(p))}"""
+    val paramNamesAndTypes =
+      paramNamesReduced.map { p =>
+        if (p == null)
+          NotFoundParamName -> "Map[String, Any] => Map[String, Any]"
+        else if (optionalParamsSet contains p)
+          scalaNameString(p) -> s"Option[${resolverParamTypeName(viewDef, varName(p))}]"
+        else
+          scalaNameString(p) -> resolverParamTypeName(viewDef, varName(p))
+      }
+    val parameterTypes = paramNamesAndTypes.map(_._2)
+    val paramsString =
+      if (paramNamesAndTypes.nonEmpty)
+        paramNamesAndTypes.map {
+          case (pName, pType) => s"$pName: $pType"
         }.mkString("(", ", ", ")")
       else ""
-    val paramsStringKnown =
-      List(!(hasDefaultParams || hasKnownParams || hasOptionalParams) -> "Map.empty",
-           hasDefaultParams         ->    defaultParamsString,
+    val argsStringKnown =
+      List(!(hasDefaultArgs || hasKnownParams || hasOptionalParams) -> "Map.empty",
+           hasDefaultArgs         ->    defaultArgsString,
            hasKnownParams           ->  s"Map($paramsKeyValueScalaString)",
            hasOptionalParams        ->  s"List($optionalParamsKeyValueScalaString).filter(_.nonEmpty).map(_.get).toMap"
       ).filter(_._1).map(_._2).mkString(" ++ ")
-    val paramsString =
-      if (notFoundInChild) s"$NotFoundParamName($paramsStringKnown)" else paramsStringKnown
+    val argsString =
+      if (notFoundInChild) s"$NotFoundParamName($argsStringKnown)" else argsStringKnown
     val override_ = if (isOverride) "override " else ""
-    s"  ${override_}def resolve_${resolverTargetColName(fieldDef)}$argsString = $resolverDefBodyPrefix{" + nl +
-          resolverBody(resolverExpression, paramsString, resolverTargetTypeName(fieldDef)) +
-    s"  }"
+    ResolverScala(
+      parameterTypes,
+      s"  ${override_}def resolve_${resolverTargetColName(fieldDef)}$paramsString = $resolverDefBodyPrefix{" + nl +
+            resolverBody(resolverExpression, argsString, resolverTargetTypeName(fieldDef)) +
+      s"  }"
+    )
   }
   override def scalaObjectString(viewDef: MojozViewDefBase): String = {
     val className = scalaClassName(viewDef.name)

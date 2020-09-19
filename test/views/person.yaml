@@ -491,3 +491,18 @@ name: resolver_override_test_03
 extends: resolver_override_test_02
 fields:
 - id   ->   id = person[name = :name || 'Y']{nullif(0, 0) id}
+
+name: resolver_override_test_04
+extends: resolver_override_test_03
+fields:
+- id   ->   id = person[name = :name || :id || 'Z']{nullif(0, 0) id}
+
+name: resolver_override_test_05
+extends: resolver_override_test_04
+fields:
+- id   ->   id = person[name = :name || :unknown_id]{nullif(0, 0) id}
+
+name: resolver_override_test_06
+extends: resolver_override_test_05
+fields:
+- id   ->   id = person[name = :name || :other_unknown_id]{nullif(0, 0) id}
