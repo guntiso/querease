@@ -20,6 +20,7 @@ import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
 
 class NotFoundException(msg: String) extends Exception(msg)
+class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
 case class ValidationResult(path: List[Any], messages: List[String])
 
 abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseExpressions with FilterTransformer { this: QuereaseIo =>
@@ -142,7 +143,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
                                 res: List[ValidationResult]): List[ValidationResult] = {
       val viewRes =
         validateView(viewDef, obj ++ params) match {
-          case errs if errs.nonEmpty => List(ValidationResult(path.reverse, errs))
+          case messages if messages.nonEmpty => List(ValidationResult(path.reverse, messages))
           case _ => Nil
         }
       viewDef.fields
@@ -167,8 +168,13 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
     validateViewAndSubviews(Nil, view, toMap(pojo), Nil).reverse
   }
-  /** Subclasses may override this method and throw exception */
-  def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {}
+  def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {
+    val results = validationResults(pojo, params)
+    results.flatMap(_.messages).filterNot(_ == null).filterNot(_ == "") match {
+      case messages if messages.nonEmpty => throw new ValidationException(messages.mkString(";\n"), results)
+      case _ => ()
+    }
+  }
 
   def countAll[B <: DTO: Manifest](params: Map[String, Any],
     extraFilter: String = null, extraParams: Map[String, Any] = Map())(
