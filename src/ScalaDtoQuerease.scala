@@ -27,8 +27,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
     case _ => sys.error( // TODO use viewDef to get key-values if defined
       s"getting key map for ${dto.getClass.getName} not supported yet")
   }
-
-  def toMap[B <: DTO](dto: B): Map[String, Any] =
+  override def toMap[B <: DTO](dto: B): Map[String, Any] =
     dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo} /*self.type somehow does not work*/].toMap(this)
 
   //org.tresql.Converter[T]
