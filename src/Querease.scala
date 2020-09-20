@@ -171,7 +171,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {
     val results = validationResults(pojo, params)
     results.flatMap(_.messages).filterNot(_ == null).filterNot(_ == "") match {
-      case messages if messages.nonEmpty => throw new ValidationException(messages.mkString(";\n"), results)
+      case messages if messages.nonEmpty => throw new ValidationException(messages.mkString("\n"), results)
       case _ => ()
     }
   }
