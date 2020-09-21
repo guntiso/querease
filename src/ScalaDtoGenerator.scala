@@ -128,8 +128,12 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       s"    Query($q3{$resolverExpression}$q3)($resources)" + nl +
       s"      .unique[$resolverTargetType]" + nl
   }
+  def instanceResolverDefExtraParams: String =
+    s"(implicit env: org.tresql.Resources, qe: QE)"
+  def companionResolverDefExtraParams: String =
+    s"(implicit env: org.tresql.Resources)"
   def resourcesWithParams(params: String): String =
-    s"Env.withParams($params)"
+    s"env.withParams($params)"
   private def isFieldDefined(viewDef: MojozViewDefBase, path: String): Boolean =
     qe.findField(viewDef, path).nonEmpty
   private def getParamNames(expression: String): Seq[String] = {
@@ -152,7 +156,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
         .filterNot(n =>
           isFieldDefined(xViewDef, if ((n endsWith "?") && (n != "?")) n dropRight 1 else n))
     val defaultArgsString = "this.toMap"
-    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultArgsString, resolverExpression)
+    resolverDef(viewDef, fieldDef, isOverride, paramNames,
+      defaultArgsString, instanceResolverDefExtraParams, resolverExpression)
   }
   def companionResolverDef(
       viewDef: MojozViewDefBase,
@@ -162,7 +167,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   ): ResolverScala = {
     val paramNames = getParamNames(resolverExpression)
     val defaultArgsString = ""
-    resolverDef(viewDef, fieldDef, isOverride, paramNames, defaultArgsString, resolverExpression)
+    resolverDef(viewDef, fieldDef, isOverride, paramNames,
+      defaultArgsString, companionResolverDefExtraParams, resolverExpression)
   }
   def resolverDef(
       viewDef: MojozViewDefBase,
@@ -170,6 +176,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       isOverride: Boolean,
       paramNames: Seq[String],
       defaultArgsString: String,
+      extraParams: String,
       resolverExpression: String
   ): ResolverScala = {
     val xViewDef = qe.nameToViewDef(viewDef.name)
@@ -225,12 +232,13 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
           scalaNameString(p) -> resolverParamTypeName(viewDef, varName(p))
       }
     val parameterTypes = paramNamesAndTypes.map(_._2)
-    val paramsString =
+    val resolverParams =
       if (paramNamesAndTypes.nonEmpty)
         paramNamesAndTypes.map {
           case (pName, pType) => s"$pName: $pType"
         }.mkString("(", ", ", ")")
       else ""
+    val paramsString = resolverParams + extraParams
     val argsStringKnown =
       List(!(hasDefaultArgs || hasKnownParams || hasOptionalParams) -> "Map.empty",
            hasDefaultArgs         ->    defaultArgsString,
