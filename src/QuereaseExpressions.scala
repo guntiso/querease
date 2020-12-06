@@ -478,8 +478,9 @@ trait QuereaseExpressions { this: Querease =>
           val optionalVarsSet = resolverVars.filter(_.opt).map(_.copy(opt = false).tresql).toSet
           val resolverVarsTresql = resolverVars.map {
             case Placeholder => "_"
-            case v if !v.opt => v.tresql
-            case v if  v.opt => v.copy(opt = false).tresql
+            case v => if  (!v.opt)
+                           v.tresql
+                      else v.copy(opt = false).tresql
           }.distinct.map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
           val resolvableName = Option(ctx.fieldName).orElse(resolverVars.filter(_ != Placeholder).headOption.map(_.variable)).orNull
           val resolvedQueryStringWithLimit: String =

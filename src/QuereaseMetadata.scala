@@ -115,10 +115,10 @@ object QuereaseMetadata {
   }
 
   def toQuereaseViewDefs(mojozViewDefs: Map[String, MojozViewDef]): Map[String, MojozViewDef] =
-    mojozViewDefs.mapValues(toQuereaseViewDef).toMap
+    mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
 
   def toQuereaseViewDef(viewDef: MojozViewDef): MojozViewDef = {
-    import scala.collection.JavaConverters._
+    import scala.jdk.CollectionConverters._
     val Initial = "initial"
     val Validations = "validations"
     def getExtraOpt(f: MojozFieldDef, key: String) =

@@ -2,7 +2,7 @@ package org.mojoz.querease
 
 import java.lang.reflect.ParameterizedType
 
-import scala.collection.JavaConverters._
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
 import org.tresql.RowLike

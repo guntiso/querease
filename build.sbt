@@ -31,6 +31,15 @@ libraryDependencies ++= Seq(
 
 scalaSource in Compile := baseDirectory(_ / "src").value
 
+unmanagedSourceDirectories in Compile ++= {
+  val sharedSourceDir = (ThisBuild / baseDirectory).value / "compat"
+  if (scalaVersion.value.startsWith("2.12.") ||
+      scalaVersion.value.startsWith("2.11.") ||
+      scalaVersion.value.startsWith("2.10."))
+    Seq(sharedSourceDir / "scala-2.12")
+  else Nil
+}
+
 scalacOptions in (Compile, doc) ++= (baseDirectory in
  LocalProject("querease")).map {
    bd => Seq("-sourcepath", bd.getAbsolutePath,
