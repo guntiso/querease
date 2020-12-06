@@ -13,6 +13,8 @@ crossScalaVersions := Seq(
   "2.10.7",
 )
 
+ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
+
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 val tresqlV = "10.0.0"
