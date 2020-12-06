@@ -31,7 +31,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
 
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.isEmpty)
-      Seq(viewDef.table + Option(viewDef.tableAlias).map(" " + _).getOrElse(""))
+      Option(viewDef.table).filter(_ != "")
+        .map(t => Seq(t + Option(viewDef.tableAlias).map(" " + _).getOrElse("")))
+        .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
     else viewDef.saveTo
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
