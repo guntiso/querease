@@ -256,7 +256,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       s"  }"
     )
   }
-  override def scalaObjectString(viewDef: MojozViewDefBase): String = {
+  override def scalaObjectString(viewDef: MojozViewDefBase, allViewDefs: Map[String, MojozViewDefBase]): String = {
     val className = scalaClassName(viewDef.name)
     val resolverDefs = (qe match {
       case resolvers: QuereaseResolvers if shouldGenerateCompanionResolverDefs =>
@@ -293,7 +293,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   def resolverParamTypeName(viewDef: MojozViewDefBase, paramName: String): String =
     scalaTypeName(resolverParamType(viewDef, paramName))
 
-  override def scalaBodyExtra(viewDef: MojozViewDefBase): String = qe match {
+  override def scalaBodyExtra(viewDef: MojozViewDefBase, allViewDefs: Map[String, MojozViewDefBase]): String = qe match {
     case resolvers: QuereaseResolvers if shouldGenerateInstanceResolverDefs =>
       instanceResolverDefs(viewDef, resolvers).mkString
     case _ => ""

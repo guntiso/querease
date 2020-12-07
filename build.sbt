@@ -18,7 +18,7 @@ ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 val tresqlV = "10.0.0"
-val mojozV = "2.0.0"
+val mojozV = "3.0.0"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
