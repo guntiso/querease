@@ -79,33 +79,49 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
       (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
     if (isNew) {
-      val result =
-        if (tables.lengthCompare(1) == 0)
-          ORT.insert(tables.head, propMap, filter)
-        else
-          ORT.insertMultiple(propMap, tables: _*)(filter)
-      val (insertedRowCount, id) = result match {
-        case x: InsertResult => (x.count.get, x.id getOrElse null)
-        case a: ArrayResult[_] => //if array result consider last element as insert result
-           a.values.last match {
-            case x: InsertResult => (x.count.get, x.id getOrElse null)
-          }
-      }
-      if (insertedRowCount == 0) throw new NotFoundException(
-        s"Record not inserted into table(s): ${tables.mkString(",")}")
-      else id match {
-        case id: Long => id
-        case xx       => 0L
-      }
+      insert(tables, pojo, filter, propMap)
     } else {
-      val updatedRowCount = if (tables.lengthCompare(1) == 0)
-        ORT.update(tables(0), propMap, filter)
-      else
-        ORT.updateMultiple(propMap, tables: _*)(filter)
-      if (updatedRowCount == 0) throw new NotFoundException(
-        s"Record not updated in table(s): ${tables.mkString(",")}")
-      else id.get
+      update(tables, pojo, filter, propMap)
+      id.get
     }
+  }
+
+  protected def insert[B <: DTO](
+      tables: Seq[String],
+      pojo: B,
+      filter: String = null,
+      propMap: Map[String, Any])(implicit resources: Resources): Long = {
+    val result =
+      if (tables.lengthCompare(1) == 0)
+        ORT.insert(tables.head, propMap, filter)
+      else
+        ORT.insertMultiple(propMap, tables: _*)(filter)
+    val (insertedRowCount, id) = result match {
+      case x: InsertResult => (x.count.get, x.id getOrElse null)
+      case a: ArrayResult[_] => //if array result consider last element as insert result
+         a.values.last match {
+          case x: InsertResult => (x.count.get, x.id getOrElse null)
+        }
+    }
+    if (insertedRowCount == 0) throw new NotFoundException(
+      s"Record not inserted into table(s): ${tables.mkString(",")}")
+    else id match {
+      case id: Long => id
+      case xx       => 0L
+    }
+  }
+
+  protected def update[B <: DTO](
+      tables: Seq[String],
+      pojo: B,
+      filter: String,
+      propMap: Map[String, Any])(implicit resources: Resources): Unit = {
+    val updatedRowCount = if (tables.lengthCompare(1) == 0)
+      ORT.update(tables(0), propMap, filter)
+    else
+      ORT.updateMultiple(propMap, tables: _*)(filter)
+    if (updatedRowCount == 0) throw new NotFoundException(
+      s"Record not updated in table(s): ${tables.mkString(",")}")
   }
 
   import QuereaseMetadata.AugmentedQuereaseViewDef
