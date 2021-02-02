@@ -24,6 +24,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
     b
     throw new RuntimeException("Expected message not thrown")
   } catch {
+    case ex: TresqlException => ex.getCause.getMessage
     case ex: java.sql.SQLException => ex.getMessage
   }
 
