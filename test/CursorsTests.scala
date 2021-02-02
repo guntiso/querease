@@ -97,7 +97,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         , List(Map("name" -> "Sales", "work_name" -> "meet", "job" -> "analyst", "hours" -> "4", "emps_name" -> "scott"))
         )
       )
-    ),
+    )
   )
 
   data foreach { case (name, testData) =>
