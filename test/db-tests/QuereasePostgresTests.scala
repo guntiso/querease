@@ -6,8 +6,9 @@ import com.typesafe.config.ConfigFactory
 import java.sql.DriverManager
 import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.dialects.PostgresqlDialect
-import QuereaseDbTests.{setEnv, executeStatements}
+import QuereaseDbTests.{executeStatements, setEnv}
 import QuereaseTests.qe
+import org.tresql.TresqlException
 
 class QuereasePostgresTests extends QuereaseDbTests {
   import QuereasePostgresTests._
@@ -22,9 +23,9 @@ class QuereasePostgresTests extends QuereaseDbTests {
       b
       throw new RuntimeException("Expected message not thrown")
     } catch {
-      case ex: java.sql.SQLException =>
+      case ex: TresqlException =>
         executeStatements("rollback")
-        val msg = ex.getMessage
+        val msg = ex.getCause.getMessage
         if (msg.startsWith("ERROR: "))
           msg.split("\n")(0).substring(7)
         else msg
