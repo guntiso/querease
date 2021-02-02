@@ -770,7 +770,7 @@ trait QueryStringBuilder { this: Querease =>
       case (cursor_name, rows) if rows.nonEmpty =>
         val cols = rows.head.keys.toList
         val body = rows.zipWithIndex
-          .map { case (_, i) => cols.map(c => s":${i + 1}.$c").mkString("{", ", ", "}") }
+          .map { case (_, i) => cols.map(c => s":$cursor_name.$i.$c").mkString("{", ", ", "}") }
           .mkString(" + ")
         s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
     }.mkString(", ")
