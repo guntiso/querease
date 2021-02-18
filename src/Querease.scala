@@ -125,10 +125,11 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   }
 
   import QuereaseMetadata.AugmentedQuereaseViewDef
-  def validationsQueryString(viewDef: ViewDef): Option[String] = Option(
-    if (viewDef.validations != null && viewDef.validations.nonEmpty)
+  def validationsQueryString(viewDef: ViewDef): Option[String] = validationsQueryString(viewDef.validations)
+  def validationsQueryString(validations: Seq[String]): Option[String] = Option(
+    if (validations != null && validations.nonEmpty)
       "messages(# idx, msg) {" +
-        viewDef.validations.zipWithIndex.map {
+        validations.zipWithIndex.map {
           case (v, i) => s"{ $i idx, if_not($v) msg }"
         }.mkString(" + ") +
       "} messages[msg != null] { msg } #(idx)"
