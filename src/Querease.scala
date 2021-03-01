@@ -152,6 +152,11 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     vqsRecursively(viewDef)
   }
   def validationResults[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): List[ValidationResult] = {
+    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    validationResults(view, toMap(pojo), params)
+  }
+  def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
+    implicit resources: Resources): List[ValidationResult] = {
     def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
       validationsQueryString(viewDef) match {
         case Some(query) =>
@@ -184,11 +189,14 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
           }.getOrElse(r)
         }
     }
-    val view = viewDef(ManifestFactory.classType(pojo.getClass))
-    validateViewAndSubviews(Nil, view, toMap(pojo), Nil).reverse
+    validateViewAndSubviews(Nil, view, data, Nil).reverse
   }
   def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {
-    val results = validationResults(pojo, params)
+    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    validate(view, toMap(pojo), params)
+  }
+  def validate(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(implicit resources: Resources): Unit = {
+    val results = validationResults(view, data, params)
     results.flatMap(_.messages).filterNot(_ == null).filterNot(_ == "") match {
       case messages if messages.nonEmpty => throw new ValidationException(messages.mkString("\n"), results)
       case _ => ()
@@ -285,7 +293,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
     }
 
   def delete[B <: DTO](instance: B, filter: String = null, params: Map[String, Any] = null)(
-    implicit resources: Resources) = {
+    implicit resources: Resources): Int = {
     val view = viewDef(ManifestFactory.classType(instance.getClass))
     val keyMap = this.keyMap(instance)
     val result = ORT.delete(
