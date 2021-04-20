@@ -23,23 +23,32 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       .withLogger(QuereaseDbTests.TresqlLogger)
   }
 
-  val data: List[(String, List[(String, Map[String, Any], Map[String, Vector[Map[String, Any]]], String, List[Map[String, Any]])])]  =
+  case class CursorTest(cursorPrefix: String,
+                        bindVars: Map[String, Any],
+                        bindVarExtraction: String,
+                        cursorData: Map[String, Vector[Map[String, Any]]],
+                        tresql: String,
+                        result: List[Map[String, Any]])
+
+  val data: List[(String, List[CursorTest])]  =
     List(
     ( "match 1 cursor data"
-    , List(
-        ( "dept"
-        , Map("name" -> "Sales", "loc" -> "Riga")
-        , Map("dept" -> Vector(Map("name" -> "Sales", "loc" -> "Riga")))
-        , "dept {name || ' ' || loc name}#(1)"
-        ,  List(Map("name" -> "Sales Riga"))
+    , List(CursorTest
+        ( "dept" // cursors prefix
+        , Map("name" -> "Sales", "loc" -> "Riga") //bind variables
+        , ":name, :loc" // variable extraction
+        , Map("dept" -> Vector(Map("name" -> "Sales", "loc" -> "Riga"))) // bind variables as cursor data
+        , "dept {name || ' ' || loc name}#(1)" // test tresql
+        ,  List(Map("name" -> "Sales Riga")) //test result
         )
       )
     ),
     ( "match 2 cursor data"
-    , List(
+    , List(CursorTest
         ( "dept"
         , Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
           List(Map("name" -> "scott", "job" -> "analyst"), Map("name" -> "ziga", "job" -> "developer")))
+        , null
         , Map("dept_emps" -> Vector(
             Map("name" -> "Sales", "loc" -> "Riga", "emps_name" -> "scott", "job" -> "analyst"),
             Map("name" -> "Sales", "loc" -> "Riga", "emps_name" -> "ziga", "job" -> "developer")),
@@ -47,8 +56,9 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         , "(dept {name ||  ' ' || loc data} + dept_emps {emps_name || ', ' || job}) #(1)"
         , List(Map("DATA" -> "Sales Riga"), Map("DATA" -> "scott, analyst"), Map("DATA" -> "ziga, developer"))
         )
-      , ( "dept"
+      , CursorTest("dept"
         , Map("emps" -> List(Map("name" -> "scott", "job" -> "analyst"), Map("name" -> "ziga", "job" -> "developer")))
+        , null
         , Map("dept_emps" ->
             Vector(
               Map("name" -> "scott", "job" -> "analyst"),
@@ -60,12 +70,13 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       )
     ),
     ("match 3 cursor data"
-    , List(
+    , List(CursorTest
         ( "dept"
         , Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
           List(Map("name" -> "scott", "work" ->
             List(Map("name" -> "meet", "hours" -> 4), Map("name" -> "review", "hours" -> 2)), "job" -> "analyst"),
             Map("name" -> "ziga", "job" -> "developer", "work" -> List(Map("name" -> "meet", "hours" -> 4)))))
+        , null
         , Map("dept_emps_work" ->
           Vector(
             Map("name" -> "Sales", "work_name" -> "meet", "job" -> "analyst", "hours" -> 4, "emps_name" -> "scott", "loc" -> "Riga"),
@@ -79,11 +90,12 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         , "dept_emps[emps_name = 'scott']"
         , List(Map("NAME" -> "Sales", "LOC" -> "Riga", "EMPS_NAME" -> "scott", "JOB" -> "analyst"))
         )
-      , ( "dept"
+      , CursorTest( "dept"
         ,  Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
             List(Map("name" -> "scott", "work" ->
               List(Map("name" -> "meet", "hours" -> 4), Map("name" -> "review", "hours" -> 2)), "job" -> "analyst"),
               Map("name" -> "ziga", "job" -> "developer", "work" -> Nil)))
+        , null
         , Map("dept_emps_work" ->
             Vector(
               Map("name" -> "Sales", "work_name" -> "meet", "job" -> "analyst", "hours" -> 4, "emps_name" -> "scott", "loc" -> "Riga"),
@@ -102,8 +114,13 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   data foreach { case (name, testData) =>
     it should name in {
-      testData foreach { case (prefix, input, testCursorData, tresql, testResult) =>
-        val cursorData = querease.cursorData(input, prefix, Map())
+      testData foreach { case CursorTest(prefix, input, varExtraction, testCursorData, tresql, testResult) =>
+        val inp =
+          if (varExtraction == null) input else {
+            val vars = varExtraction.split(",")
+            querease.cursorDataForVars(input, vars.toList)
+          }
+        val cursorData = querease.cursorData(inp, prefix, Map())
         cursorData should be (testCursorData)
         if (tresql!= null) {
           val result = Query(querease.cursors(cursorData) + " " + tresql, cursorData).toListOfMaps

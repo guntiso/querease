@@ -44,6 +44,12 @@ object QuereaseExpressions {
         case Ident(List("_")) => Placeholder :: vars
       }
     }
+    def parseWithParser[T](p: Parser[T])(expr:String): T = {
+      phrase(p)(new CharSequenceReader(expr)) match {
+        case Success(r, _) => r
+        case x => sys.error(x.toString)
+      }
+    }
   }
   abstract class DefaultParser extends Parser {
     val cache: Option[CacheBase[Exp]]

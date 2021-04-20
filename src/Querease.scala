@@ -5,19 +5,11 @@ import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
-
-import org.tresql.Resources
-import org.tresql.DeleteResult
-import org.tresql.InsertResult
-import org.tresql.ArrayResult
-import org.tresql.ORT
-import org.tresql.Query
-import org.tresql.parsing.Ident
-import org.tresql.parsing.Null
-import org.tresql.parsing.{Query => QueryParser_Query}
-
+import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, Query, Resources, SingleValueResult}
+import org.tresql.parsing.{Fun, Ident, Null, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
+import org.mojoz.querease.QuereaseMetadata.BindVarCursorsFunctionName
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
@@ -125,23 +117,36 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   }
 
   import QuereaseMetadata.AugmentedQuereaseViewDef
-  def validationsQueryString(viewDef: ViewDef): Option[String] = validationsQueryString(viewDef.validations)
-  def validationsQueryString(validations: Seq[String]): Option[String] = Option(
-    if (validations != null && validations.nonEmpty)
-      "messages(# idx, msg) {" +
-        validations.zipWithIndex.map {
-          case (v, i) => s"{ $i idx, if_not($v) msg }"
-        }.mkString(" + ") +
-      "} messages[msg != null] { msg } #(idx)"
-    else null
+  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any], cursorPrefix: String): Option[String] =
+    validationsQueryString(viewDef.validations, env, cursorPrefix)
+  def validationsQueryString(validations: Seq[String],
+                             env: Map[String, Any],
+                             cursorPrefix: String): Option[String] = Option(
+    if (validations != null && validations.nonEmpty) {
+      def tresql(vs: Seq[String]) =
+        "messages(# idx, msg) {" +
+          vs.zipWithIndex.map {
+            case (v, i) => s"{ $i idx, if_not($v) msg }"
+          }.mkString(" + ") +
+        "} messages[msg != null] { msg } #(idx)"
+      if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
+        Try(parser.parseWithParser(parser.function)(validations.head)).map {
+          case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
+            cursors(cursorData(if (varPars.isEmpty) env else cursorDataForVars(env, varPars.map(_.tresql)),
+              cursorPrefix, Map())) +
+              ", " + tresql(validations.tail)
+          case _ => tresql(validations)
+        }.toOption.getOrElse(tresql(validations))
+      } else tresql(validations)
+    } else null
   )
-  def validationsQueryStrings(viewDef: ViewDef): Seq[String] = {
+  def validationsQueryStrings(viewDef: ViewDef, env: Map[String, Any]): Seq[String] = {
     val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
     def vqsRecursively(viewDef: ViewDef): Seq[String] = {
       if (visited contains viewDef.name) Nil
       else {
         visited += viewDef.name
-        validationsQueryString(viewDef).toList ++
+        validationsQueryString(viewDef, env, viewDef.name).toList ++
           viewDef.fields.flatMap { f =>
             if (f.type_.isComplexType)
               vqsRecursively(this.viewDef(f.type_.name))
@@ -158,7 +163,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
     def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
-      validationsQueryString(viewDef) match {
+      validationsQueryString(viewDef, data ++ params, view.name) match {
         case Some(query) =>
           Query(query, obj).map(_.s("msg")).toList
         case _ => Nil
@@ -333,7 +338,7 @@ trait QueryStringBuilder { this: Querease =>
         queryStringAndParams(viewDef, Map.empty)._1
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef)
+  } ++ validationsQueryStrings(viewDef, Map()) // FIXME will not compile if bind vars cursors used
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
@@ -783,6 +788,23 @@ trait QueryStringBuilder { this: Querease =>
           .mkString(" + ")
         s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
     }.mkString(", ")
+  }
+
+  def cursorDataForVars(data: Map[String, Any], vars: List[String]): Map[String, Any] = {
+    implicit val env = new Resources {}.withParams(data)
+    vars match {
+      case Nil => data
+      case l => l.foldLeft(Map[String, Any]()) { (r, v) =>
+        Query(v) match {
+          case SingleValueResult(value) => value match {
+            case m: Map[String, _]@unchecked => r ++ m
+            case x: Any =>
+              r + (parser.parseWithParser(parser.variable)(v).variable -> x)
+          }
+          case x => sys.error(s"Cannot extract variable value from result: $x")
+        }
+      }
+    }
   }
 }
 
