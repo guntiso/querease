@@ -338,7 +338,7 @@ trait QueryStringBuilder { this: Querease =>
         queryStringAndParams(viewDef, Map.empty)._1
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef, Map()) // FIXME will not compile if bind vars cursors used
+  } ++ validationsQueryStrings(viewDef, emptyData(viewDef))
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
@@ -805,6 +805,24 @@ trait QueryStringBuilder { this: Querease =>
         }
       }
     }
+  }
+
+  def emptyData(view: ViewDef): Map[String, Any] = {
+    def calc(vd: ViewDef, visited: Set[String]): Map[String, Any] = {
+      vd.fields.map { f =>
+        f.name -> {
+          if (f.type_.isComplexType) {
+            val n = f.type_.name
+            if (visited(n)) null
+            else {
+              val ed = calc(nameToViewDef(n), visited + n)
+              if (f.isCollection) List(ed) else ed
+            }
+          } else null
+        }
+      }.toMap
+    }
+    calc(view, Set())
   }
 }
 
