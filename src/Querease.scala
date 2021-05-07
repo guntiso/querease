@@ -6,7 +6,7 @@ import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
 import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, Query, Resources, SingleValueResult}
-import org.tresql.parsing.{Fun, Ident, Null, Query => QueryParser_Query}
+import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
 import org.mojoz.querease.QuereaseMetadata.BindVarCursorsFunctionName
@@ -123,12 +123,42 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
                              env: Map[String, Any],
                              cursorPrefix: String): Option[String] = Option(
     if (validations != null && validations.nonEmpty) {
-      def tresql(vs: Seq[String]) =
-        "messages(# idx, msg) {" +
-          vs.zipWithIndex.map {
-            case (v, i) => s"{ $i idx, if_not($v) msg }"
-          }.mkString(" + ") +
-        "} messages[msg != null] { msg } #(idx)"
+      def tresql(vs: Seq[String]): String = {
+        def error(exp: Exp) = {
+          val msg =
+            s"Validation expression must consist of" +
+              s" two or three comma separated expressions. One before last is boolean expression" +
+              s" which evaluated to false returns last string expression as error message." +
+              s" In the case of three expressions first of them should be cursor definitions which can" +
+              s" be used later in boolean and error message expressions." +
+              s" Instead got: ${exp.tresql}"
+          sys.error(msg)
+        }
+
+        var cursorList = List[String]()
+        val valTresql =
+          "messages(# idx, msg) {" +
+            vs.zipWithIndex.map {
+              case (v, i) =>
+                val valExp =
+                  parser.parseExp(v) match {
+                    case Arr(valExps) if valExps.size == 3 =>
+                      valExps.head match {
+                        case With(cursors, _) =>
+                          cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
+                        case x => error(x)
+                      }
+                      valExps.tail.map(_.tresql).mkString(", ")
+                    case Arr(valExps) if valExps.size == 2 => v
+                    case x => error(x)
+                  }
+                s"{ $i idx, if_not($valExp) msg }"
+            }.mkString(" + ") +
+          "} messages[msg != null] { msg } #(idx)"
+        if (cursorList.isEmpty) valTresql
+        else cursorList.reverse.mkString(", ") + ", " + valTresql
+      }
+
       if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
         Try(parser.parseWithParser(parser.function)(validations.head)).map {
           case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
