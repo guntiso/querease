@@ -162,9 +162,8 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
         Try(parser.parseWithParser(parser.function)(validations.head)).map {
           case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
-            cursors(cursorData(if (varPars.isEmpty) env else cursorDataForVars(env, varPars.map(_.tresql)),
-              cursorPrefix, Map())) +
-              ", " + tresql(validations.tail)
+            cursorsFromBindVars(if (varPars.isEmpty) env else cursorDataForVars(env, varPars.map(_.tresql)),
+              cursorPrefix) + ", " + tresql(validations.tail)
           case _ => tresql(validations)
         }.toOption.getOrElse(tresql(validations))
       } else tresql(validations)
@@ -785,39 +784,57 @@ trait QueryStringBuilder { this: Querease =>
     })
   }).toMap
 */
-  def cursorData(data: Any, cursor_prefix: String, header: Map[String, Any]): Map[String, Vector[Map[String, Any]]] = {
-    def addHeader(prefix: String, header: Map[String, Any], result: Map[String, Vector[Map[String, Any]]]) =
-      result.map { case (k, v) => k -> v.map(header ++ _
-        .map { r => if (header.contains(r._1)) (prefix + "_" + r._1, r._2) else r }
-      )}
-
-    def merge(m1: Map[String, Vector[Map[String, Any]]], m2: Map[String, Vector[Map[String, Any]]]) =
-      m2.foldLeft(m1) { (r, e) =>
-        val (k, v) = e
-        if (r contains k) r + (k -> (r(k) ++ v)) else r + e
-      }
-
-    data match {
-      case m: Map[String@unchecked, _] =>
-        val (children, header) = m.partition { case (_, v) => v.isInstanceOf[Iterable[_]] }
-        children.flatMap { case (k, v) =>
-          addHeader(k, header, cursorData(v, cursor_prefix + "_" + k, header))
-        } ++ Map(cursor_prefix -> (if (header.nonEmpty) Vector(header) else Vector()))
-      case l: Iterable[_] =>
-        l.foldLeft(Map[String, Vector[Map[String, Any]]]()) { (r, d) => merge(r, cursorData(d, cursor_prefix, header))}
-      case x => sys.error(s"Cannot process bind data, unknown value: $x")
+  def cursorsFromBindVars(data: Map[String, Any], cursorPrefix: String): String = {
+    val IdName = "__id"
+    val ParentIdName = "__parent_id"
+    import scala.collection.mutable.{Map => MM, ArrayBuffer => AB}
+    type Cursors = MM[String, AB[MM[String, String]]]
+    def addRow(cursors: Cursors)(cName: String)(id: Int)(parentId: Option[Int]): Unit = {
+      def initRow =
+        MM[String, String]((IdName, id.toString) :: parentId.toList.map(ParentIdName -> _.toString): _*)
+      cursors.get(cName).map { cursor =>
+        cursor += initRow
+      }.getOrElse(cursors += (cName -> AB(initRow)))
     }
-  }
-
-  def cursors(data: Map[String, Vector[Map[String, Any]]]): String = {
-    data.collect {
-      case (cursor_name, rows) if rows.nonEmpty =>
-        val cols = rows.head.keys.toList
-        val body = rows.zipWithIndex
-          .map { case (_, i) => cols.map(c => s":$cursor_name.$i.$c").mkString("{", ", ", "}") }
-          .mkString(" + ")
-        s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
-    }.mkString(", ")
+    def addCol(cursors: Cursors)(cName: String)(path: List[String]): Unit = {
+      def col(p: List[String]) =
+        Try(p.head.toInt).map(_ => cName).getOrElse(p.head) -> p.reverse.mkString(":", ".", "")
+      cursors.get(cName).map { cursor =>
+        cursor.last += col(path)
+      }.getOrElse (cursors += (cName -> AB(MM(col(path)))))
+    }
+    def traverseData(cursor: String,
+                     path: List[String],
+                     d: Any,
+                     rowFun: String => Int => Option[Int] => Unit,
+                     colFun: String => List[String] => Unit): Unit = d match {
+      case m: Map[String@unchecked, _] => m.foreach { case (k, v) =>
+        traverseData(cursor, k :: path, v, rowFun, colFun)
+      }
+      case it: Iterable[_] =>
+        val cName = path.headOption.map(cursor + "_" + _).getOrElse(cursor)
+        def pathLastId(p: List[String]): Option[Int] = p match {
+          case Nil => None
+          case el :: tail => Try(el.toInt).toOption.orElse(pathLastId(tail))
+        }
+        val plId = pathLastId(path)
+        it.zipWithIndex.foreach { case (v, i) =>
+          rowFun(cName)(i)(plId)
+          traverseData(cName, i.toString :: path, v, rowFun, colFun)
+        }
+      case _ => colFun(cursor)(path)
+    }
+    def tresql(cursors: Cursors): String = {
+      cursors.collect {
+        case (cursor_name, rows) if rows.nonEmpty =>
+          val cols = rows.head.keys.toSeq.sorted
+          val body = rows.map (row => cols.map(row(_)).mkString("{", ", ", "}")).mkString(" ++ ")
+          s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
+      }.mkString(", ")
+    }
+    val cursors: Cursors = MM()
+    traverseData(cursorPrefix, Nil, data, addRow(cursors), addCol(cursors))
+    tresql(cursors)
   }
 
   def cursorDataForVars(data: Map[String, Any], vars: List[String]): Map[String, Any] = {
