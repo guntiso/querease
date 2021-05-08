@@ -792,16 +792,16 @@ trait QueryStringBuilder { this: Querease =>
     def addRow(cursors: Cursors)(cName: String)(id: Int)(parentId: Option[Int]): Unit = {
       def initRow =
         MM[String, String]((IdName, id.toString) :: parentId.toList.map(ParentIdName -> _.toString): _*)
-      cursors.get(cName).map { cursor =>
-        cursor += initRow
-      }.getOrElse(cursors += (cName -> AB(initRow)))
+      cursors.get(cName)
+        .map { cursor => cursor += initRow; () } // return unit explicitly for scala 2.12
+        .getOrElse { cursors += (cName -> AB(initRow)); () } // return unit explicitly for scala 2.12
     }
     def addCol(cursors: Cursors)(cName: String)(path: List[String]): Unit = {
       def col(p: List[String]) =
         Try(p.head.toInt).map(_ => cName).getOrElse(p.head) -> p.reverse.mkString(":", ".", "")
-      cursors.get(cName).map { cursor =>
-        cursor.last += col(path)
-      }.getOrElse (cursors += (cName -> AB(MM(col(path)))))
+      cursors.get(cName)
+        .map(cursor => cursor.last += col(path))
+        .getOrElse (cursors += (cName -> AB(MM(col(path)))))
     }
     def traverseData(cursor: String,
                      path: List[String],
