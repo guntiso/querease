@@ -3,16 +3,16 @@ package test
 import java.sql.{Connection, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Date
-
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
-import org.mojoz.querease.TresqlMetadata
+import org.mojoz.querease.{QuereaseMacros, TresqlMetadata, ValidationException, ValidationResult}
 import QuereaseTests._
+import org.scalatest.BeforeAndAfterAll
 
 
-trait QuereaseDbTests extends FlatSpec with Matchers {
+trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   import QuereaseDbTests.{dataPath, clearEnv, commit}
   implicit val resources: org.tresql.Resources = QuereaseDbTests.Env
 
@@ -28,9 +28,18 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
     case ex: java.sql.SQLException => ex.getMessage
   }
 
-  if (isDbAvailable) "querease" should s"interact with $dbName database properly" in {
+  override def beforeAll(): Unit = {
+    super.beforeAll()
     setEnv
     createDbObjects
+  }
+
+  override def afterAll(): Unit = {
+    super.afterAll()
+    try commit catch { case util.control.NonFatal(_) => } finally clearEnv
+  }
+
+  if (isDbAvailable) "querease" should s"interact with $dbName database properly" in {
     try {
       val bank = new BankListRow
       bank.code = "b1"
@@ -453,8 +462,83 @@ trait QuereaseDbTests extends FlatSpec with Matchers {
       qe.get[Person](pwpId).get.mother_id shouldBe pwpMotherId
       qe.get[Person](pwpId).get.father_id shouldBe null
     } finally {
-      try commit catch { case util.control.NonFatal(_) => } finally clearEnv
     }
+  }
+
+  if (isDbAvailable) it should s"validate in $dbName properly" in {
+    val dto = new ValidationsTest
+
+    dto.int_col = 3
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(List(ValidationResult(Nil,
+      List("int_col should be greater than 5 but is 3", "int_col should be greater than 10 but is 3")
+    )))
+
+    dto.int_col = 7
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(List(ValidationResult(Nil,
+      List("int_col should be greater than 10 but is 7")
+    )))
+
+    dto.int_col = 11
+    qe.save(dto)
+
+    dto.int_col = 13
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(List(ValidationResult(Nil,
+      List("int_col should be less than 12 but is 13")
+    )))
+
+    dto.int_col = 11
+    val ch11 = new ValidationsTestChild1
+    ch11.int_col = 0
+    val ch12 = new ValidationsTestChild1
+    ch12.int_col = 1
+    val ch21 = new ValidationsTestChild2
+    ch21.int_col = 0
+    val ch22 = new ValidationsTestChild2
+    ch22.int_col = 1
+    dto.children1 = List(ch11, ch12)
+    dto.children2 = List(ch21, ch22)
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(
+      List(ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 0")),
+        ValidationResult(List("children1", 1), List("child1 int_col should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 0), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 0,11")),
+        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 1,11")))
+    )
+
+    dto.int_col = 0
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(
+      List(ValidationResult(Nil, List("int_col should be greater than 5 but is 0", "int_col should be greater than 10 but is 0")),
+        ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 0")),
+        ValidationResult(List("children1", 1), List("child1 int_col should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 0), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 0,0")),
+        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 1,0")))
+    )
+
+    dto.int_col = 11
+    dto.children1(0).int_col = 2
+    dto.children1(1).int_col = 2
+    dto.children2(0).int_col = 3
+    dto.children2(1).int_col = 3
+    qe.save(dto)
+
+    dto.int_col = 11
+    dto.children1(0).int_col = 1
+    dto.children2(1).int_col = 2
+    intercept[ValidationException] {
+      qe.save(dto)
+    }.details should be(
+      List(ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 2,11")))
+    )
   }
 }
 
@@ -488,7 +572,7 @@ object QuereaseDbTests {
     Env.dialect = dialect
     Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
     Env.idExpr = s => "nextval('seq')"
-    Env.setMacros(new Macros)
+    Env.setMacros(new QuereaseMacros)
     Env.conn = conn
   }
   def clearEnv = {

@@ -1,3 +1,18 @@
+table: validations_test_table
+columns:
+- id ! long
+- int_col int
+pk: id
+
+table: validations_test_child_table
+columns:
+- id ! long
+- validations_test_table_id long
+- int_col int
+pk: id
+refs:
+- validations_test_table_id -> validations_test_table(id)
+
 table: account
 columns:
 - id ! long

@@ -1,0 +1,33 @@
+name:     validations_test
+table:    validations_test_table
+api:      save
+fields:
+  - id
+  - int_col
+  - children1 * validations_test_child_1
+  - children2 * validations_test_child_2
+validations:
+  - bind_var_cursors
+  - :int_col >  5, 'int_col should be greater than 5 but is ' || :int_col
+  - :int_col > 10, 'int_col should be greater than 10 but is ' || :int_col
+  - :int_col < 12, 'int_col should be less than 12 but is ' || :int_col
+
+
+name:     validations_test_child
+table:    validations_test_child_table
+api:      save
+fields:
+  - id
+  - int_col
+
+
+name:     validations_test_child_1
+extends:  validations_test_child
+validations:
+  - :int_col > 1, 'child1 int_col should be greater than 1 but is ' || :int_col
+
+
+name:     validations_test_child_2
+extends:  validations_test_child
+validations:
+  - :int_col > 2 & :__parent.int_col > 3, 'child2 int_col should be greater than 2 and parent must be greater than 3 but is ' || :int_col || ',' || :__parent.int_col

@@ -1035,6 +1035,24 @@ class siblings_alt extends Dto {
   var sibling1: String = null
   var sibling2: String = null
 }
+class validations_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var int_col: java.lang.Integer = null
+  var children1: List[validations_test_child_1] = Nil
+  var children2: List[validations_test_child_2] = Nil
+}
+class validations_test_child extends DtoWithId {
+  var id: java.lang.Long = null
+  var int_col: java.lang.Integer = null
+}
+class validations_test_child_1 extends validations_test_child with DtoWithId {
+  var id: java.lang.Long = null
+  var int_col: java.lang.Integer = null
+}
+class validations_test_child_2 extends validations_test_child with DtoWithId {
+  var id: java.lang.Long = null
+  var int_col: java.lang.Integer = null
+}
 class with_forefathers extends Dto {
   var full_name: String = null
   var father_id: java.lang.Long = null

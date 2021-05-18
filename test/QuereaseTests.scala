@@ -367,9 +367,6 @@ object QuereaseTests {
      override lazy val yamlMetadata =
         YamlMd.fromFiles(path = "test/tables") ++
         YamlMd.fromFiles(path = "test/views")
-     override lazy val nameToViewDef = YamlViewDefLoader(
-       tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions)
-       .nameToViewDef.toMap
      override protected lazy val viewNameToFieldOrdering =
        nameToViewDef.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields

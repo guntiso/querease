@@ -117,8 +117,9 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   }
 
   import QuereaseMetadata.AugmentedQuereaseViewDef
-  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any], cursorPrefix: String): Option[String] =
+  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any], cursorPrefix: String): Option[String] = {
     validationsQueryString(viewDef.validations, env, cursorPrefix)
+  }
   def validationsQueryString(validations: Seq[String],
                              env: Map[String, Any],
                              cursorPrefix: String): Option[String] = Option(
@@ -193,7 +194,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
     def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
-      validationsQueryString(viewDef, data ++ params, view.name) match {
+      validationsQueryString(viewDef, obj, view.name) match {
         case Some(query) =>
           Query(query, obj).map(_.s("msg")).toList
         case _ => Nil

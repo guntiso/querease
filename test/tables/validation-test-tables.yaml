@@ -1,0 +1,11 @@
+table:    validations_test_table
+columns:
+  - id
+  - int_col                int
+
+
+table:    validations_test_child_table
+columns:
+  - id
+  - validations_test_table.id
+  - int_col                int
