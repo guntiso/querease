@@ -160,10 +160,11 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
       }
 
       if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
-        Try(parser.parseWithParser(parser.function)(validations.head)).map {
+        Try(parser.parseWithParser(parser.function | parser.ident)(validations.head)).map {
           case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
             cursorsFromBindVars(if (varPars.isEmpty) env else cursorDataForVars(env, varPars.map(_.tresql)),
               cursorPrefix) + ", " + tresql(validations.tail)
+          case _: String => cursorsFromBindVars(env, cursorPrefix) + ", " + tresql(validations.tail)
           case _ => tresql(validations)
         }.toOption.getOrElse(tresql(validations))
       } else tresql(validations)
@@ -209,7 +210,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
         .foldLeft(viewRes ::: res) { (r, nv) =>
           val (n, vd) = nv
           def maybeAddParent(m: Map[String, Any]) =
-            if(!m.contains("_parent")) m + ("_parent" -> obj) else m
+            if(!m.contains("__parent")) m + ("__parent" -> obj) else m
           obj.get(n).map {
             case m: Map[String, _]@unchecked =>
               validateViewAndSubviews(n :: path, vd, maybeAddParent(m), r)
