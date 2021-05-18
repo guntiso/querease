@@ -1,22 +1,14 @@
 package test
 
 import java.io.PrintWriter
-import java.sql.{Connection, DriverManager, Timestamp}
-import java.text.SimpleDateFormat
-import java.util.Date
 
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
-import org.tresql._
-import org.tresql.dialects.HSQLDialect
 import dto._
-import org.mojoz.metadata._
 import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
-import org.mojoz.metadata.in.YamlViewDefLoader
-import org.mojoz.metadata.out.SqlGenerator
 import org.mojoz.querease._
 
 
