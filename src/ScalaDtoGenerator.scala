@@ -122,11 +122,15 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       resolverTargetType: String
   ): String = {
     val resources = resourcesWithParams(resolverParams)
+    val escapedResolverExpression =
+      resolverExpression
+        .replace("""\""", """\\""")
+        .replace("""$""", """$$""")
     if (useTresqlInterpolator)
-      s"    tresql$q3{$resolverExpression}$q3($resources)" + nl +
+      s"    tresql$q3{$escapedResolverExpression}$q3($resources)" + nl +
       s"      .unique[$resolverTargetType]" + nl
     else
-      s"    Query($q3{$resolverExpression}$q3)($resources)" + nl +
+      s"    Query($q3{$escapedResolverExpression}$q3)($resources)" + nl +
       s"      .unique[$resolverTargetType]" + nl
   }
   def instanceResolverDefExtraParams: String =
