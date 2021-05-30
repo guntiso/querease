@@ -1008,6 +1008,19 @@ object resolver_test_person_9_c {
       .unique[java.lang.Long]
   }
 }
+class resolver_test_scala_escapes_01 extends Dto {
+  var name: String = null
+  def resolve_name(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{case(:name `~` '^\\d+$$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object resolver_test_scala_escapes_01 {
+  def resolve_name(name: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{case(:name `~` '^\\d+$$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(Map("name" -> name)))
+      .unique[String]
+  }
+}
 class self_ref_test_account_1 extends Dto {
   var full_name: String = null
 }

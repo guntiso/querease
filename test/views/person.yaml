@@ -506,3 +506,8 @@ name: resolver_override_test_06
 extends: resolver_override_test_05
 fields:
 - id   ->   id = person[name = :name || :other_unknown_id]{nullif(0, 0) id}
+
+name: resolver_test_scala_escapes_01
+table: person
+fields:
+- name -> name = case(:name `~` '^\d+$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)
