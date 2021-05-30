@@ -14,6 +14,7 @@ crossScalaVersions := Seq(
 )
 
 ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
+ThisBuild / versionPolicyIntention := Compatibility.BinaryAndSourceCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
