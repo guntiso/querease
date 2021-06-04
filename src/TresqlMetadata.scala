@@ -67,7 +67,7 @@ class TresqlMetadata(
         table.rfs.toSeq.sortBy(_._1).flatMap(tr =>
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")
-    tableDefs.map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
+    tableDefs.sortBy(_.name).map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
   }
 }
 

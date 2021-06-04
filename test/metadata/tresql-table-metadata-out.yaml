@@ -61,12 +61,6 @@ refs:
 - mother_id -> person(id)
 - father_id -> person(id)
 
-table: validations_test_table
-columns:
-- id ! long
-- int_col int
-pk: id
-
 table: validations_test_child_table
 columns:
 - id ! long
@@ -75,3 +69,9 @@ columns:
 pk: id
 refs:
 - validations_test_table_id -> validations_test_table(id)
+
+table: validations_test_table
+columns:
+- id ! long
+- int_col int
+pk: id
