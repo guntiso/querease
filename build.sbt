@@ -30,10 +30,10 @@ libraryDependencies ++= Seq(
   "org.postgresql" % "postgresql" % "42.2.5" % "test",
 )
 
-scalaSource in Compile := baseDirectory(_ / "src").value
+Compile / scalaSource := baseDirectory(_ / "src").value
 
-scalacOptions in (Compile, doc) ++= (baseDirectory in
- LocalProject("querease")).map {
+Compile / doc / scalacOptions ++= (
+ LocalProject("querease") / baseDirectory).map {
    bd => Seq("-sourcepath", bd.getAbsolutePath,
              "-doc-source-url", "https://github.com/guntiso/querease/blob/develop€{FILE_PATH}.scala")
  }.value
@@ -42,46 +42,46 @@ resolvers ++= Seq(
   "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
-unmanagedResourceDirectories in Test := baseDirectory(b => Seq(
+Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
   b / "test" / "conf",
   b / "test" / "data",
   b / "test" / "tables",
   b / "test" / "views"
 )).value
 
-scalaSource in Test := baseDirectory(_ / "test").value
+Test / scalaSource := baseDirectory(_ / "test").value
 Test / unmanagedSources / excludeFilter := "*-out*.*"
 
-unmanagedClasspath in Test +=
+Test / unmanagedClasspath +=
   // Needs [pre-compiled] function signatures to compile tresql in generated sources
   baseDirectory.value / "project" / "target" / "scala-2.12" / "sbt-1.0" / "classes"
 
-scalacOptions in Test := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8",
+Test / scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8",
   "-Xmacro-settings:" + List(
     "metadataFactoryClass=org.mojoz.querease.TresqlMetadataFactory",
-    "tableMetadataFile=" + new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
+    "tableMetadataFile=" + new File(((Test / resourceManaged).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
     "functions=test.FunctionSignatures",
     "macros=org.tresql.Macros"
   ).mkString(", ")
 )
 
-resourceGenerators in Test += Def.task {
+Test / resourceGenerators += Def.task {
   import org.mojoz.querease._
   import org.mojoz.metadata._
   import org.mojoz.metadata.in._
   import org.mojoz.metadata.out._
-  val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
+  val resDirs: Seq[File] = (Test / unmanagedResourceDirectories).value
   val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
-  val file = new File(((resourceManaged in Test).value / "tresql-table-metadata.yaml").getAbsolutePath)
+  val file = new File(((Test / resourceManaged).value / "tresql-table-metadata.yaml").getAbsolutePath)
   val contents = new TresqlMetadata(new YamlTableDefLoader(yamlMd).tableDefs.sortBy(_.name)).tableMetadataString
   IO.write(file, contents)
   Seq(file)
 }.taskValue
 
-sourceGenerators in Test += Def.task {
+Test / sourceGenerators += Def.task {
     // TODO val cacheDirectory = streams.value.cacheDirectory
-    val resDirs: Seq[File] = (unmanagedResourceDirectories in Test).value
-    val outDir: File = (sourceManaged in Test).value
+    val resDirs: Seq[File] = (Test / unmanagedResourceDirectories).value
+    val outDir: File = (Test / sourceManaged).value
     import org.mojoz.querease._
     import org.mojoz.metadata._
     import org.mojoz.metadata.in._
@@ -121,9 +121,9 @@ sourceGenerators in Test += Def.task {
     Seq(file) // FIXME where's my cache?
 }.taskValue
 
-initialCommands in console := "import org.tresql._; import org.mojoz.querease._; import org.mojoz.metadata._"
+console / initialCommands := "import org.tresql._; import org.mojoz.querease._; import org.mojoz.metadata._"
 
-initialCommands in (Test, console) := Seq(
+Test / console / initialCommands := Seq(
   "import dto._",
   "import org.tresql._",
   "import org.mojoz.querease._",
@@ -144,9 +144,9 @@ publishTo := version { v: String =>
 
 publishMavenStyle := true
 
-publishArtifact in Test := false
+Test / publishArtifact := false
 
-testOptions in Test += Tests.Argument("-oF")
+Test / testOptions += Tests.Argument("-oF")
 
 pomIncludeRepository := { _ => false }
 
