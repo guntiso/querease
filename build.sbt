@@ -9,7 +9,6 @@ scalaVersion := scalaV
 crossScalaVersions := Seq(
   scalaV,
   "2.12.14",
-  "2.11.12",
 )
 
 ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
@@ -33,9 +32,7 @@ Compile / scalaSource := baseDirectory(_ / "src").value
 
 Compile / unmanagedSourceDirectories ++= {
   val sharedSourceDir = (ThisBuild / baseDirectory).value / "compat"
-  if (scalaVersion.value.startsWith("2.12.") ||
-      scalaVersion.value.startsWith("2.11.") ||
-      scalaVersion.value.startsWith("2.10."))
+  if (scalaVersion.value.startsWith("2.12."))
     Seq(sharedSourceDir / "scala-2.12")
   else Nil
 }
@@ -107,9 +104,6 @@ Test / sourceGenerators += Def.task {
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) =
         name.split("[_\\-\\.]+").toList.map(_.toLowerCase.capitalize).mkString
-      override def useTresqlInterpolator =
-        !scalaVersion.value.startsWith("2.10.") && // tresql interpolator not available for old scala
-        !scalaVersion.value.startsWith("2.11.")    // errors to be resolved?
     }
     val file = outDir / "Dtos.scala"
     val contents = ScalaBuilder.generateScalaSource(
