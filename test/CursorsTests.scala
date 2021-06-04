@@ -21,91 +21,13 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       .withLogger(QuereaseDbTests.TresqlLogger)
   }
 
-  case class CursorTest(cursorPrefix: String,
-                        bindVars: Map[String, Any],
-                        bindVarExtraction: String,
-                        tresql: String,
-                        result: List[Map[String, Any]])
-
   case class ViewCursorTest(testName:String,
                             view: String,
                             bindVars: Map[String, Any],
                             tresql: String,
                             result: List[Map[String, Any]])
 
-  val data: List[(String, List[CursorTest])]  =
-    List(
-    ( "match 1 cursor data"
-    , List(CursorTest
-        ( "dept" // cursors prefix
-        , Map("name" -> "Sales", "loc" -> "Riga") //bind variables
-        , ":name, :loc" // variable extraction
-        , "dept {name || ' ' || loc name}#(1)" // test tresql
-        ,  List(Map("name" -> "Sales Riga")) //test result
-        )
-      )
-    ),
-    ( "match 2 cursor data"
-    , List(CursorTest
-        ( "dept"
-        , Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
-          List(Map("name" -> "scott", "job" -> "analyst"), Map("name" -> "ziga", "job" -> "developer")))
-        , null
-        , "(dept {name ||  ' ' || loc data} + dept_emps {name || ', ' || job}) {data} #(1)"
-        , List(Map("data" -> "Sales Riga"), Map("data" -> "scott, analyst"), Map("data" -> "ziga, developer"))
-        )
-      , CursorTest("dept"
-        , Map("emps" -> List(Map("name" -> "scott", "job" -> "analyst"), Map("name" -> "ziga", "job" -> "developer")))
-        , null
-        , "dept_emps[job = 'developer'] {name, job} "
-        , List(Map("name" -> "ziga", "job" -> "developer"))
-        )
-      )
-    ),
-    ("match 3 cursor data"
-    , List(CursorTest
-        ( "dept"
-        , Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
-          List(Map("name" -> "scott", "work" ->
-            List(Map("name" -> "meet", "hours" -> 4), Map("name" -> "review", "hours" -> 2)), "job" -> "analyst"),
-            Map("name" -> "ziga", "job" -> "developer", "work" -> List(Map("name" -> "meet", "hours" -> 4)))))
-        , null
-        , "dept_emps[name = 'scott']{ :name dept_name, :loc loc, name, job}"
-        , List(Map("dept_name" -> "Sales", "loc" -> "Riga", "name" -> "scott", "job" -> "analyst"))
-        )
-      , CursorTest( "dept"
-        ,  Map("name" -> "Sales", "loc" -> "Riga", "emps" ->
-            List(Map("name" -> "scott", "work" ->
-              List(Map("name" -> "meet", "hours" -> 4), Map("name" -> "review", "hours" -> 2)), "job" -> "analyst"),
-              Map("name" -> "ziga", "job" -> "developer", "work" -> Nil)))
-        , null
-        , "dept_emps_work dew [hours > 2] {" +
-          ":name dept_name, (dept_emps de[de.__row_nr = dew.__row_nr_ref]{de.name}) emp_name," +
-          "(dept_emps de[de.__row_nr = dew.__row_nr_ref]{job}) job," +
-          "name work_name, hours}"
-        , List(Map("dept_name" -> "Sales", "work_name" -> "meet", "job" -> "analyst", "hours" -> "4", "emp_name" -> "scott"))
-        )
-      )
-    )
-  )
-
   import QuereaseTests.qe
-
-  data foreach { case (name, testData) =>
-    it should name in {
-      testData foreach { case CursorTest(prefix, input, varExtraction, tresql, testResult) =>
-        val inp =
-          if (varExtraction == null) input else {
-            val vars = varExtraction.split(",")
-            qe.extractDataForVars(input, vars.toList)
-          }
-        if (tresql!= null) {
-          val result = Query(qe.cursorsFromBindVars(inp, prefix) + " " + tresql, inp).toListOfMaps
-          result should be (testResult)
-        }
-      }
-    }
-  }
 
   Map("banks" -> List(Map("code" -> "SWE", "name" -> "Swedbank"), Map("code" -> "DNB", "name" -> "Luminor")))
   Map("banks" -> List(Map("code" -> "SWE", "name" -> "Swedbank"), Map("code" -> "DNB", "name" -> "Luminor", "accounts" -> List(Map("billing_account" -> "AAA"), Map("billing_account" -> "BBB", "currencies" -> List())))))
@@ -202,7 +124,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     )
 
   cursorData foreach { case ViewCursorTest(test, view, data, tresql, testRes) =>
-    "view bind var cursor" should test in {
+    it should test in {
       val res = Query(qe.cursorsFromViewBindVars(data, qe.viewDef(view)) + " " + tresql, data).toListOfMaps
       res should be (testRes)
     }

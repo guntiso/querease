@@ -100,57 +100,6 @@ trait BindVarsOps { this: Querease =>
     }.mkString(", ")
   }
 
-  def cursorsFromBindVars(data: Map[String, Any], cursorPrefix: String): String = {
-    type BindVarsCursors = MM[String, AB[MM[String, String]]]
-    def addRow(cursors: BindVarsCursors)(cName: String)(id: Int)(parentId: Option[Int]): Unit = {
-      def initRow =
-        MM[String, String]((BindVarsCursorRowNrColName, id.toString) ::
-          parentId.toList.map(BindVarsCursorRowNrRefColName -> _.toString): _*)
-      cursors.get(cName)
-        .map { cursor => cursor += initRow; () } // return unit explicitly for scala 2.12
-        .getOrElse { cursors += (cName -> AB(initRow)); () } // return unit explicitly for scala 2.12
-    }
-    def addCol(cursors: BindVarsCursors)(cName: String)(path: List[String]): Unit = {
-      def col(p: List[String]) =
-        Try(p.head.toInt).map(_ => cName).getOrElse(p.head) -> p.reverse.mkString(":", ".", "")
-      cursors.get(cName)
-        .map(cursor => cursor.last += col(path))
-        .getOrElse (cursors += (cName -> AB(MM(col(path)))))
-    }
-    def traverseData(cursor: String,
-                     path: List[String],
-                     d: Any,
-                     rowFun: String => Int => Option[Int] => Unit,
-                     colFun: String => List[String] => Unit): Unit = d match {
-      case m: Map[String@unchecked, _] => m.foreach { case (k, v) =>
-        traverseData(cursor, k :: path, v, rowFun, colFun)
-      }
-      case it: Iterable[_] =>
-        val cName = path.headOption.map(cursor + "_" + _).getOrElse(cursor)
-        def pathLastId(p: List[String]): Option[Int] = p match {
-          case Nil => None
-          case el :: tail => Try(el.toInt).toOption.orElse(pathLastId(tail))
-        }
-        val plId = pathLastId(path)
-        it.zipWithIndex.foreach { case (v, i) =>
-          rowFun(cName)(i)(plId)
-          traverseData(cName, i.toString :: path, v, rowFun, colFun)
-        }
-      case _ => colFun(cursor)(path)
-    }
-    def tresql(cursors: BindVarsCursors): String = {
-      cursors.collect {
-        case (cursor_name, rows) if rows.nonEmpty =>
-          val cols = rows.head.keys.toSeq.sorted
-          val body = rows.map (row => cols.map(row(_)).mkString("{", ", ", "}")).mkString(" ++ ")
-          s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
-      }.mkString(", ")
-    }
-    val cursors: BindVarsCursors = MM()
-    traverseData(cursorPrefix, Nil, data, addRow(cursors), addCol(cursors))
-    tresql(cursors)
-  }
-
   def extractDataForVars(data: Map[String, Any], vars: List[String]): Map[String, Any] = {
     implicit val env = new Resources {}.withParams(data)
     vars match {
