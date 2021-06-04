@@ -119,6 +119,25 @@ object bank_with_accounts_1_accounts {
       .unique[java.sql.Timestamp]
   }
 }
+class country extends Dto {
+  var code: String = null
+  var name: String = null
+  var is_active: java.lang.Boolean = null
+  var banks: List[country_banks] = Nil
+}
+class country_banks extends Dto {
+  var code: String = null
+  var name: String = null
+  var accounts: List[country_banks_accounts] = Nil
+}
+class country_banks_accounts extends Dto {
+  var billing_account: String = null
+  var currencies: List[country_banks_accounts_currencies] = Nil
+}
+class country_banks_accounts_currencies extends Dto {
+  var currency_code: String = null
+  var currency_name: String = null
+}
 class country_choice_2 extends Dto {
   var c2_and_name: String = null
 }

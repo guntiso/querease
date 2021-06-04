@@ -11,6 +11,11 @@ validations:
   - :int_col >  5, 'int_col should be greater than 5 but is ' || :int_col
   - :int_col > 10, 'int_col should be greater than 10 but is ' || :int_col
   - :int_col < 12, 'int_col should be less than 12 but is ' || :int_col
+  - ch_sum(# ch_sum) {
+      (children1 { int_col s } ++ children2 { int_col }){ sum (s) }
+    }, (ch_sum{ch_sum}) <= :int_col,
+    "Children int_col field sum must be less than parent's int_col value. Instead - " ||
+    :int_col || ' < ' || (ch_sum{ch_sum})
 
 
 name:     validations_test_child

@@ -1,0 +1,20 @@
+name: country
+table: country
+fields:
+- code
+- name
+- is_active
+- banks * :
+    table: bank
+    fields:
+    - code
+    - name
+    - accounts * :
+        table: account
+        fields:
+        - billing_account
+        - currencies * :
+            table: account_currency
+            fields:
+            - currency.code
+            - currency.name

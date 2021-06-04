@@ -513,7 +513,9 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(Nil, List("int_col should be greater than 5 but is 0", "int_col should be greater than 10 but is 0")),
+      List(ValidationResult(Nil, List("int_col should be greater than 5 but is 0",
+        "int_col should be greater than 10 but is 0",
+        "Children int_col field sum must be less than parent's int_col value. Instead - 0 < 2")),
         ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 0")),
         ValidationResult(List("children1", 1), List("child1 int_col should be greater than 1 but is 1")),
         ValidationResult(List("children2", 0), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 0,0")),

@@ -15,7 +15,8 @@ class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
 case class ValidationResult(path: List[Any], messages: List[String])
 
-abstract class Querease extends QueryStringBuilder with QuereaseMetadata with QuereaseExpressions with FilterTransformer { this: QuereaseIo =>
+abstract class Querease extends QueryStringBuilder
+  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo =>
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
@@ -117,67 +118,67 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   }
 
   import QuereaseMetadata.AugmentedQuereaseViewDef
-  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any], cursorPrefix: String): Option[String] = {
-    validationsQueryString(viewDef.validations, env, cursorPrefix)
-  }
-  def validationsQueryString(validations: Seq[String],
-                             env: Map[String, Any],
-                             cursorPrefix: String): Option[String] = Option(
-    if (validations != null && validations.nonEmpty) {
-      def tresql(vs: Seq[String]): String = {
-        def error(exp: Exp) = {
-          val msg =
-            s"Validation expression must consist of" +
-              s" two or three comma separated expressions. One before last is boolean expression" +
-              s" which evaluated to false returns last string expression as error message." +
-              s" In the case of three expressions first of them should be cursor definitions which can" +
-              s" be used later in boolean and error message expressions." +
-              s" Instead got: ${exp.tresql}"
-          sys.error(msg)
+
+  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
+    val validations = viewDef.validations
+    val result =
+      if (validations != null && validations.nonEmpty) {
+        def tresql(vs: Seq[String]): String = {
+          def error(exp: Exp) = {
+            val msg =
+              s"Validation expression must consist of" +
+                s" two or three comma separated expressions. One before last is boolean expression" +
+                s" which evaluated to false returns last string expression as error message." +
+                s" In the case of three expressions first of them should be cursor definitions which can" +
+                s" be used later in boolean and error message expressions." +
+                s" Instead got: ${exp.tresql}"
+            sys.error(msg)
+          }
+
+          var cursorList = List[String]()
+          val valTresql =
+            "messages(# idx, msg) {" +
+              vs.zipWithIndex.map {
+                case (v, i) =>
+                  val valExp =
+                    parser.parseExp(v) match {
+                      case Arr(valExps) if valExps.size == 3 =>
+                        valExps.head match {
+                          case With(cursors, _) =>
+                            cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
+                          case x => error(x)
+                        }
+                        valExps.tail.map(_.tresql).mkString(", ")
+                      case Arr(valExps) if valExps.size == 2 => v
+                      case x => error(x)
+                    }
+                  s"{ $i idx, if_not($valExp) msg }"
+              }.mkString(" + ") +
+              "} messages[msg != null] { msg } #(idx)"
+          if (cursorList.isEmpty) valTresql
+          else cursorList.reverse.mkString(", ") + ", " + valTresql
         }
 
-        var cursorList = List[String]()
-        val valTresql =
-          "messages(# idx, msg) {" +
-            vs.zipWithIndex.map {
-              case (v, i) =>
-                val valExp =
-                  parser.parseExp(v) match {
-                    case Arr(valExps) if valExps.size == 3 =>
-                      valExps.head match {
-                        case With(cursors, _) =>
-                          cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
-                        case x => error(x)
-                      }
-                      valExps.tail.map(_.tresql).mkString(", ")
-                    case Arr(valExps) if valExps.size == 2 => v
-                    case x => error(x)
-                  }
-                s"{ $i idx, if_not($valExp) msg }"
-            }.mkString(" + ") +
-          "} messages[msg != null] { msg } #(idx)"
-        if (cursorList.isEmpty) valTresql
-        else cursorList.reverse.mkString(", ") + ", " + valTresql
-      }
+        if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
+          Try(parser.parseWithParser(parser.function | parser.ident)(validations.head)).toOption.map {
+            case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
+              cursorsFromViewBindVars(if (varPars.isEmpty) env
+                else extractDataForVars(env, varPars.map(_.tresql)), viewDef) + ", " + tresql(validations.tail)
+            case _: String => cursorsFromViewBindVars(env, viewDef) + ", " + tresql(validations.tail)
+            case _ => tresql(validations)
+          }.getOrElse(tresql(validations))
+        } else tresql(validations)
+      } else null
 
-      if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
-        Try(parser.parseWithParser(parser.function | parser.ident)(validations.head)).map {
-          case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
-            cursorsFromBindVars(if (varPars.isEmpty) env else cursorDataForVars(env, varPars.map(_.tresql)),
-              cursorPrefix) + ", " + tresql(validations.tail)
-          case _: String => cursorsFromBindVars(env, cursorPrefix) + ", " + tresql(validations.tail)
-          case _ => tresql(validations)
-        }.toOption.getOrElse(tresql(validations))
-      } else tresql(validations)
-    } else null
-  )
+    Option(result)
+  }
   def validationsQueryStrings(viewDef: ViewDef, env: Map[String, Any]): Seq[String] = {
     val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
     def vqsRecursively(viewDef: ViewDef): Seq[String] = {
       if (visited contains viewDef.name) Nil
       else {
         visited += viewDef.name
-        validationsQueryString(viewDef, env, viewDef.name).toList ++
+        validationsQueryString(viewDef, env).toList ++
           viewDef.fields.flatMap { f =>
             if (f.type_.isComplexType)
               vqsRecursively(this.viewDef(f.type_.name))
@@ -194,7 +195,7 @@ abstract class Querease extends QueryStringBuilder with QuereaseMetadata with Qu
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
     def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
-      validationsQueryString(viewDef, obj, view.name) match {
+      validationsQueryString(viewDef, obj) match {
         case Some(query) =>
           Query(query, obj).map(_.s("msg")).toList
         case _ => Nil
@@ -786,93 +787,6 @@ trait QueryStringBuilder { this: Querease =>
     })
   }).toMap
 */
-  def cursorsFromBindVars(data: Map[String, Any], cursorPrefix: String): String = {
-    val IdName = "__id"
-    val ParentIdName = "__parent_id"
-    import scala.collection.mutable.{Map => MM, ArrayBuffer => AB}
-    type Cursors = MM[String, AB[MM[String, String]]]
-    def addRow(cursors: Cursors)(cName: String)(id: Int)(parentId: Option[Int]): Unit = {
-      def initRow =
-        MM[String, String]((IdName, id.toString) :: parentId.toList.map(ParentIdName -> _.toString): _*)
-      cursors.get(cName)
-        .map { cursor => cursor += initRow; () } // return unit explicitly for scala 2.12
-        .getOrElse { cursors += (cName -> AB(initRow)); () } // return unit explicitly for scala 2.12
-    }
-    def addCol(cursors: Cursors)(cName: String)(path: List[String]): Unit = {
-      def col(p: List[String]) =
-        Try(p.head.toInt).map(_ => cName).getOrElse(p.head) -> p.reverse.mkString(":", ".", "")
-      cursors.get(cName)
-        .map(cursor => cursor.last += col(path))
-        .getOrElse (cursors += (cName -> AB(MM(col(path)))))
-    }
-    def traverseData(cursor: String,
-                     path: List[String],
-                     d: Any,
-                     rowFun: String => Int => Option[Int] => Unit,
-                     colFun: String => List[String] => Unit): Unit = d match {
-      case m: Map[String@unchecked, _] => m.foreach { case (k, v) =>
-        traverseData(cursor, k :: path, v, rowFun, colFun)
-      }
-      case it: Iterable[_] =>
-        val cName = path.headOption.map(cursor + "_" + _).getOrElse(cursor)
-        def pathLastId(p: List[String]): Option[Int] = p match {
-          case Nil => None
-          case el :: tail => Try(el.toInt).toOption.orElse(pathLastId(tail))
-        }
-        val plId = pathLastId(path)
-        it.zipWithIndex.foreach { case (v, i) =>
-          rowFun(cName)(i)(plId)
-          traverseData(cName, i.toString :: path, v, rowFun, colFun)
-        }
-      case _ => colFun(cursor)(path)
-    }
-    def tresql(cursors: Cursors): String = {
-      cursors.collect {
-        case (cursor_name, rows) if rows.nonEmpty =>
-          val cols = rows.head.keys.toSeq.sorted
-          val body = rows.map (row => cols.map(row(_)).mkString("{", ", ", "}")).mkString(" ++ ")
-          s"$cursor_name(# ${cols.mkString(", ")}) { $body }"
-      }.mkString(", ")
-    }
-    val cursors: Cursors = MM()
-    traverseData(cursorPrefix, Nil, data, addRow(cursors), addCol(cursors))
-    tresql(cursors)
-  }
-
-  def cursorDataForVars(data: Map[String, Any], vars: List[String]): Map[String, Any] = {
-    implicit val env = new Resources {}.withParams(data)
-    vars match {
-      case Nil => data
-      case l => l.foldLeft(Map[String, Any]()) { (r, v) =>
-        Query(v) match {
-          case SingleValueResult(value) => value match {
-            case m: Map[String, _]@unchecked => r ++ m
-            case x: Any =>
-              r + (parser.parseWithParser(parser.variable)(v).variable -> x)
-          }
-          case x => sys.error(s"Cannot extract variable value from result: $x")
-        }
-      }
-    }
-  }
-
-  def emptyData(view: ViewDef): Map[String, Any] = {
-    def calc(vd: ViewDef, visited: Set[String]): Map[String, Any] = {
-      vd.fields.map { f =>
-        f.name -> {
-          if (f.type_.isComplexType) {
-            val n = f.type_.name
-            if (visited(n)) null
-            else {
-              val ed = calc(nameToViewDef(n), visited + n)
-              if (f.isCollection) List(ed) else ed
-            }
-          } else null
-        }
-      }.toMap
-    }
-    calc(view, Set())
-  }
 }
 
 trait OracleQueryStringBuilder extends QueryStringBuilder { this: Querease =>
