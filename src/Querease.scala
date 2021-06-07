@@ -117,10 +117,14 @@ abstract class Querease extends QueryStringBuilder
       s"Record not updated in table(s): ${tables.mkString(",")}")
   }
 
-  import QuereaseMetadata.AugmentedQuereaseViewDef
-
   def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
-    val validations = viewDef.validations
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    validationsQueryString(viewDef, env, viewDef.validations)
+  }
+
+  def validationsQueryString(viewDef: ViewDef,
+                             env: Map[String, Any],
+                             validations: Seq[String]): Option[String] = {
     val result =
       if (validations != null && validations.nonEmpty) {
         def tresql(vs: Seq[String]): String = {
