@@ -82,7 +82,7 @@ object QuereaseMetadata {
     initial: String = null
   ) extends QuereaseFieldDefExtras
 
-  val BindVarCursorsFunctionName = "bind_var_cursors"
+  val BindVarCursorsCmd = "build cursors"
 
   val QuereaseViewExtrasKey = "querease-view-extras"
   val QuereaseFieldExtrasKey = "querease-field-extras"

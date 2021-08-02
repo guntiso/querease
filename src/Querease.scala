@@ -9,7 +9,7 @@ import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, Query, Resource
 import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
-import org.mojoz.querease.QuereaseMetadata.BindVarCursorsFunctionName
+import org.mojoz.querease.QuereaseMetadata.BindVarCursorsCmd
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
@@ -163,14 +163,8 @@ abstract class Querease extends QueryStringBuilder
           else cursorList.reverse.mkString(", ") + ", " + valTresql
         }
 
-        if (validations.head.indexOf(BindVarCursorsFunctionName) != -1) {
-          Try(parser.parseWithParser(parser.function | parser.ident)(validations.head)).toOption.map {
-            case Fun(BindVarCursorsFunctionName, varPars, _, _, _) =>
-              cursorsFromViewBindVars(if (varPars.isEmpty) env
-                else extractDataForVars(env, varPars.map(_.tresql)), viewDef) + ", " + tresql(validations.tail)
-            case _: String => cursorsFromViewBindVars(env, viewDef) + ", " + tresql(validations.tail)
-            case _ => tresql(validations)
-          }.getOrElse(tresql(validations))
+        if (validations.head.trim == BindVarCursorsCmd) {
+          cursorsFromViewBindVars(env, viewDef) + ", " + tresql(validations.tail)
         } else tresql(validations)
       } else null
 

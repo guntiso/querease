@@ -7,7 +7,7 @@ fields:
   - children1 * validations_test_child_1
   - children2 * validations_test_child_2
 validations:
-  - bind_var_cursors
+  - build cursors
   - :int_col >  5, 'int_col should be greater than 5 but is ' || :int_col
   - :int_col > 10, 'int_col should be greater than 10 but is ' || :int_col
   - :int_col < 12, 'int_col should be less than 12 but is ' || :int_col
