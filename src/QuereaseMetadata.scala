@@ -6,7 +6,9 @@ import org.mojoz.metadata.TableDef.TableDefBase
 import org.mojoz.metadata.ColumnDef.ColumnDefBase
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
+
 import scala.collection.immutable.Seq
+import scala.util.matching.Regex
 
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
@@ -83,6 +85,11 @@ object QuereaseMetadata {
   ) extends QuereaseFieldDefExtras
 
   val BindVarCursorsCmd = "build cursors"
+  val BindVarCursorsCmdRegex =
+    new Regex(BindVarCursorsCmd + """((\s+:\w+)*)""")
+  val BindVarCursorsForViewCmd = "build cursors for view"
+  val BindVarCursorsForViewCmdRegex =
+    new Regex(BindVarCursorsForViewCmd + """\s+(:?\w+)((\s+:\w+)*)""")
 
   val QuereaseViewExtrasKey = "querease-view-extras"
   val QuereaseFieldExtrasKey = "querease-field-extras"

@@ -9,7 +9,7 @@ import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, Query, Resource
 import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
-import org.mojoz.querease.QuereaseMetadata.BindVarCursorsCmd
+import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
@@ -163,8 +163,36 @@ abstract class Querease extends QueryStringBuilder
           else cursorList.reverse.mkString(", ") + ", " + valTresql
         }
 
-        if (validations.head.trim == BindVarCursorsCmd) {
-          cursorsFromViewBindVars(env, viewDef) + ", " + tresql(validations.tail)
+
+        val validations_head = validations.head.trim
+        def createEnv(bindVars: List[String]) =
+          bindVars.foldLeft(Map[String, Any]()) { (res, bv) =>
+            env(bv) match {
+              case m: Map[String, _]@unchecked => res ++ m
+              case x => res + (bv -> x)
+            }
+          }
+        def bindVarsFromRegex(vars: String) =
+          vars.split("\\s+")
+            .filter(_.nonEmpty)
+            .map(_.substring(1)) // remove colon
+            .toList
+        if (validations_head.startsWith(BindVarCursorsForViewCmd) &&
+          BindVarCursorsForViewCmdRegex.pattern.matcher(validations_head).matches) {
+          val m = BindVarCursorsForViewCmdRegex.findAllMatchIn(validations_head).toList.head
+          val view_name = m.subgroups.head
+          val bind_vars =
+            if (m.subgroups.tail.nonEmpty) bindVarsFromRegex(m.subgroups.tail.head) else Nil
+          val vd = this.viewDef(if (view_name.startsWith(":"))
+            String.valueOf(env(view_name.drop(1))) else view_name)
+          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
+          cursorsFromViewBindVars(values, vd) + ", " + tresql(validations.tail)
+        } else if (validations_head.startsWith(BindVarCursorsCmd) &&
+          BindVarCursorsCmdRegex.pattern.matcher(validations_head).matches) {
+          val m = BindVarCursorsCmdRegex.findAllMatchIn(validations_head).toList.head
+          val bind_vars = bindVarsFromRegex(m.subgroups.head)
+          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
+          cursorsFromViewBindVars(values, viewDef) + ", " + tresql(validations.tail)
         } else tresql(validations)
       } else null
 
