@@ -8,7 +8,7 @@ scalaVersion := scalaV
 
 crossScalaVersions := Seq(
   scalaV,
-  "2.12.14",
+  "2.12.15",
 )
 
 ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
