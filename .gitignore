@@ -11,3 +11,4 @@ lib_managed
 *.blame
 *.log
 .idea
+*.iml
