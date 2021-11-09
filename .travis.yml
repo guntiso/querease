@@ -20,7 +20,7 @@ before_install:
   - sudo /etc/init.d/postgresql start 9.6
 before_script:
   - psql -f test/conf/querease-postgresql-setup.sql -U postgres
-  - cp test/conf/application.conf.travis test/conf/application.conf
+  - cp test/conf/application.conf.ci test/conf/application.conf
 notifications:
   email:
     - guntiso@uniso.lv
