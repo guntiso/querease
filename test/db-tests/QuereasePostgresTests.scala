@@ -1,9 +1,6 @@
 package test
 
 import java.sql.DriverManager
-import com.typesafe.config.ConfigFactory
-
-import java.sql.DriverManager
 import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.dialects.PostgresqlDialect
 import QuereaseDbTests.{executeStatements, setEnv}
@@ -34,7 +31,7 @@ class QuereasePostgresTests extends QuereaseDbTests {
 
 object QuereasePostgresTests {
   Class.forName("org.postgresql.Driver") // fix "sbt +test" - No suitable driver found
-  val conf = ConfigFactory.load()
+  val conf = QuereaseDbTests.conf
   val hasPostgres = conf.getBoolean("querease.postgresql.available")
   def getPostgresConnection = {
     val url      = conf.getString("querease.postgresql.jdbc.url")

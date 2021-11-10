@@ -1,5 +1,6 @@
 package test
 
+import com.typesafe.config.ConfigFactory
 import java.sql.{Connection, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -542,6 +543,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 }
 
 object QuereaseDbTests {
+  val conf = ConfigFactory.load()
   class ThreadLocalDateFormat(val pattern: String) extends ThreadLocal[SimpleDateFormat] {
     override def initialValue = { val f = new SimpleDateFormat(pattern); f.setLenient(false); f }
     def apply(date: Date) = get.format(date)
@@ -557,7 +559,8 @@ object QuereaseDbTests {
       case LogTopic.tresql => "tresql"
       case LogTopic.sql_with_params => null
     }
-    if (topicName != null) println(Timestamp(new Date()) + s"  [$topicName]  $msg")
+    if (topicName != null && conf.getBoolean("debug"))
+      println(Timestamp(new Date()) + s"  [$topicName]  $msg")
   }
 
   implicit val Env = new ThreadLocalResources {
