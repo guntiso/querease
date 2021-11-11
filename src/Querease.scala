@@ -635,10 +635,10 @@ trait QueryStringBuilder { this: Querease =>
   private def fromAndPathToAliasUnhandled(view: ViewDef, view_fields: Seq[FieldDef]): (String, Map[List[String], String]) = {
     // TODO prepare (pre-compile) views, use pre-compiled as source!
     // TODO complain if bad paths (no refs or ambiguous refs) etc.
-    def isExpressionOrPath(f: FieldDef) =
-      (f.isExpression || f.expression != null) &&
-        Option(f.expression).forall(expr =>
-          !FieldRefRegexp.pattern.matcher(expr).matches)
+    def simpleName(name: String) = if (name == null) null else name.lastIndexOf('.') match {
+      case -1 => name
+      case  i => name.substring(i + 1)
+    }
     val (needsBaseTable, parsedJoins) =
       Option(view.joins)
         .map(joins =>
@@ -647,10 +647,41 @@ trait QueryStringBuilder { this: Querease =>
             .getOrElse((true, joinsParser(tableAndAlias(view), joins))))
         .getOrElse((false, Nil))
     val joinAliasToTable =
-      parsedJoins.map(j => (Option(j.alias) getOrElse j.table, j.table)).toMap
-    val joined = joinAliasToTable.keySet
+      parsedJoins.map(j => (Option(j.alias) getOrElse simpleName(j.table), j.table)).toMap
+    val joinedAliases = joinAliasToTable.keySet
     val baseQualifier = baseFieldsQualifier(view)
-    val usedInFields = view_fields
+    val baseTableOrAlias = Option(baseQualifier) getOrElse simpleName(view.table)
+    val autoBaseAlias =
+      if (baseTableOrAlias == view.table) null else baseTableOrAlias
+    val autoBase =
+      if (view.tableAlias != null && !needsBaseTable &&
+        parsedJoins.exists(_.alias == view.tableAlias)) null
+      else if (view.tableAlias == null && !needsBaseTable &&
+        parsedJoins.lengthCompare(0) > 0) null // TODO ?
+      else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
+    val pathToAlias = collection.mutable.Map[List[String], String]()
+    pathToAlias ++= joinedAliases.map(a => List(a) -> a).toMap
+    val usedNames = collection.mutable.Set[String]()
+    usedNames ++= joinedAliases
+    val aliasToTable = collection.mutable.Map[String, String]()
+    if (baseQualifier != null) {
+      pathToAlias += (List(baseQualifier) -> baseQualifier)
+      usedNames += baseQualifier
+      if (view.table != null)
+        aliasToTable += (baseQualifier -> view.table)
+    }
+    aliasToTable ++= joinAliasToTable
+    def isExpressionOrPath(f: FieldDef) =
+      (f.isExpression || f.expression != null) &&
+        Option(f.expression).forall(expr =>
+          !FieldRefRegexp.pattern.matcher(expr).matches)
+    import parser.Traverser
+    val IdentifierExtractor: Traverser[List[List[String]]] = {
+      identifiers => {
+        case i: Ident => i.ident :: identifiers
+      }
+    }
+    val tablePathsInSimpleFields = view_fields
       .filterNot(isExpressionOrPath)
       .map(f => Option(f.tableAlias) getOrElse {
         if (f.table == view.table) baseQualifier else f.table
@@ -658,13 +689,7 @@ trait QueryStringBuilder { this: Querease =>
       .filterNot(_ == null)
       .map(t => List(t))
       .toSet
-    import parser.Traverser
-    val IdentifierExtractor: Traverser[List[List[String]]] = {
-      identifiers => {
-        case i: Ident => i.ident :: identifiers
-      }
-    }
-    val usedInExpr = view_fields
+    val tablePathsInFieldExpressions = view_fields
       .filter(isExpressionOrPath)
       .map(_.expression)
       .filter(_ != null)
@@ -676,42 +701,36 @@ trait QueryStringBuilder { this: Querease =>
       .filter(_.lengthCompare(1) > 0)
       .map(_ dropRight 1)
       .toSet
-    val used = usedInFields ++ usedInExpr
-    def tailists[B](l: List[B]): List[List[B]] =
-      if (l.isEmpty) Nil else l :: tailists(l.tail)
-    val usedAndPrepaths =
-      used.flatMap(u => tailists(u.reverse).reverse.map(_.reverse))
-    val baseTableOrAlias = Option(baseQualifier) getOrElse view.table
-    val missing =
-      (usedAndPrepaths -- joined.map(List(_)) - List(baseTableOrAlias))
+    val tablePaths = tablePathsInSimpleFields ++ tablePathsInFieldExpressions
+    val tablePathsNotJoined = {
+      def isTableOrAliasInScope(tableOrAlias: String) =
+        joinedAliases.contains(tableOrAlias)                         ||
+        baseTableOrAlias == tableOrAlias                             ||
+        tableMetadata.aliasedRef(view.table, tableOrAlias).isDefined ||
+        tableMetadata.tableDefOption(tableOrAlias).isDefined
+      val qualifiedTablePaths = tablePaths map { parts =>
+        (1 to parts.length - 1).find { i =>
+          isTableOrAliasInScope(parts.take(i).mkString("."))
+        } match {
+          case None    => parts
+          case Some(1) => parts
+          case Some(i) => parts.take(i).mkString(".") :: parts.drop(i)
+        }
+      }
+      def tailists[B](l: List[B]): List[List[B]] =
+        if (l.isEmpty) Nil else l :: tailists(l.tail)
+      val qualifiedTablePathsAndPrePaths =
+        qualifiedTablePaths.flatMap(p => tailists(p.reverse).map(_.reverse))
+      (qualifiedTablePathsAndPrePaths -- joinedAliases.map(List(_)) - List(baseTableOrAlias))
         .toList.sortBy(p => (p.size, p mkString "."))
-    val autoBaseAlias =
-      if (baseTableOrAlias == view.table) null else baseTableOrAlias
-    val autoBase =
-      if (view.tableAlias != null && !needsBaseTable &&
-        parsedJoins.exists(_.alias == view.tableAlias)) null
-      else if (view.tableAlias == null && !needsBaseTable &&
-        parsedJoins.lengthCompare(0) > 0) null // TODO ?
-      else List(view.table, autoBaseAlias).filter(_ != null) mkString " "
-    val pathToAlias = collection.mutable.Map[List[String], String]()
-    pathToAlias ++= joined.map(j => List(j) -> j).toMap
-    val usedNames = collection.mutable.Set[String]()
-    usedNames ++= joined
-    val aliasToTable = collection.mutable.Map[String, String]()
-    if (baseQualifier != null) {
-      pathToAlias += (List(baseQualifier) -> baseQualifier)
-      usedNames += baseQualifier
-      if (view.table != null)
-        aliasToTable += (baseQualifier -> view.table)
     }
-    aliasToTable ++= joinAliasToTable
-    missing foreach { path =>
+    tablePathsNotJoined foreach { path =>
       val name = (path takeRight 1).head
       val alias = unusedName(name, usedNames)
       pathToAlias += path -> alias
       usedNames += alias
     }
-    val autoJoins = missing.map { path =>
+    val autoJoins = tablePathsNotJoined.map { path =>
       val (contextTable, contextTableOrAlias) =
         if (path.lengthCompare(1) == 0) (view.table, baseTableOrAlias)
         else {
@@ -719,7 +738,7 @@ trait QueryStringBuilder { this: Querease =>
           val contextTable = aliasToTable(contextTableOrAlias)
           (contextTable, contextTableOrAlias)
         }
-      val tableOrAlias = (path takeRight 1).head
+      val tableOrAlias = path.last
       val alias = pathToAlias(path)
       // TODO inner join if all steps in path to root are not nullable
       val shouldOuterJoin = true
