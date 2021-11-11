@@ -415,7 +415,7 @@ trait QueryStringBuilder { this: Querease =>
       .orElse(if (view.joins == null || view.joins == Nil) Some(view.table) else None)
       .getOrElse(parsedJoins
         .filter(_.table == view.table).toList match {
-          case Join(a, _, _) :: Nil =>
+          case Join(a, _, _, _) :: Nil =>
             // qualifier, if base table encountered only once
             Option(a) getOrElse view.table
           case Nil => null // no qualifier
@@ -724,7 +724,7 @@ trait QueryStringBuilder { this: Querease =>
       // TODO inner join if all steps in path to root are not nullable
       val shouldOuterJoin = true
       val joinMod = if (shouldOuterJoin) "?" else ""
-      tableMetadata.ref(contextTable, tableOrAlias) match {
+      tableMetadata.aliasedRef(contextTable, tableOrAlias) match {
         // FIXME support multi-col refs
         case Some(ref) =>
           aliasToTable += alias -> ref.refTable

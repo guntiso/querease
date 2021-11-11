@@ -77,13 +77,14 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         Join (
           alias = alias,
           table = tableName,
+          isOuterJoin = outerJoin,
           columns = table.cols.map { col =>
             ColumnDef(
               name = col.name,
               type_ = Type(metadata.sql_xsd_type_map(col.sqlType), None, None, None, false),
               nullable = outerJoin || col.nullable,
               dbDefault = null,
-              enum = Nil,
+              enum_ = Nil,
               comments = null,
               extras = Map.empty
             )

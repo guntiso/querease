@@ -17,10 +17,10 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryAndSourceCompatible
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 val tresqlV = "10.1.3-SNAPSHOT"
-val mojozV = "3.0.1"
+val mojozV  = "4.0.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
-  "org.mojoz" %% "mojoz" % mojozV,
+  "org.mojoz"  %% "mojoz"  % mojozV,
   // test
   "org.hsqldb"     % "hsqldb"     % "2.3.1"  % "test", // TODO upgrade hsqldb when supported by tresql
   "com.typesafe"   % "config"     % "1.4.1"  % "test",
