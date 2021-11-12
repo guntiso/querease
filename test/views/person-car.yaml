@@ -1,0 +1,130 @@
+name:   person_and_car_01
+table:  person
+joins:
+- person / car_schema.person_car
+fields:
+- id
+- name
+- car_name = person_car.car_name
+
+
+name:   person_and_car_03
+table:  person p
+joins:
+- p / car_schema.person_car
+fields:
+- id
+- name
+- car_name = person_car.car_name
+
+
+name:   person_and_car_05
+table:  person
+joins:
+- person / car_schema.person_car car
+fields:
+- id
+- name
+- car_name = car.car_name
+
+
+name:   person_and_car_06
+table:  person
+joins:
+- person [person.id = car.person_id] car_schema.person_car car
+fields:
+- id
+- name
+- car_name = car.car_name
+
+
+name:   person_and_car_07
+table:  person p
+joins:
+- p / car_schema.person_car car
+fields:
+- id
+- name
+- car_name = car.car_name
+
+
+name:   person_and_car_08
+table:  person p
+joins:
+- p [p.id = car.person_id] car_schema.person_car car
+fields:
+- id
+- name
+- car_name = car.car_name
+
+
+name:   person_and_car_09
+table:  person
+fields:
+- id
+- name
+- car_name = car_schema.person_car.car_name
+
+
+name:   person_and_car_10
+table:  person p
+fields:
+- id
+- name
+- car_name = car_schema.person_car.car_name
+
+
+name:   person_and_car_13
+table:  car_schema.person_car car
+joins:
+- car / person
+fields:
+- id
+- name = person.name
+- car_name
+
+
+name:   person_and_car_14
+table:  car_schema.person_car car
+joins:
+- car [car.person_id = person.id] person
+fields:
+- id
+- name = person.name
+- car_name
+
+
+name:   person_and_car_17
+table:  car_schema.person_car car
+joins:
+- car / person p
+fields:
+- id
+- name = p.name
+- car_name
+
+
+name:   person_and_car_18
+table:  car_schema.person_car car
+joins:
+- car [car.person_id = p.id] person p
+fields:
+- id
+- name = p.name
+- car_name
+
+
+name:   person_and_car_19
+table:  car_schema.person_car
+fields:
+- id
+- name = person_car.person.name
+- car_name
+
+
+name:   person_and_car_20
+table:  car_schema.person_car car
+fields:
+- id
+- name = car.person.name
+- car_name

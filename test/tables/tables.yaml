@@ -51,3 +51,9 @@ columns:
 - mother.id              person.id
 - father.id              person.id
 pk: id
+
+table: car_schema.person_car
+columns:
+- id
+- person.id            !
+- car_name             ! 50

@@ -254,6 +254,76 @@ class person extends DtoWithId {
   var mother_id: java.lang.Long = null
   var father_id: java.lang.Long = null
 }
+class person_and_car_01 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_03 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_05 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_06 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_07 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_08 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_09 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_10 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_13 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_14 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_17 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_18 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_19 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_20 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
 class person_choice_resolver_implied extends Dto {
   var full_name: String = null
   def resolve_id(implicit env: org.tresql.Resources, qe: QE) = {

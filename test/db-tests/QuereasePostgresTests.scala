@@ -66,11 +66,14 @@ object QuereasePostgresTests {
   val createPostgresObjectsStatements =
     Seq(
       "drop schema if exists querease cascade",
-      "create schema querease authorization querease"
+      "drop schema if exists car_schema cascade",
+      "create schema querease authorization querease",
+      "create schema car_schema",
     ) ++
-    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
     postgres_custom_functions_statements ++
-    Seq("CREATE SEQUENCE seq START WITH 10000",
-        "commit"
+    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
+    Seq(
+      "CREATE SEQUENCE seq START WITH 10000",
+      "commit",
     )
 }

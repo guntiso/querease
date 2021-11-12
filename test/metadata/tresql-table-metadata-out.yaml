@@ -28,6 +28,15 @@ pk: id
 refs:
 - country_code -> country(code)
 
+table: car_schema.person_car
+columns:
+- id ! long
+- person_id ! long
+- car_name ! string
+pk: id
+refs:
+- person_id -> person(id)
+
 table: country
 columns:
 - code ! string

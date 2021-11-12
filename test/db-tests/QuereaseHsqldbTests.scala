@@ -55,8 +55,13 @@ object QuereaseHsqldbTests {
          end if"""
   )
   val createHsqldbObjectsStatements =
-    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
+    Seq(
+      "create sequence seq start with 10000",
+      "create schema car_schema",
+      "set database collation \"Latvian\"",
+    ) ++
     hsqldb_custom_functions_statements ++
-    Seq("CREATE SEQUENCE seq START WITH 10000",
-        "SET DATABASE COLLATION \"Latvian\"")
+    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "")
+      // TODO fk accross schemas - upgrade hsqldb? Provide explicit schema?
+      .filterNot(_ startsWith "alter table car_schema.person_car add constraint fk_person_car_person_id")
 }

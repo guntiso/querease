@@ -584,7 +584,15 @@ object QuereaseDbTests {
   def executeStatements(statements: String*): Unit = {
     val conn = Env.conn
     val statement = conn.createStatement
-    try statements foreach { statement.execute } finally statement.close()
+    try statements foreach { s =>
+      try {
+        statement.execute(s)
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Failed to execute sql statement:\n$s", ex)
+      }
+    }
+    finally statement.close()
   }
   def commit = executeStatements("commit")
 }
