@@ -70,7 +70,8 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         case _ => true
       }.map { t =>
         val alias = t.name
-        val table = declaredTable(scopes)(alias)().get
+        // FIXME support multiple databases
+        val table = declaredTable(scopes)(alias)(joinsParserCompiler.EnvMetadata, db = None).get
         val tableName = // FIXME may clash!
           tresqlMetadata.tableOption(table.name).map(_.name).orNull
         val outerJoin = t.exp.outerJoin == "l" //left outer join

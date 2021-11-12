@@ -93,7 +93,7 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     new CompilerMetadata {
       override def metadata: Metadata =
         TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
-
+      override def childrenMetadata: Map[String, Metadata] = Map() // FIXME support children metadata?
       override def macros: Option[Any] =
         macrosClassName.map(cn => Class.forName(cn).getDeclaredConstructor().newInstance())
     }
