@@ -14,7 +14,7 @@ import org.scalatest.BeforeAndAfterAll
 
 
 trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
-  import QuereaseDbTests.{dataPath, clearEnv, commit}
+  import QuereaseDbTests.{dataPath, clearEnv, commit, loadSampleData}
   implicit val resources: org.tresql.Resources = QuereaseDbTests.Env
 
   def setEnv: Unit
@@ -33,6 +33,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     super.beforeAll()
     setEnv
     createDbObjects
+    loadSampleData
   }
 
   override def afterAll(): Unit = {
@@ -76,34 +77,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     banksHv.size should be(1)
     banksHv(0).total should be(2)
 
-    def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
-      def toId(id: Long) = java.lang.Long.valueOf(id + 1000)
-      val p = new Person
-      p.id = toId(id)
-      p.name = name
-      p.surname = surname
-      p.sex = if (name endsWith "s") "M" else "F"
-      p.mother_id = mId.map(toId).orNull
-      p.father_id = fId.map(toId).orNull
-      p
-    }
-    val personsString = fileToString(dataPath + "/" + "persons-in.txt")
-    personsString split "\\n" foreach (_.trim.split("\\s+").toList match {
-      case id :: name :: surname :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, None, None),
-          forceInsert = true)
-      case id :: name :: surname :: mId :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, Some(mId.toLong), None),
-          forceInsert = true)
-      case id :: name :: surname :: mId :: fId :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, Some(mId.toLong), Some(fId.toLong)),
-          forceInsert = true)
-      case Nil =>
-      case x => sys.error("unexpected format: " + x)
-    })
     def personInfoString(p: PersonInfo) = {
       import p.{name, surname, sex, mother_name, father_name, children,
         maternal_grandmother, maternal_grandfather, paternal_grandmother, paternal_grandfather}
@@ -351,12 +324,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     } shouldBe """Failed to identify value of "father" (from person_with_complex_type_resolvers_2) - Some, Father, true"""
     child2.resolve_father_id(m => m) shouldBe fatherId
 
-    // sample data
-    val currency = new Currency
-    currency.code = "EUR"
-    currency.name = "Euro"
-    qe.save(currency)
-
     val accountCurrency = new AccountCurrency
     accountCurrency.account_id = accountId
     accountCurrency.currency_code = "EUR"
@@ -601,4 +568,48 @@ object QuereaseDbTests {
     finally statement.close()
   }
   def commit = executeStatements("commit")
+
+  def loadSampleData: Unit = {
+    loadPersonData
+    loadCurrencyData
+  }
+
+  def loadPersonData: Unit = {
+    def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
+      def toId(id: Long) = java.lang.Long.valueOf(id + 1000)
+      val p = new Person
+      p.id = toId(id)
+      p.name = name
+      p.surname = surname
+      p.sex = if (name endsWith "s") "M" else "F"
+      p.mother_id = mId.map(toId).orNull
+      p.father_id = fId.map(toId).orNull
+      p
+    }
+    val personsString = fileToString(dataPath + "/" + "persons-in.txt")
+    personsString split "\\n" foreach (_.trim.split("\\s+").toList match {
+      case id :: name :: surname :: Nil =>
+        qe.save(
+          person(id.toLong, name, surname, None, None),
+          forceInsert = true)
+      case id :: name :: surname :: mId :: Nil =>
+        qe.save(
+          person(id.toLong, name, surname, Some(mId.toLong), None),
+          forceInsert = true)
+      case id :: name :: surname :: mId :: fId :: Nil =>
+        qe.save(
+          person(id.toLong, name, surname, Some(mId.toLong), Some(fId.toLong)),
+          forceInsert = true)
+      case Nil =>
+      case x => sys.error("unexpected format: " + x)
+    })
+  }
+
+  def loadCurrencyData: Unit = {
+    // sample data
+    val currency = new Currency
+    currency.code = "EUR"
+    currency.name = "Euro"
+    qe.save(currency)
+  }
 }

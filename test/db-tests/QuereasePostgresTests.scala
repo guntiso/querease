@@ -12,7 +12,7 @@ class QuereasePostgresTests extends QuereaseDbTests {
   override def dbName = "postgresql"
   override def isDbAvailable: Boolean = hasPostgres
   override def setEnv: Unit = setPostgresEnv
-  override def createDbObjects = executeStatements(createPostgresObjectsStatements: _*)
+  override def createDbObjects = createPostgresObjects
   override def interceptedSqlExceptionMessage[B](b: => B): String  =
     try {
       executeStatements("commit")
@@ -76,4 +76,5 @@ object QuereasePostgresTests {
       "CREATE SEQUENCE seq START WITH 10000",
       "commit",
     )
+  def createPostgresObjects = executeStatements(createPostgresObjectsStatements: _*)
 }

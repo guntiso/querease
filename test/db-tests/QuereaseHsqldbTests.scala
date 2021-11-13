@@ -12,7 +12,7 @@ class QuereaseHsqldbTests extends QuereaseDbTests {
   import QuereaseHsqldbTests._
   override def dbName = "hsqldb"
   override def setEnv: Unit = setHsqldbEnv
-  override def createDbObjects = executeStatements(createHsqldbObjectsStatements: _*)
+  override def createDbObjects = createHsqldbObjects
 }
 
 object QuereaseHsqldbTests {
@@ -64,4 +64,5 @@ object QuereaseHsqldbTests {
     SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "")
       // TODO fk accross schemas - upgrade hsqldb? Provide explicit schema?
       .filterNot(_ startsWith "alter table car_schema.person_car add constraint fk_person_car_person_id")
+  def createHsqldbObjects = executeStatements(createHsqldbObjectsStatements: _*)
 }
