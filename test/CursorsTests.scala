@@ -13,7 +13,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   implicit var resources: Resources = _
 
   override def beforeAll(): Unit = {
-    Class.forName("org.hsqldb.jdbc.JDBCDriver")
+    QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
     conn = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb", "SA", "")
     resources = new Resources {}
       .withConn(conn)

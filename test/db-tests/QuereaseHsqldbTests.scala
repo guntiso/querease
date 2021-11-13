@@ -16,7 +16,7 @@ class QuereaseHsqldbTests extends QuereaseDbTests {
 }
 
 object QuereaseHsqldbTests {
-  Class.forName("org.hsqldb.jdbc.JDBCDriver") // fix "sbt +test" - No suitable driver found
+  QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
   // TODO clean up when tresql fixed
   val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
     case c: QueryBuilder#CastExpr => c.typ match {

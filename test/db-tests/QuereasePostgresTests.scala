@@ -30,7 +30,7 @@ class QuereasePostgresTests extends QuereaseDbTests {
 }
 
 object QuereasePostgresTests {
-  Class.forName("org.postgresql.Driver") // fix "sbt +test" - No suitable driver found
+  QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
   val conf = QuereaseDbTests.conf
   val hasPostgres = conf.getBoolean("querease.postgresql.available")
   def getPostgresConnection = {

@@ -551,6 +551,12 @@ object QuereaseDbTests {
   }
   val Timestamp = new ThreadLocalDateFormat("yyyy.MM.dd HH:mm:ss.SSS")
 
+  def loadJdbcDrivers: Unit = {
+    // Load drivers sequentially to avoid deadlocks
+    Class.forName("org.hsqldb.jdbc.JDBCDriver")
+    Class.forName("org.postgresql.Driver")
+  }
+
   val TresqlLogger: Logging#TresqlLogger = { (msg, _, topic) =>
     val topicName = topic match {
       case LogTopic.info   => "info  "
