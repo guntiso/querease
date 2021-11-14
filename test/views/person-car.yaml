@@ -8,10 +8,30 @@ fields:
 - car_name = person_car.car_name
 
 
+name:   person_and_car_02
+table:  person
+joins:
+- person [person.id = person_car.person_id] car_schema.person_car
+fields:
+- id
+- name
+- car_name = person_car.car_name
+
+
 name:   person_and_car_03
 table:  person p
 joins:
 - p / car_schema.person_car
+fields:
+- id
+- name
+- car_name = person_car.car_name
+
+
+name:   person_and_car_04
+table:  person p
+joins:
+- p [p.id = person_car.person_id] car_schema.person_car
 fields:
 - id
 - name

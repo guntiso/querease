@@ -259,7 +259,17 @@ class person_and_car_01 extends DtoWithId {
   var name: String = null
   var car_name: String = null
 }
+class person_and_car_02 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
 class person_and_car_03 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class person_and_car_04 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
   var car_name: String = null
