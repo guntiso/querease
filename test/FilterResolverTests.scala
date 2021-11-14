@@ -62,7 +62,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 
-  "filter sugar syntax" should "work properly for missing field refs" in {
+  it should "work properly for missing field refs" in {
     FieldRefs foreach { fieldRef =>
       val ident = fieldRef.substring(1)
       resolve(fieldRef) should be(s"$fieldRef = :$ident?")
@@ -75,7 +75,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 
-  "filter sugar syntax" should "work properly for valid field refs" in {
+  it should "work properly for valid field refs" in {
     FieldRefs foreach { fieldRef =>
       val ident = fieldRef.substring(1)
       resolveBlah(fieldRef) should be(s"$ident = :$ident?")
@@ -96,7 +96,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 
-  "filter sugar syntax" should "work properly for valid field refs with expression" in {
+  it should "work properly for valid field refs with expression" in {
     val expr = fBlahExpr.expression
     FieldRefs foreach { fieldRef =>
       val ident = fieldRef.substring(1)
@@ -110,31 +110,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 
-  "expression substitution" should "work properly for field refs" in {
-    def filterExpr(s: String) = s"transform_me($s) = :mypar"
-    val fieldName = fBlah.name
-    val fieldRef = FieldRefs.head
-    val fieldExpr = fBlahExpr.expression
-
-    resolve(filterExpr(fieldRef)) should be(filterExpr(fieldRef))
-    resolveBlah(filterExpr(fieldRef)) should be(filterExpr(fieldName))
-    resolveBlahExpr(filterExpr(fieldRef)) should be(filterExpr(fieldExpr))
-  }
-
-  "expression substitution" should "imply resolver in filter correctly" in {
-    def filterExpr(s: String) = s"transform_me($s) = :mypar"
-    val fieldName = null
-    val fieldRef = FieldRefs.head
-    val fieldExpr = fBlahExpr.expression
-
-    resolve("exists(person[name = :name?]{id})") should be("exists(person[name = :name?]{id})")
-    resolve("person_id in(person[name = :name?]{id})") should be("person_id in(person[name = :name?]{id})")
-    resolve("person_id = person[name = :name?]{id}") should be(
-      "person_id = checked_resolve(if_defined_or_else(:name?, :name?::text, null), array(person[name = :name?]{id}@(2)), " +
-        "'Failed to identify value of \"name\" (from null) - ' || if_defined_or_else(:name?, coalesce(:name?::text, 'null'), '[missing]'))")
-  }
-
-  "filter sugar syntax" should "handle naming correctly" in {
+  it should "handle naming correctly" in {
     resolve(s"blah <") should be(s"blah < :blah?")
     resolve(s"blah < !") should be(s"blah < :blah")
     resolve(s"a.blah <") should be(s"a.blah < :a_blah?")
@@ -144,7 +120,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     resolve(s"blah <=", null) should be(s"blah <= :blah?")
   }
 
-  "filter sugar syntax" should "work properly for comparisons" in {
+  it should "work properly for comparisons" in {
     Identifiers foreach { ident =>
       ComparisonOps foreach { comp =>
         resolve(s"$ident $comp") should be(s"$ident $comp :$ident?")
@@ -205,7 +181,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
     }
   }
 */
-  "filter sugar syntax" should "work properly for intervals" in {
+  it should "work properly for intervals" in {
     Identifiers foreach { ident =>
       IntervalOps foreach { leftComp =>
         IntervalOps foreach { rightComp =>
@@ -235,5 +211,29 @@ class FilterResolverTests extends FlatSpec with Matchers {
       resolve(other) should be(other)
       resolve(other, b) should be(other)
     }
+  }
+
+  "expression substitution" should "work properly for field refs" in {
+    def filterExpr(s: String) = s"transform_me($s) = :mypar"
+    val fieldName = fBlah.name
+    val fieldRef = FieldRefs.head
+    val fieldExpr = fBlahExpr.expression
+
+    resolve(filterExpr(fieldRef)) should be(filterExpr(fieldRef))
+    resolveBlah(filterExpr(fieldRef)) should be(filterExpr(fieldName))
+    resolveBlahExpr(filterExpr(fieldRef)) should be(filterExpr(fieldExpr))
+  }
+
+  it should "imply resolver in filter correctly" in {
+    def filterExpr(s: String) = s"transform_me($s) = :mypar"
+    val fieldName = null
+    val fieldRef = FieldRefs.head
+    val fieldExpr = fBlahExpr.expression
+
+    resolve("exists(person[name = :name?]{id})") should be("exists(person[name = :name?]{id})")
+    resolve("person_id in(person[name = :name?]{id})") should be("person_id in(person[name = :name?]{id})")
+    resolve("person_id = person[name = :name?]{id}") should be(
+      "person_id = checked_resolve(if_defined_or_else(:name?, :name?::text, null), array(person[name = :name?]{id}@(2)), " +
+        "'Failed to identify value of \"name\" (from null) - ' || if_defined_or_else(:name?, coalesce(:name?::text, 'null'), '[missing]'))")
   }
 }
