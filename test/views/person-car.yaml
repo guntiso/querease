@@ -94,6 +94,26 @@ fields:
 - car_name = car_schema.person_car.car_name
 
 
+name:   person_and_car_11
+table:  car_schema.person_car
+joins:
+- person_car / person
+fields:
+- id
+- name = person.name
+- car_name
+
+
+name:   person_and_car_12
+table:  car_schema.person_car
+joins:
+- person_car [person_car.person_id = person.id] person
+fields:
+- id
+- name = person.name
+- car_name
+
+
 name:   person_and_car_13
 table:  car_schema.person_car car
 joins:
@@ -111,6 +131,26 @@ joins:
 fields:
 - id
 - name = person.name
+- car_name
+
+
+name:   person_and_car_15
+table:  car_schema.person_car
+joins:
+- person_car / person p
+fields:
+- id
+- name = p.name
+- car_name
+
+
+name:   person_and_car_16
+table:  car_schema.person_car
+joins:
+- person_car [person_car.person_id = p.id] person p
+fields:
+- id
+- name = p.name
 - car_name
 
 
