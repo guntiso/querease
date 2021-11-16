@@ -507,6 +507,23 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 2,11")))
     )
   }
+  if (isDbAvailable) it should s"support multiple schemas in $dbName" in {
+    val personCount = tresql"person{count(*)}".unique[Int]
+    val carCount    = tresql"car_schema.person_car{count(*)}".unique[Int]
+    (1 to 10) foreach { i => // FIXME to 20
+      val viewName  = f"person_and_car_$i%02d"
+      val viewDef   = qe.viewDef(viewName)
+      val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
+      try {
+        val values  = Query(q, p).toListOfMaps
+        values.size shouldBe (personCount + carCount - 1)
+        // TODO check data, too
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Schema support test failed for $viewName. Query string: $q", ex)
+      }
+    }
+  }
 }
 
 object QuereaseDbTests {
@@ -571,6 +588,7 @@ object QuereaseDbTests {
 
   def loadSampleData: Unit = {
     loadPersonData
+    loadCarData
     loadCurrencyData
   }
 
@@ -603,6 +621,12 @@ object QuereaseDbTests {
       case Nil =>
       case x => sys.error("unexpected format: " + x)
     })
+  }
+
+  def loadCarData: Unit = {
+    // sample data
+    tresql"+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']"
+    tresql"+car_schema.person_car {id, person_id, car_name} [2, 1127, 'Tesla']"
   }
 
   def loadCurrencyData: Unit = {

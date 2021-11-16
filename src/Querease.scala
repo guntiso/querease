@@ -647,7 +647,9 @@ trait QueryStringBuilder { this: Querease =>
             .getOrElse((true, joinsParser(tableAndAlias(view), joins))))
         .getOrElse((false, Nil))
     val joinAliasToTable =
-      parsedJoins.map(j => (Option(j.alias) getOrElse simpleName(j.table), j.table)).toMap
+      // FIXME exclude clashing simple names from different qualified names!
+      parsedJoins.map(j => (Option(j.alias) getOrElse j.table,  j.table)).toMap ++
+      parsedJoins.map(j => (simpleName(Option(j.alias) getOrElse j.table), j.table)).toMap
     val joinedAliases = joinAliasToTable.keySet
     val baseQualifier = baseFieldsQualifier(view)
     val baseTableOrAlias = Option(baseQualifier) getOrElse simpleName(view.table)
@@ -668,7 +670,9 @@ trait QueryStringBuilder { this: Querease =>
       pathToAlias += (List(baseQualifier) -> baseQualifier)
       usedNames += baseQualifier
       if (view.table != null)
+        // FIXME exclude clashing simple names from different qualified names!
         aliasToTable += (baseQualifier -> view.table)
+        aliasToTable += (simpleName(baseQualifier) -> view.table)
     }
     aliasToTable ++= joinAliasToTable
     def isExpressionOrPath(f: FieldDef) =

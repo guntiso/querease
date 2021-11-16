@@ -11,7 +11,7 @@ fields:
 name:   person_and_car_02
 table:  person
 joins:
-- person [person.id = person_car.person_id] car_schema.person_car
+- person [person.id = person_car.person_id] car_schema.person_car?
 fields:
 - id
 - name
@@ -31,7 +31,7 @@ fields:
 name:   person_and_car_04
 table:  person p
 joins:
-- p [p.id = person_car.person_id] car_schema.person_car
+- p [p.id = person_car.person_id] car_schema.person_car?
 fields:
 - id
 - name
@@ -51,7 +51,7 @@ fields:
 name:   person_and_car_06
 table:  person
 joins:
-- person [person.id = car.person_id] car_schema.person_car car
+- person [person.id = car.person_id] car_schema.person_car car?
 fields:
 - id
 - name
@@ -71,7 +71,7 @@ fields:
 name:   person_and_car_08
 table:  person p
 joins:
-- p [p.id = car.person_id] car_schema.person_car car
+- p [p.id = car.person_id] car_schema.person_car car?
 fields:
 - id
 - name
