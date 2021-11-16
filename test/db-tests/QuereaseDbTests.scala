@@ -510,13 +510,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   if (isDbAvailable) it should s"support multiple schemas in $dbName" in {
     val personCount = tresql"person{count(*)}".unique[Int]
     val carCount    = tresql"car_schema.person_car{count(*)}".unique[Int]
-    (1 to 10) foreach { i => // FIXME to 20
-      val viewName  = f"person_and_car_$i%02d"
+    ((1 to 10).map(i => f"person_and_car_$i%02d") ++
+     (1 to  8).map(i => f"car_and_person_$i%02d") // FIXME to 10
+    ) foreach { viewName =>
       val viewDef   = qe.viewDef(viewName)
       val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
       try {
         val values  = Query(q, p).toListOfMaps
-        values.size shouldBe (personCount + carCount - 1)
+        val expectedSize = if (viewName startsWith "person") personCount + carCount - 1 else carCount
+        values.size shouldBe expectedSize
         // TODO check data, too
       } catch {
         case util.control.NonFatal(ex) =>

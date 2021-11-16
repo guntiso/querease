@@ -94,7 +94,7 @@ fields:
 - car_name = car_schema.person_car.car_name
 
 
-name:   person_and_car_11
+name:   car_and_person_01
 table:  car_schema.person_car
 joins:
 - person_car / person
@@ -104,7 +104,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_12
+name:   car_and_person_02
 table:  car_schema.person_car
 joins:
 - person_car [person_car.person_id = person.id] person
@@ -114,7 +114,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_13
+name:   car_and_person_03
 table:  car_schema.person_car car
 joins:
 - car / person
@@ -124,7 +124,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_14
+name:   car_and_person_04
 table:  car_schema.person_car car
 joins:
 - car [car.person_id = person.id] person
@@ -134,7 +134,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_15
+name:   car_and_person_05
 table:  car_schema.person_car
 joins:
 - person_car / person p
@@ -144,7 +144,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_16
+name:   car_and_person_06
 table:  car_schema.person_car
 joins:
 - person_car [person_car.person_id = p.id] person p
@@ -154,7 +154,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_17
+name:   car_and_person_07
 table:  car_schema.person_car car
 joins:
 - car / person p
@@ -164,7 +164,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_18
+name:   car_and_person_08
 table:  car_schema.person_car car
 joins:
 - car [car.person_id = p.id] person p
@@ -174,7 +174,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_19
+name:   car_and_person_09
 table:  car_schema.person_car
 fields:
 - id
@@ -182,7 +182,7 @@ fields:
 - car_name
 
 
-name:   person_and_car_20
+name:   car_and_person_10
 table:  car_schema.person_car car
 fields:
 - id

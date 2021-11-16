@@ -119,6 +119,56 @@ object bank_with_accounts_1_accounts {
       .unique[java.sql.Timestamp]
   }
 }
+class car_and_person_01 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_02 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_03 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_04 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_05 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_06 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_07 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_08 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_09 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
+class car_and_person_10 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var car_name: String = null
+}
 class country extends Dto {
   var code: String = null
   var name: String = null
@@ -300,56 +350,6 @@ class person_and_car_09 extends DtoWithId {
   var car_name: String = null
 }
 class person_and_car_10 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_11 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_12 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_13 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_14 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_15 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_16 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_17 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_18 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_19 extends DtoWithId {
-  var id: java.lang.Long = null
-  var name: String = null
-  var car_name: String = null
-}
-class person_and_car_20 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
   var car_name: String = null
