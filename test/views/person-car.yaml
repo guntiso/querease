@@ -178,7 +178,7 @@ name:   car_and_person_09
 table:  car_schema.person_car
 fields:
 - id
-- name = person_car.person.name
+- name = person.name
 - car_name
 
 

@@ -639,6 +639,8 @@ trait QueryStringBuilder { this: Querease =>
       case -1 => name
       case  i => name.substring(i + 1)
     }
+    def tailists[B](l: List[B]): List[List[B]] =
+      if (l.isEmpty) Nil else l :: tailists(l.tail)
     val (needsBaseTable, parsedJoins) =
       Option(view.joins)
         .map(joins =>
@@ -646,11 +648,13 @@ trait QueryStringBuilder { this: Querease =>
             .map(joins => (false, joins))
             .getOrElse((true, joinsParser(tableAndAlias(view), joins))))
         .getOrElse((false, Nil))
-    val joinAliasToTable =
-      // FIXME exclude clashing simple names from different qualified names!
-      parsedJoins.map(j => (Option(j.alias) getOrElse j.table,  j.table)).toMap ++
-      parsedJoins.map(j => (simpleName(Option(j.alias) getOrElse j.table), j.table)).toMap
-    val joinedAliases = joinAliasToTable.keySet
+    val joinAliasToTables: Map[String, Set[String]] =
+      parsedJoins.map(j => Option(j.alias).getOrElse(j.table) -> j.table).toSet
+        .filter(_._1 != null)
+        .flatMap { case (n, t) => tailists(n.split("\\.").toList).map(_.mkString(".") -> t) }
+        .groupBy(_._1)
+        .map { kkv => kkv._1 -> kkv._2.map(_._2).toSet }
+    val joinedAliases = joinAliasToTables.keySet
     val baseQualifier = baseFieldsQualifier(view)
     val baseTableOrAlias = Option(baseQualifier) getOrElse simpleName(view.table)
     val autoBaseAlias =
@@ -674,7 +678,7 @@ trait QueryStringBuilder { this: Querease =>
         aliasToTable += (baseQualifier -> view.table)
         aliasToTable += (simpleName(baseQualifier) -> view.table)
     }
-    aliasToTable ++= joinAliasToTable
+    aliasToTable ++= joinAliasToTables.filter(_._2.size == 1).map { case (n, t) => n -> t.head }
     def isExpressionOrPath(f: FieldDef) =
       (f.isExpression || f.expression != null) &&
         Option(f.expression).forall(expr =>
@@ -721,8 +725,6 @@ trait QueryStringBuilder { this: Querease =>
           case Some(i) => parts.take(i).mkString(".") :: parts.drop(i)
         }
       }
-      def tailists[B](l: List[B]): List[List[B]] =
-        if (l.isEmpty) Nil else l :: tailists(l.tail)
       val qualifiedTablePathsAndPrePaths =
         qualifiedTablePaths.flatMap(p => tailists(p.reverse).map(_.reverse))
       (qualifiedTablePathsAndPrePaths -- joinedAliases.map(List(_)) - List(baseTableOrAlias))

@@ -511,7 +511,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val personCount = tresql"person{count(*)}".unique[Int]
     val carCount    = tresql"car_schema.person_car{count(*)}".unique[Int]
     ((1 to 10).map(i => f"person_and_car_$i%02d") ++
-     (1 to  8).map(i => f"car_and_person_$i%02d") // FIXME to 10
+     (1 to 10).map(i => f"car_and_person_$i%02d")
     ) foreach { viewName =>
       val viewDef   = qe.viewDef(viewName)
       val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
