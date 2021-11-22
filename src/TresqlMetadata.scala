@@ -29,7 +29,7 @@ class TresqlMetadata(
       .filter(_._2 != null)
       .toMap
 
-  val tables = tableDefs.map { td =>
+  val tables = tableDefs.filter(_.db == null /* FIXME! */).map { td =>
     def toTresqlCol(c: ColumnDef[Type]) = {
       val typeName = c.type_.name
       val scalaType = xsd_scala_type_map(
@@ -59,6 +59,7 @@ class TresqlMetadata(
     implicit def stringToSeq(s: String): Seq[String] = Seq(s)
     def tableToString(table: Table, mojozTable: TableDef[ColumnDef[Type]]) =
       Seq[Seq[String]](
+        Option(mojozTable.db).map("db: " + _).toSeq,
         "table: " + table.name,
         "columns:",
         mojozTable.cols.map("- " + colToString(_)),
@@ -67,7 +68,7 @@ class TresqlMetadata(
         table.rfs.toSeq.sortBy(_._1).flatMap(tr =>
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")
-    tableDefs.sortBy(_.name).map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
+    tableDefs.filter(_.db == null /* FIXME! */).sortBy(_.name).map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
   }
 }
 

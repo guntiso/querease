@@ -9,3 +9,11 @@ CREATE DATABASE querease
        LC_COLLATE = 'lv_LV.UTF-8'
        LC_CTYPE   = 'lv_LV.UTF-8'
        CONNECTION LIMIT = -1;
+
+CREATE DATABASE querease2
+  WITH TEMPLATE template0
+       OWNER      = querease
+       ENCODING   = 'UTF8'
+       LC_COLLATE = 'lv_LV.UTF-8'
+       LC_CTYPE   = 'lv_LV.UTF-8'
+       CONNECTION LIMIT = -1;

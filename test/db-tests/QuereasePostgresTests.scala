@@ -71,7 +71,7 @@ object QuereasePostgresTests {
       "create schema car_schema",
     ) ++
     postgres_custom_functions_statements ++
-    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "") ++
+    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == null)).split(";").toList.map(_.trim).filter(_ != "") ++
     Seq(
       "CREATE SEQUENCE seq START WITH 10000",
       "commit",

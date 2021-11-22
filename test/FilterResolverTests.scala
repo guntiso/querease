@@ -25,6 +25,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val v: MojozViewDef  =
     ViewDef(
       name = null,
+      db = null,
       table = null,
       tableAlias = null,
       joins = Nil, // from clause

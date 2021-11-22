@@ -25,7 +25,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   import joinsParserCompiler.{ declaredTable, metadata }
   import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
   val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
-  def apply(baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
+  def apply(db: String, baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
     import TresqlJoinsParser._
     val (firstNonCteJoinIdx, joinsStr) =
       firstNonCteJoinIdxAndJoinsString(baseTable, joins)

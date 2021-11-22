@@ -26,7 +26,7 @@ trait QuereaseResolvers { this: Querease =>
           def impliedResolvers(f: FieldDef, doRebaseTable: Boolean) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
-              .map(tableMetadata.tableDef)
+              .map(tableMetadata.tableDef(_, view.db))
               .filter(_.cols.exists(_.name == fSaveTo))
               .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
               .map { ref =>
@@ -50,7 +50,7 @@ trait QuereaseResolvers { this: Querease =>
           def impliedSelfResolvers(f: FieldDef) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
-              .map(tableMetadata.tableDef)
+              .map(tableMetadata.tableDef(_, view.db))
               .filter(_.cols.exists(_.name == fSaveTo))
               .filter(t =>
                 t.pk.exists(_.cols == Seq(fSaveTo)) ||
@@ -66,7 +66,7 @@ trait QuereaseResolvers { this: Querease =>
           def impliedRefResolvers(f: FieldDef, refViewDef: ViewDef, refFieldDef: FieldDef) = {
             val fSaveTo = Option(f.saveTo) getOrElse name
             saveTo
-              .map(tableMetadata.tableDef)
+              .map(tableMetadata.tableDef(_, view.db))
               .filter(_.cols.exists(_.name == fSaveTo))
               .flatMap(_.refs.filter(_.cols == Seq(fSaveTo)))
               .map { ref =>

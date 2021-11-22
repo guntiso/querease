@@ -256,7 +256,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     ResolverScala(
       parameterTypes,
       s"  ${override_}def resolve_${resolverTargetColName(fieldDef)}$paramsString = $resolverDefBodyPrefix{" + nl +
-            resolverBody(resolverExpression, argsString, resolverTargetTypeName(fieldDef)) +
+            resolverBody(resolverExpression, argsString, resolverTargetTypeName(fieldDef, viewDef.db)) +
       s"  }"
     )
   }
@@ -276,18 +276,18 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
 
   def resolverTargetColName(f: MojozFieldDefBase): String =
     Option(f.saveTo) getOrElse f.name
-  def resolverTargetType(f: MojozFieldDefBase): Type = {
+  def resolverTargetType(f: MojozFieldDefBase, db: String): Type = {
     val colName = resolverTargetColName(f)
     Option(f.table)
-      .flatMap(qe.tableMetadata.tableDefOption)
+      .flatMap(qe.tableMetadata.tableDefOption(_, db))
       .flatMap(_.cols.find(_.name == colName))
       .map(_.type_)
       .orElse(Option(qe.metadataConventions.typeFromExternal(colName, None)))
       .filterNot(_.name == null)
       .getOrElse(new Type("string"))
   }
-  def resolverTargetTypeName(f: MojozFieldDefBase): String =
-    scalaSimpleTypeName(resolverTargetType(f))
+  def resolverTargetTypeName(f: MojozFieldDefBase, db: String): String =
+    scalaSimpleTypeName(resolverTargetType(f, db))
   def resolverParamType(viewDef: MojozViewDefBase, paramName: String): Type =
     qe.findField(viewDef, paramName)
       .map(_.type_)

@@ -61,7 +61,7 @@ object QuereaseHsqldbTests {
       "set database collation \"Latvian\"",
     ) ++
     hsqldb_custom_functions_statements ++
-    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs).split(";").toList.map(_.trim).filter(_ != "")
+    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs.filter(_.db == null)).split(";").toList.map(_.trim).filter(_ != "")
       // TODO fk accross schemas - upgrade hsqldb? Provide explicit schema?
       .filterNot(_ startsWith "alter table car_schema.person_car add constraint fk_person_car_person_id")
   def createHsqldbObjects = executeStatements(createHsqldbObjectsStatements: _*)

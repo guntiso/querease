@@ -70,6 +70,13 @@ refs:
 - mother_id -> person(id)
 - father_id -> person(id)
 
+db: querease2
+table: person
+columns:
+- id ! long
+- full_name ! string
+pk: id
+
 table: validations_test_child_table
 columns:
 - id ! long
