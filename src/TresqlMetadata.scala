@@ -18,7 +18,7 @@ import org.mojoz.metadata.TypeMetadata
 import org.mojoz.metadata.TableDef.{TableDefBase => TableDef}
 import org.mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
 
-import scala.collection.immutable.{Map, Seq}
+import scala.collection.immutable.{Map, Seq, Set}
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
@@ -32,7 +32,8 @@ class TresqlMetadata(
       .toMap
 
   val dbToTableDefs: Map[String, Seq[TableDef[ColumnDef[Type]]]] = tableDefs.groupBy(_.db)
-  val db = if (dbToTableDefs.contains(null)) null else dbToTableDefs.headOption.map(_._1).orNull
+  val dbSet: Set[String] = dbToTableDefs.keySet
+  val db = if (dbSet.contains(null)) null else tableDefs.headOption.map(_.db).orNull
   val extraDbToMetadata: Map[String, TresqlMetadata] =
     dbToTableDefs
       .filter(_._1 != db)

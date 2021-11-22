@@ -13,22 +13,31 @@ import org.mojoz.metadata.TableDef.{ TableDefBase => TableDef }
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.TypeDef
 
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{ Map, Seq }
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
-  // FIXME support multiple db contexts
-  val joinsParserCompiler = new Compiler {
-    override val metadata = tresqlMetadata
-    override val childrenMetadata = tresqlMetadata.extraDbToMetadata
-    def compile(exp: String): Exp = compile(parseExp(exp))
+  trait JoinsParserCompiler extends Compiler {
+    val metadata: TresqlMetadata
+    def compile(exp: String): Exp
   }
-  import joinsParserCompiler.{ declaredTable, metadata }
-  import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
-  val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
+  val dbToMetadata: Map[String, TresqlMetadata] =
+    tresqlMetadata.extraDbToMetadata + (tresqlMetadata.db -> tresqlMetadata)
+  val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[CacheBase[Exp]])] = tresqlMetadata.dbSet.map { db =>
+    val joinsParserCompiler = new JoinsParserCompiler {
+      override val metadata = if (db == tresqlMetadata.db) tresqlMetadata else dbToMetadata(db)
+      override val childrenMetadata = dbToMetadata - db
+      def compile(exp: String): Exp = compile(parseExp(exp))
+    }
+    val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
+    db -> (joinsParserCompiler, cache)
+  }.toMap
   def apply(db: String, baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
+    val (joinsParserCompiler, cache) = dbToCompilerAndCache(db)
     import TresqlJoinsParser._
+    import joinsParserCompiler.{ declaredTable, metadata }
+    import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
     val (firstNonCteJoinIdx, joinsStr) =
       firstNonCteJoinIdxAndJoinsString(baseTable, joins)
     val compileStr =
