@@ -18,6 +18,8 @@ import org.mojoz.metadata.TypeMetadata
 import org.mojoz.metadata.TableDef.{TableDefBase => TableDef}
 import org.mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
 
+import scala.collection.immutable.{Map, Seq}
+
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs)
@@ -29,7 +31,13 @@ class TresqlMetadata(
       .filter(_._2 != null)
       .toMap
 
-  val tables = tableDefs.filter(_.db == null /* FIXME! */).map { td =>
+  val dbToTableDefs: Map[String, Seq[TableDef[ColumnDef[Type]]]] = tableDefs.groupBy(_.db)
+  val db = if (dbToTableDefs.contains(null)) null else dbToTableDefs.headOption.map(_._1).orNull
+  val extraDbToMetadata: Map[String, TresqlMetadata] =
+    dbToTableDefs
+      .filter(_._1 != db)
+      .transform { case (db, tableDefs) => new TresqlMetadata(tableDefs, typeDefs) }
+  val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef[Type]) = {
       val typeName = c.type_.name
       val scalaType = xsd_scala_type_map(
@@ -46,8 +54,12 @@ class TresqlMetadata(
   }.map(t => (t.name, t)).toMap
 
   override def table(name: String) = tables(name)
-  override def tableOption(name: String) = tables.get(name)
+  override def tableOption(name: String): Option[Table] = tables.get(name)
   override def procedureOption(name: String): Option[Procedure[_]] = None
+  def tableOption(name: String, db: String): Option[Table] =
+    if  (db == this.db)
+         tableOption(name)
+    else extraDbToMetadata(db).tableOption(name)
   lazy val tableMetadataString = {
     def colToString(col: ColumnDef[Type]) =
       col.name +
@@ -58,7 +70,7 @@ class TresqlMetadata(
     import scala.language.implicitConversions
     implicit def stringToSeq(s: String): Seq[String] = Seq(s)
     def tableToString(table: Table, mojozTable: TableDef[ColumnDef[Type]]) =
-      Seq[Seq[String]](
+      Seq[collection.Seq[String]](
         Option(mojozTable.db).map("db: " + _).toSeq,
         "table: " + table.name,
         "columns:",
@@ -68,7 +80,12 @@ class TresqlMetadata(
         table.rfs.toSeq.sortBy(_._1).flatMap(tr =>
           tr._2.map(r => "- " + refToString(r.cols, tr._1, r.refCols)))
       ).flatten.mkString("\n")
-    tableDefs.filter(_.db == null /* FIXME! */).sortBy(_.name).map(t => tableToString(tables(t.name), t)).mkString("\n\n") + "\n"
+    (dbToTableDefs.getOrElse(db, Nil).sortBy(_.name) ++
+     dbToTableDefs.toSeq.filter(_._1 != db).sortBy(_._1).flatMap(_._2.sortBy(_.name))
+    ).map { t =>
+      val table = if (t.db == db) tables(t.name) else extraDbToMetadata(t.db).tables(t.name)
+      tableToString(table, t)
+    }.mkString("\n\n") + "\n"
   }
 }
 
@@ -91,10 +108,10 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
     val functionSignaturesClass = Option(functionSignaturesClassName).map(Class.forName).orNull
+    val tresqlMetadata = TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
     new CompilerMetadata {
-      override def metadata: Metadata =
-        TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
-      override def childrenMetadata: Map[String, Metadata] = Map() // FIXME support children metadata?
+      override def metadata: Metadata = tresqlMetadata
+      override def childrenMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
       override def macros: Option[Any] =
         macrosClassName.map(cn => Class.forName(cn).getDeclaredConstructor().newInstance())
     }

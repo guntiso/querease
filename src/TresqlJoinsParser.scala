@@ -18,8 +18,10 @@ import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
 class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
+  // FIXME support multiple db contexts
   val joinsParserCompiler = new Compiler {
     override val metadata = tresqlMetadata
+    override val childrenMetadata = tresqlMetadata.extraDbToMetadata
     def compile(exp: String): Exp = compile(parseExp(exp))
   }
   import joinsParserCompiler.{ declaredTable, metadata }
@@ -70,10 +72,9 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         case _ => true
       }.map { t =>
         val alias = t.name
-        // FIXME support multiple databases
-        val table = declaredTable(scopes)(alias)(joinsParserCompiler.EnvMetadata, db = None).get
-        val tableName = // FIXME may clash!
-          tresqlMetadata.tableOption(table.name).map(_.name).orNull
+        val table = declaredTable(scopes)(alias)(joinsParserCompiler.EnvMetadata, Option(db)).get
+        val tableName =
+          tresqlMetadata.tableOption(table.name, db).map(_.name).orNull
         val outerJoin = t.exp.outerJoin == "l" //left outer join
         Join (
           alias = alias,
