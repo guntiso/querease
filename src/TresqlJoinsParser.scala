@@ -27,7 +27,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
   val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[CacheBase[Exp]])] = tresqlMetadata.dbSet.map { db =>
     val joinsParserCompiler = new JoinsParserCompiler {
       override val metadata = if (db == tresqlMetadata.db) tresqlMetadata else dbToMetadata(db)
-      override val childrenMetadata = dbToMetadata - db
+      override val extraMetadata = dbToMetadata - db
       def compile(exp: String): Exp = compile(parseExp(exp))
     }
     val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))

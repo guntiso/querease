@@ -112,7 +112,7 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     val tresqlMetadata = TresqlMetadata(tableDefs, typeDefs = Nil, functionSignaturesClass)
     new CompilerMetadata {
       override def metadata: Metadata = tresqlMetadata
-      override def childrenMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
+      override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
       override def macros: Option[Any] =
         macrosClassName.map(cn => Class.forName(cn).getDeclaredConstructor().newInstance())
     }
