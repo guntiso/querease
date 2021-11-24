@@ -339,7 +339,7 @@ abstract class Querease extends QueryStringBuilder
         sys.error("Too many rows returned by query for create method for " + mf)
       result.head
     } else {
-      mf.runtimeClass.newInstance.asInstanceOf[B]
+      mf.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B]
     }
   }
 

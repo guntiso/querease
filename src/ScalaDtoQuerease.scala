@@ -32,7 +32,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
 
   //org.tresql.Converter[T]
   implicit def rowLikeToDto[B <: DTO](r: RowLike, m: Manifest[B]): B =
-    m.runtimeClass.newInstance.asInstanceOf[B{type QE = self.type}].fill(r)(this)
+    m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B{type QE = self.type}].fill(r)(this)
 }
 
 private[querease] object DtoReflection {
@@ -97,7 +97,7 @@ trait Dto { self =>
   protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
-      def conv[A <: QDto](r: RowLike, m: Manifest[A]): A = m.runtimeClass.newInstance().asInstanceOf[A].fill(r)
+      def conv[A <: QDto](r: RowLike, m: Manifest[A]): A = m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
       if (s._2._2 != null) { //child result
         val m: Manifest[_ <: Dto] = s._2._2
         val childResult = r.result(dbName)

@@ -50,7 +50,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
   }
 
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]) =
-    mapToPojo(row.toMap, mf.runtimeClass.newInstance.asInstanceOf[B])
+    mapToPojo(row.toMap, mf.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B])
   def mapToPojo[B <: DTO: Manifest](m: Map[String, _], pojo: B): B = {
     def propToClassName(prop: String) =
       if (prop.endsWith("List")) prop.dropRight(4) else prop
@@ -88,7 +88,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
             val collection = m.invoke(pojo).asInstanceOf[java.util.Collection[java.lang.Object]]
             collection.clear
             list.foreach { data =>
-              val child = genericType.newInstance.asInstanceOf[B]
+              val child = genericType.getDeclaredConstructor().newInstance().asInstanceOf[B]
               mapToPojo(data.asInstanceOf[Map[String, _]], child)
               collection.add(child)
             }
@@ -104,7 +104,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     value match {
       case d: BigDecimal => {
         if (t == classOf[Int] || t == classOf[java.lang.Integer])
-          new java.lang.Integer(d.toInt)
+          java.lang.Integer.valueOf(d.toInt)
         else if (t == classOf[Long] || t == classOf[java.lang.Long])
           java.lang.Long.valueOf(d.toLong)
         else if (t == classOf[Double] || t == classOf[java.lang.Double])
@@ -132,7 +132,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
       }
       case l: java.lang.Long => {
         if (t == classOf[Int] || t == classOf[java.lang.Integer])
-          new java.lang.Integer(l.toInt)
+          java.lang.Integer.valueOf(l.toInt)
         else if (t == classOf[Long] || t == classOf[java.lang.Long])
           l
         else if (t == classOf[Double] || t == classOf[java.lang.Double])
@@ -153,16 +153,16 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
         XML_DATATYPE_FACTORY.newXMLGregorianCalendar(gc)
       }
       case inMap: Map[_, _] =>
-        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance.asInstanceOf[B])
+        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.getDeclaredConstructor().newInstance().asInstanceOf[B])
       case List(inMap: Map[_, _]) =>
-        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.newInstance.asInstanceOf[B])
+        mapToPojo(inMap.asInstanceOf[Map[String, _]],t.getDeclaredConstructor().newInstance().asInstanceOf[B])
       case Nil => null
       //may be exact collection which is used in xsd generated pojos must be used?
       case Seq() if classOf[java.util.Collection[_]].isAssignableFrom(t) =>
-        t.newInstance.asInstanceOf[java.util.Collection[_]]
+        t.getDeclaredConstructor().newInstance().asInstanceOf[java.util.Collection[_]]
       case s: Seq[_] if classOf[java.util.Collection[_]].isAssignableFrom(t) => {
         val col: java.util.Collection[_] = s.asInstanceOf[Seq[Map[String, _]]]
-          .map(mapToPojo(_, Class.forName(itemClassName).newInstance.asInstanceOf[B])).asJava
+          .map(mapToPojo(_, Class.forName(itemClassName).getDeclaredConstructor().newInstance().asInstanceOf[B])).asJava
         col
       }
       case x: String if t == classOf[Boolean] || t == classOf[java.lang.Boolean] => x match {
