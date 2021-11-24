@@ -28,7 +28,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
     val joinsParserCompiler = new JoinsParserCompiler {
       override val metadata = if (db == tresqlMetadata.db) tresqlMetadata else dbToMetadata(db)
       override val extraMetadata = dbToMetadata - db
-      def compile(exp: String): Exp = compile(parseExp(exp))
+      override def compile(exp: String): Exp = compile(parseExp(exp))
     }
     val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
     db -> (joinsParserCompiler, cache)
@@ -81,7 +81,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
         case _ => true
       }.map { t =>
         val alias = t.name
-        val table = declaredTable(scopes)(alias)(joinsParserCompiler.EnvMetadata, Option(db)).get
+        val table = declaredTable(scopes)(alias)(joinsParserCompiler.EnvMetadata, db = None).get
         val tableName =
           tresqlMetadata.tableOption(table.name, db).map(_.name).orNull
         val outerJoin = t.exp.outerJoin == "l" //left outer join

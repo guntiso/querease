@@ -8,6 +8,13 @@ fields:
 - mother_id
 - father_id
 
+name:   person_2
+db:     querease2
+table:  person
+fields:
+- id
+- full_name
+
 name:     person_with_parents_1
 table:    person p
 fields:
@@ -150,6 +157,41 @@ fields:
 order:
 - surname
 - name
+
+
+name:     person_from_multiple_db_1
+table:    person p
+fields:
+- id
+- name
+- surname
+- other_db_person [p.id = p2.id] :
+  - db:     querease2
+  - table:  person p2
+  - joins:
+    - p2 [p2.full_name = p3.full_name] person p3
+  - fields:
+    - full_name
+  - filter:
+    - p2.full_name ~ '%o%'
+filter:
+- id < 2000
+
+name:     person_from_multiple_db_2
+db:       querease2
+table:    person p
+fields:
+- id
+- full_name
+- other_db_person [p.id = p2.id] :
+  - table:  person p2
+  - joins:
+    - p2 [p2.name = p3.name & p2.surname = p3.surname] person p3
+  - fields:
+    - name
+    - surname
+  - filter:
+    - p2.surname ~ '%o%'
 
 
 name:     person_with_complex_type_resolvers_1

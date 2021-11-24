@@ -5,14 +5,14 @@ import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.CoreTypes
 import org.tresql.QueryBuilder
 import org.tresql.dialects.HSQLDialect
-import QuereaseDbTests.{setEnv, executeStatements}
+import QuereaseDbTests.{setEnv, executeStatements, MainDb, ExtraDb}
 import QuereaseTests.qe
 
 class QuereaseHsqldbTests extends QuereaseDbTests {
   import QuereaseHsqldbTests._
   override def dbName = "hsqldb"
-  override def setEnv: Unit = setHsqldbEnv
-  override def createDbObjects = createHsqldbObjects
+  override def setEnv(db: String): Unit = setHsqldbEnv(db)
+  override def createDbObjects(db: String) = createHsqldbObjects(db)
 }
 
 object QuereaseHsqldbTests {
@@ -24,8 +24,11 @@ object QuereaseHsqldbTests {
       case _ => c.exp.sql
     }
   }
-  def getHsqldbConnection = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb", "SA", "")
-  def setHsqldbEnv = setEnv(hsqlDialect, getHsqldbConnection)
+  def getHsqldbConnection(db: String) = db match {
+    case MainDb   => DriverManager.getConnection("jdbc:hsqldb:mem:my-main-memdb", "SA", "")
+    case ExtraDb  => DriverManager.getConnection("jdbc:hsqldb:mem:my-xtra-memdb", "SA", "")
+  }
+  def setHsqldbEnv(db: String) = setEnv(db, hsqlDialect, getHsqldbConnection(db))
   val hsqldb_custom_functions_statements = Seq(
     """create function array_length(sql_array bigint array) returns int
        language java deterministic no sql
@@ -54,15 +57,15 @@ object QuereaseHsqldbTests {
            return null;
          end if"""
   )
-  val createHsqldbObjectsStatements =
+  def createHsqldbObjectsStatements(db: String) =
     Seq(
       "create sequence seq start with 10000",
       "create schema car_schema",
       "set database collation \"Latvian\"",
     ) ++
     hsqldb_custom_functions_statements ++
-    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs.filter(_.db == null)).split(";").toList.map(_.trim).filter(_ != "")
+    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "")
       // TODO fk accross schemas - upgrade hsqldb? Provide explicit schema?
       .filterNot(_ startsWith "alter table car_schema.person_car add constraint fk_person_car_person_id")
-  def createHsqldbObjects = executeStatements(createHsqldbObjectsStatements: _*)
+  def createHsqldbObjects(db: String) = executeStatements(db, createHsqldbObjectsStatements(db): _*)
 }

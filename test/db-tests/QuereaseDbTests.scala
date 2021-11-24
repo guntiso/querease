@@ -14,11 +14,11 @@ import org.scalatest.BeforeAndAfterAll
 
 
 trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
-  import QuereaseDbTests.{dataPath, clearEnv, commit, loadSampleData}
-  implicit val resources: org.tresql.Resources = QuereaseDbTests.Env
+  import QuereaseDbTests.{dataPath, clearEnv, commit, loadSampleData, MainDb, ExtraDb, Env, Env2}
+  implicit var resources: org.tresql.Resources = null
 
-  def setEnv: Unit
-  def createDbObjects: Unit
+  def setEnv(db: String): Unit
+  def createDbObjects(db: String): Unit
   def isDbAvailable: Boolean = true
   def dbName: String
   def interceptedSqlExceptionMessage[B](b: => B): String  = try {
@@ -28,12 +28,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     case ex: TresqlException => ex.getCause.getMessage
     case ex: java.sql.SQLException => ex.getMessage
   }
-
   override def beforeAll(): Unit = {
     super.beforeAll()
-    setEnv
-    createDbObjects
+    setEnv(MainDb)
+    setEnv(ExtraDb)
+    createDbObjects(MainDb)
+    createDbObjects(ExtraDb)
     loadSampleData
+    resources = Env.withExtraResources(Map(ExtraDb -> Env2.withConn(Env2.conn)))
   }
 
   override def afterAll(): Unit = {
@@ -526,10 +528,39 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
   }
+  if (isDbAvailable) it should s"support multi-db views in $dbName" in {
+    val personCount = tresql"person[id < 2000]{count(*)}".unique[Int]
+    def isNameSurnameEqFullName(p1: Map[String, Any], p2: Map[String, Any]) =
+      List(p1.getOrElse("name", "?"), p1.getOrElse("surname", "?")).mkString(" ") == p2.getOrElse("full_name", "??")
+    def isSamePersonFromDifferentDatabases(p1: Map[String, Any], p2: Map[String, Any]) =
+      isNameSurnameEqFullName(p1, p2) ||
+      isNameSurnameEqFullName(p2, p1)
+    def hasSamePersonFromDifferentDatabases(v: Map[String, Any]) = isSamePersonFromDifferentDatabases(
+      v,
+      v.getOrElse("other_db_person", Nil).asInstanceOf[List[Map[String, Any]]].headOption.getOrElse(Map.empty)
+    )
+    ((1 to 2).map(i => f"person_from_multiple_db_$i%d")) foreach { viewName =>
+      val viewDef   = qe.viewDef(viewName)
+      val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
+      try {
+        val values  = Query(q, p).toListOfMaps
+        val expectedSize = personCount
+        values.size shouldBe expectedSize
+        values.find(hasSamePersonFromDifferentDatabases).isDefined shouldBe true
+        values.count(hasSamePersonFromDifferentDatabases) should be < personCount
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Multi-db support test failed for $viewName. Query string: $q", ex)
+      }
+    }
+  }
 }
 
 object QuereaseDbTests {
   val conf = ConfigFactory.load()
+  val MainDb:  String   = null // "querease"
+  val ExtraDb: String   = "querease2"
+  val dataPath = "test/data"
   class ThreadLocalDateFormat(val pattern: String) extends ThreadLocal[SimpleDateFormat] {
     override def initialValue = { val f = new SimpleDateFormat(pattern); f.setLenient(false); f }
     def apply(date: Date) = get.format(date)
@@ -555,26 +586,33 @@ object QuereaseDbTests {
       println(Timestamp(new Date()) + s"  [$topicName]  $msg")
   }
 
-  implicit val Env = new ThreadLocalResources {
-    override def logger = TresqlLogger
+  val Env  = new ThreadLocalResources { override def logger = TresqlLogger }
+  val Env2 = new ThreadLocalResources { override def logger = TresqlLogger }
+  Env.extraResources = Map(ExtraDb -> Env2)
+  def getEnv(db: String) = db match {
+    case MainDb  => Env
+    case ExtraDb => Env2
   }
-
-  val nl = System.getProperty("line.separator")
-  val dataPath = "test/data"
-  def setEnv(dialect: CoreTypes.Dialect, conn: Connection) = {
+  def setEnv(db: String, dialect: CoreTypes.Dialect, conn: Connection) = {
+    val env = getEnv(db)
     conn.setAutoCommit(false)
-    Env.dialect = dialect
-    Env.metadata = new TresqlMetadata(qe.tableMetadata.tableDefs)
-    Env.idExpr = s => "nextval('seq')"
-    Env.setMacros(new QuereaseMacros)
-    Env.conn = conn
+    env.dialect = dialect
+    env.metadata = db match {
+      case MainDb   => new TresqlMetadata(qe.tableMetadata.tableDefs)
+      case ExtraDb  => new TresqlMetadata(qe.tableMetadata.tableDefs).extraDbToMetadata(ExtraDb)
+    }
+    env.idExpr = s => "nextval('seq')"
+    env.setMacros(new QuereaseMacros)
+    env.conn = conn
   }
   def clearEnv = {
     if (Env.conn != null) Env.conn.close
+    if (Env2.conn != null) Env2.conn.close
     Env.conn = null
+    Env2.conn = null
   }
-  def executeStatements(statements: String*): Unit = {
-    val conn = Env.conn
+  def executeStatements(db: String, statements: String*): Unit = {
+    val conn = getEnv(db).conn
     val statement = conn.createStatement
     try statements foreach { s =>
       try {
@@ -586,7 +624,10 @@ object QuereaseDbTests {
     }
     finally statement.close()
   }
-  def commit = executeStatements("commit")
+  def commit = {
+    executeStatements(MainDb,  "commit")
+    executeStatements(ExtraDb, "commit")
+  }
 
   def loadSampleData: Unit = {
     loadPersonData
@@ -607,24 +648,26 @@ object QuereaseDbTests {
       p
     }
     val personsString = fileToString(dataPath + "/" + "persons-in.txt")
+    def savePerson(p: Person) = {
+      val p2 = new Person2
+      p2.id = p.id
+      p2.full_name = List(p.name, p.surname).mkString(" ")
+      qe.save(p,  forceInsert = true)(Env)
+      qe.save(p2, forceInsert = true)(Env2)
+    }
     personsString split "\\n" foreach (_.trim.split("\\s+").toList match {
       case id :: name :: surname :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, None, None),
-          forceInsert = true)
+        savePerson(person(id.toLong, name, surname, None, None))
       case id :: name :: surname :: mId :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, Some(mId.toLong), None),
-          forceInsert = true)
+        savePerson(person(id.toLong, name, surname, Some(mId.toLong), None))
       case id :: name :: surname :: mId :: fId :: Nil =>
-        qe.save(
-          person(id.toLong, name, surname, Some(mId.toLong), Some(fId.toLong)),
-          forceInsert = true)
+        savePerson(person(id.toLong, name, surname, Some(mId.toLong), Some(fId.toLong)))
       case Nil =>
       case x => sys.error("unexpected format: " + x)
     })
   }
 
+  implicit val resources = Env
   def loadCarData: Unit = {
     // sample data
     tresql"+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']"

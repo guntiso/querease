@@ -3,7 +3,7 @@ package test
 import java.sql.DriverManager
 import org.mojoz.metadata.out.SqlGenerator
 import org.tresql.dialects.PostgresqlDialect
-import QuereaseDbTests.{executeStatements, setEnv}
+import QuereaseDbTests.{executeStatements, setEnv, MainDb, ExtraDb}
 import QuereaseTests.qe
 import org.tresql.TresqlException
 
@@ -11,17 +11,17 @@ class QuereasePostgresTests extends QuereaseDbTests {
   import QuereasePostgresTests._
   override def dbName = "postgresql"
   override def isDbAvailable: Boolean = hasPostgres
-  override def setEnv: Unit = setPostgresEnv
-  override def createDbObjects = createPostgresObjects
+  override def setEnv(db: String): Unit = setPostgresEnv(db)
+  override def createDbObjects(db: String) = createPostgresObjects(db)
   override def interceptedSqlExceptionMessage[B](b: => B): String  =
     try {
-      executeStatements("commit")
-      executeStatements("begin")
+      executeStatements(MainDb, "commit")
+      executeStatements(MainDb, "begin")
       b
       throw new RuntimeException("Expected message not thrown")
     } catch {
       case ex: TresqlException =>
-        executeStatements("rollback")
+        executeStatements(MainDb, "rollback")
         val msg = ex.getCause.getMessage
         if (msg.startsWith("ERROR: "))
           msg.split("\n")(0).substring(7)
@@ -33,14 +33,18 @@ object QuereasePostgresTests {
   QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
   val conf = QuereaseDbTests.conf
   val hasPostgres = conf.getBoolean("querease.postgresql.available")
-  def getPostgresConnection = {
-    val url      = conf.getString("querease.postgresql.jdbc.url")
+  def getPostgresConnection(db: String) = {
+    val urlKeySuffix = db match {
+      case MainDb   => "jdbc.url"
+      case ExtraDb  => "jdbc.url2"
+    }
+    val url      = conf.getString("querease.postgresql." + urlKeySuffix)
     val user     = conf.getString("querease.postgresql.user")
     val password = conf.getString("querease.postgresql.password")
     val conn     = DriverManager.getConnection(url, user, password)
     conn
   }
-  def setPostgresEnv = setEnv(PostgresqlDialect, getPostgresConnection)
+  def setPostgresEnv(db: String) = setEnv(db, PostgresqlDialect, getPostgresConnection(db))
   val postgres_custom_functions_statements = Seq(
     """create or replace function checked_resolve(resolvable text, resolved bigint[], error_message text)
           returns bigint as $$
@@ -63,7 +67,7 @@ object QuereasePostgresTests {
        end;
        $$ language plpgsql immutable"""
   )
-  val createPostgresObjectsStatements =
+  def createPostgresObjectsStatements(db: String) =
     Seq(
       "drop schema if exists querease cascade",
       "drop schema if exists car_schema cascade",
@@ -71,10 +75,10 @@ object QuereasePostgresTests {
       "create schema car_schema",
     ) ++
     postgres_custom_functions_statements ++
-    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == null)).split(";").toList.map(_.trim).filter(_ != "") ++
+    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "") ++
     Seq(
       "CREATE SEQUENCE seq START WITH 10000",
       "commit",
     )
-  def createPostgresObjects = executeStatements(createPostgresObjectsStatements: _*)
+  def createPostgresObjects(db: String) = executeStatements(db, createPostgresObjectsStatements(db) : _*)
 }

@@ -304,6 +304,10 @@ class person extends DtoWithId {
   var mother_id: java.lang.Long = null
   var father_id: java.lang.Long = null
 }
+class person_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var full_name: String = null
+}
 class person_and_car_01 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
@@ -382,6 +386,24 @@ object person_choice_resolver_provided {
 }
 class person_choice_without_resolver extends Dto {
   var full_name: String = null
+}
+class person_from_multiple_db_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var other_db_person: person_from_multiple_db_1_other_db_person = null
+}
+class person_from_multiple_db_1_other_db_person extends Dto {
+  var full_name: String = null
+}
+class person_from_multiple_db_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var full_name: String = null
+  var other_db_person: person_from_multiple_db_2_other_db_person = null
+}
+class person_from_multiple_db_2_other_db_person extends Dto {
+  var name: String = null
+  var surname: String = null
 }
 class person_info extends Dto {
   var name: String = null

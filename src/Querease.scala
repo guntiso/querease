@@ -427,8 +427,8 @@ trait QueryStringBuilder { this: Querease =>
   def queryStringAndParams(view: ViewDef, params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilter: String = null, extraParams: Map[String, Any] = Map(),
-    countAll: Boolean = false): (String, Map[String, Any]) = {
-
+    countAll: Boolean = false, includeDbPrefix: Boolean = true,
+  ): (String, Map[String, Any]) = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
     val where = this.where(view, extraFilter, pathToAlias)
     val groupBy = this.groupBy(view)
@@ -437,9 +437,10 @@ trait QueryStringBuilder { this: Querease =>
     val cols = this.cols(view, simpleCountAll, pathToAlias)
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
+    val dbPrefix = if (includeDbPrefix) Option(view.db).map(db => s"|$db:").getOrElse("") else ""
 
     val (q1, limitOffsetPars) =
-      limitOffset(from + where + cols + groupBy + having + order, countAll, limit, offset)
+      limitOffset(dbPrefix + from + where + cols + groupBy + having + order, countAll, limit, offset)
     val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
     // Env log q
     // TODO param name?
@@ -588,8 +589,9 @@ trait QueryStringBuilder { this: Querease =>
         s"(|$joinToParent)"
       else {
         val (tresqlQueryString, _) =
-          queryStringAndParams(childViewDef, null, 0, 0, sortDetails)
-        "|" + joinToParent + tresqlQueryString
+          queryStringAndParams(childViewDef, null, 0, 0, sortDetails, includeDbPrefix = false)
+        val childDbPrefix = Option(childViewDef.db).map(_ + ":").getOrElse("")
+        "|" + childDbPrefix + joinToParent + tresqlQueryString
       }
     } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
     else qName
