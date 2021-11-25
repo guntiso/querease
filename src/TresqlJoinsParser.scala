@@ -133,8 +133,8 @@ object TresqlJoinsParser {
   def apply(
     tableDefs: Seq[TableDef[ColumnDef[Type]]],
     typeDefs: collection.immutable.Seq[TypeDef],
-    functionSignaturesClass: Class[_]
+    dbToFunctionSignaturesClass: Map[String, Class[_]],
   ): TresqlJoinsParser = {
-    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, functionSignaturesClass))
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass))
   }
 }

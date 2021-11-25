@@ -37,8 +37,8 @@ trait QuereaseMetadata {
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
-  lazy val functionSignaturesClass: Class[_] = classOf[TresqlFunctionSignatures]
-  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, functionSignaturesClass)
+  lazy val dbToFunctionSignaturesClass: Map[String, Class[_]] = Map((null, classOf[TresqlFunctionSignatures]))
+  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, dbToFunctionSignaturesClass)
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefLoader: YamlViewDefLoader =
