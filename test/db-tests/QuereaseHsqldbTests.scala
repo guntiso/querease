@@ -17,7 +17,6 @@ class QuereaseHsqldbTests extends QuereaseDbTests {
 
 object QuereaseHsqldbTests {
   QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
-  // TODO clean up when tresql fixed
   val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
     case c: QueryBuilder#CastExpr => c.typ match {
       case "bigint" | "long" | "int" => s"convert(${c.exp.sql}, BIGINT)"
