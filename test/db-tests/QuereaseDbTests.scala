@@ -574,10 +574,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     p2.full_name = "Test Only"
     val newId = qe.save(p2)
     val p2New = qe.get[Person2](newId).get
-    /* FIXME
     qe.delete(p2New)
     qe.get[Person2](newId).isEmpty shouldBe true
-    */
   }
 }
 
