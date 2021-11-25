@@ -22,12 +22,14 @@ abstract class Querease extends QueryStringBuilder
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
 
+  private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
+  private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
   private def tablesToSaveTo(viewDef: ViewDef) =
     if (viewDef.saveTo == null || viewDef.saveTo.isEmpty)
       Option(viewDef.table).filter(_ != "")
-        .map(t => Seq(t + Option(viewDef.tableAlias).map(" " + _).getOrElse("")))
+        .map(t => Seq(ortDbPrefix(viewDef.db) + t + ortAliasSuffix(viewDef.tableAlias)))
         .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
-    else viewDef.saveTo
+    else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   def save[B <: DTO](
@@ -360,7 +362,7 @@ abstract class Querease extends QueryStringBuilder
     val view = viewDef(ManifestFactory.classType(instance.getClass))
     val keyMap = this.keyMap(instance)
     val result = ORT.delete(
-      view.table + Option(view.tableAlias).map(" " + _).getOrElse(""),
+      ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       keyMap.head._2,
       filter,
       params) match { case r: DeleteResult => r.count.get }

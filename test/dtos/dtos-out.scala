@@ -308,6 +308,13 @@ class person_2 extends DtoWithId {
   var id: java.lang.Long = null
   var full_name: String = null
 }
+class person_accounts_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var accounts: List[person_accounts_2_accounts] = Nil
+}
+class person_accounts_2_accounts extends Dto {
+  var account_name: String = null
+}
 class person_and_car_01 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

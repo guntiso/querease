@@ -212,13 +212,17 @@ trait Dto { self =>
       isSavableField(field, view, saveToMulti, saveToTableNames)
     def isSaveableChildField(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =
       isSavableChildField(field, view, saveToMulti, saveToTableNames, childView)
+    def ortDbPrefix(db: String): String =
+      Option(db).map(db => s"@$db:") getOrElse ""
+    def withOrtDbPrefix(db: String)(t: String): String =
+      if (t startsWith "@") t else ortDbPrefix(db) + t
     def tablesTo(v: QuereaseMetadata#ViewDef) =
       if (v.saveTo != null && v.saveTo.nonEmpty)
-        v.saveTo.mkString("#")
+        v.saveTo.map(withOrtDbPrefix(v.db)).mkString("#")
       else if (v.saveTo == Nil)
         null
       else if (v.table != null)
-        v.table
+        withOrtDbPrefix(v.db)(v.table)
       else
         null
     def childSaveTo(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =

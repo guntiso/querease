@@ -35,7 +35,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     createDbObjects(MainDb)
     createDbObjects(ExtraDb)
     loadSampleData
-    resources = Env.withExtraResources(Map(ExtraDb -> Env2.withConn(Env2.conn)))
+    resources = Env.withUpdatedExtra(ExtraDb)(_.withConn(Env2.conn)) // XXX detaches from ThreadLocal
   }
 
   override def afterAll(): Unit = {
@@ -553,6 +553,31 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
           throw new RuntimeException(s"Multi-db support test failed for $viewName. Query string: $q", ex)
       }
     }
+    // test children save to extra db
+    def currentAccountsCount = Query("|querease2:account{count(*)}").unique[Int]
+    currentAccountsCount shouldBe 0
+    val pa = new PersonAccounts2
+    pa.id = 1100
+    pa.accounts = List(
+      new PersonAccounts2Accounts,
+      new PersonAccounts2Accounts,
+    )
+    qe.save(pa)
+    currentAccountsCount shouldBe 2
+    pa.accounts = List(
+      new PersonAccounts2Accounts,
+    )
+    qe.save(pa)
+    currentAccountsCount shouldBe 1
+    // test save / delete to extra db
+    val p2 = new Person2
+    p2.full_name = "Test Only"
+    val newId = qe.save(p2)
+    val p2New = qe.get[Person2](newId).get
+    /* FIXME
+    qe.delete(p2New)
+    qe.get[Person2](newId).isEmpty shouldBe true
+    */
   }
 }
 
@@ -588,12 +613,12 @@ object QuereaseDbTests {
 
   val Env  = new ThreadLocalResources { override def logger = TresqlLogger }
   val Env2 = new ThreadLocalResources { override def logger = TresqlLogger }
-  Env.extraResources = Map(ExtraDb -> Env2)
   def getEnv(db: String) = db match {
     case MainDb  => Env
     case ExtraDb => Env2
   }
   def setEnv(db: String, dialect: CoreTypes.Dialect, conn: Connection) = {
+    Env.extraResources = Map(ExtraDb -> Env2)
     val env = getEnv(db)
     conn.setAutoCommit(false)
     env.dialect = dialect
@@ -635,6 +660,7 @@ object QuereaseDbTests {
     loadCurrencyData
   }
 
+  implicit val resources = Env
   def loadPersonData: Unit = {
     def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
       def toId(id: Long) = java.lang.Long.valueOf(id + 1000)
@@ -652,8 +678,8 @@ object QuereaseDbTests {
       val p2 = new Person2
       p2.id = p.id
       p2.full_name = List(p.name, p.surname).mkString(" ")
-      qe.save(p,  forceInsert = true)(Env)
-      qe.save(p2, forceInsert = true)(Env2)
+      qe.save(p,  forceInsert = true)
+      qe.save(p2, forceInsert = true)
     }
     personsString split "\\n" foreach (_.trim.split("\\s+").toList match {
       case id :: name :: surname :: Nil =>
@@ -667,7 +693,6 @@ object QuereaseDbTests {
     })
   }
 
-  implicit val resources = Env
   def loadCarData: Unit = {
     // sample data
     tresql"+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']"

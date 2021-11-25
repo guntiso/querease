@@ -63,3 +63,10 @@ table:    person
 columns:
 - id
 - full_name            ! 128
+
+db:       querease2
+table:    account
+columns:
+- id
+- person.id
+- account_name

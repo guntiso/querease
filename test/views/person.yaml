@@ -15,6 +15,17 @@ fields:
 - id
 - full_name
 
+name:   person_accounts_2
+db:     querease2
+table:  person
+fields:
+- id
+- accounts * :
+    db:     querease2
+    table:  account
+    fields:
+    - account_name
+
 name:     person_with_parents_1
 table:    person p
 fields:

@@ -86,6 +86,16 @@ columns:
 pk: id
 
 db: querease2
+table: account
+columns:
+- id ! long
+- person_id long
+- account_name string
+pk: id
+refs:
+- person_id -> person(id)
+
+db: querease2
 table: person
 columns:
 - id ! long
