@@ -521,7 +521,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         val values  = Query(q, p).toListOfMaps
         val expectedSize = if (viewName startsWith "person") personCount + carCount - 1 else carCount
         values.size shouldBe expectedSize
-        // TODO check data, too
+        values.find(v => (v - "id") == Map("name" -> "Guntis", "car_name" -> "Tesla")).isDefined shouldBe true
       } catch {
         case util.control.NonFatal(ex) =>
           throw new RuntimeException(s"Schema support test failed for $viewName. Query string: $q", ex)
