@@ -16,8 +16,8 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryAndSourceCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-val tresqlV = "11.0.0-SNAPSHOT"
-val mojozV  = "4.0.0-SNAPSHOT"
+val tresqlV = "11.0.0"
+val mojozV  = "4.0.0"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz"  %% "mojoz"  % mojozV,
