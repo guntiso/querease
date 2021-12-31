@@ -127,8 +127,7 @@ trait Dto { self =>
     val propValue = getClass.getMethod(propName).invoke(this) match {
       case s: Seq[_] => s.map {
         case dto: Dto => dto.asInstanceOf[QDto].toMap
-        case str: String => str
-        case i: java.lang.Integer => i
+        case x => x
       }
       case c: Dto => c.asInstanceOf[QDto].toMap
       case x => x
