@@ -1,6 +1,7 @@
 package test
 
 import com.typesafe.config.ConfigFactory
+
 import java.sql.{Connection, Timestamp}
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -11,6 +12,7 @@ import dto._
 import org.mojoz.querease.{QuereaseMacros, TresqlMetadata, ValidationException, ValidationResult}
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
+import org.tresql.macro_.TresqlMacroInterpolator
 
 
 trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
@@ -576,6 +578,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val p2New = qe.get[Person2](newId).get
     qe.delete(p2New)
     qe.get[Person2](newId).isEmpty shouldBe true
+
+    //test list with macro
+    qe.list[Person2](Map[String, Any](), orderBy = "id").head.notes shouldBe("no_args")
+    tresql"{ no_args_macro() x }".map(_.x).toList.head shouldBe("no_args")
   }
 }
 
@@ -625,7 +631,7 @@ object QuereaseDbTests {
       case ExtraDb  => new TresqlMetadata(qe.tableMetadata.tableDefs).extraDbToMetadata(ExtraDb)
     }
     env.idExpr = s => "nextval('seq')"
-    env.setMacros(new QuereaseMacros)
+    env.setMacros(new QuereaseTestMacros)
     env.conn = conn
   }
   def clearEnv = {

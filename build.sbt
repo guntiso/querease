@@ -16,7 +16,7 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryAndSourceCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-val tresqlV = "11.0.0"
+val tresqlV = "11.0.1-SNAPSHOT"
 val mojozV  = "4.0.0"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
@@ -66,7 +66,7 @@ Test / scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding
     "metadataFactoryClass=org.mojoz.querease.TresqlMetadataFactory",
     "tableMetadataFile=" + new File(((Test / resourceManaged).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
     "functions=test.FunctionSignatures",
-    "macros=org.tresql.Macros"
+    "macros=test.QuereaseTestMacros"
   ).mkString(", ")
 )
 

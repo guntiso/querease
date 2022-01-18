@@ -7,7 +7,8 @@ libraryDependencies ++= Seq(
   "org.mojoz"  %% "mojoz"  % "4.0.0",
 )
 
-unmanagedSourceDirectories in Compile := baseDirectory(b => Seq(
+Compile / unmanagedSourceDirectories := baseDirectory(b => Seq(
   b / ".." / "src",
-  b / ".." / "test" / "function-signatures"
+  b / ".." / "test" / "function-signatures",
+  b / ".." / "test" / "macros",
 )).value

@@ -1,7 +1,6 @@
 package test
 
 import java.io.PrintWriter
-
 import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
@@ -10,6 +9,8 @@ import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
 import org.mojoz.querease._
+import org.tresql.macro_.TresqlMacroInterpolator
+import org.tresql.parsing
 
 
 class QuereaseTests extends FlatSpec with Matchers {

@@ -307,6 +307,7 @@ class person extends DtoWithId {
 class person_2 extends DtoWithId {
   var id: java.lang.Long = null
   var full_name: String = null
+  var notes: String = null
 }
 class person_accounts_2 extends DtoWithId {
   var id: java.lang.Long = null

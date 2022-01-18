@@ -14,6 +14,7 @@ table:  person
 fields:
 - id
 - full_name
+- notes = no_args_macro()
 
 name:   person_accounts_2
 db:     querease2
