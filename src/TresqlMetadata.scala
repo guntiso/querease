@@ -40,8 +40,11 @@ class TresqlMetadata(
   val db    = dbInfo.db
   val extraDbToMetadata: Map[String, TresqlMetadata] =
     dbToTableDefs
-      .filter(_._1 != db)
-      .transform { case (db, tableDefs) => TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass) }
+      .filter(_._1 != null)
+      .transform { case (extraDb, tableDefs) =>
+        if  (extraDb == db)
+             this
+        else TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass) }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef[Type]) = {
       val typeName = c.type_.name
