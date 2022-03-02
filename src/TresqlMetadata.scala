@@ -60,9 +60,12 @@ class TresqlMetadata(
       .map(kv => kv._1 -> kv._2.map(r => TresqlRef(r.cols.toList, r.refCols.toList)).toList).toMap
     Table(name, cols, key, refs)
   }.map(t => (t.name, t)).toMap
+  private val tablesNormalized = tables.map { case (n, t) => (n.toLowerCase, t) }
 
-  override def table(name: String) = tables(name)
-  override def tableOption(name: String): Option[Table] = tables.get(name)
+  override def table(name: String): Table =
+    tables.getOrElse(name, tablesNormalized(name.toLowerCase))
+  override def tableOption(name: String): Option[Table] =
+    tables.get(name).orElse(tablesNormalized.get(name.toLowerCase))
   override def procedureOption(name: String): Option[Procedure[_]] = None
   def tableOption(name: String, db: String): Option[Table] =
     if  (db == this.db)
