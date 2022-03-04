@@ -437,78 +437,78 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   if (isDbAvailable) it should s"validate in $dbName properly" in {
     val dto = new ValidationsTest
 
-    dto.int_col = 3
+    dto.integer_column = 3
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("int_col should be greater than 5 but is 3", "int_col should be greater than 10 but is 3")
+      List("integer_column should be greater than 5 but is 3", "integer_column should be greater than 10 but is 3")
     )))
 
-    dto.int_col = 7
+    dto.integer_column = 7
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("int_col should be greater than 10 but is 7")
+      List("integer_column should be greater than 10 but is 7")
     )))
 
-    dto.int_col = 11
+    dto.integer_column = 11
     qe.save(dto)
 
-    dto.int_col = 13
+    dto.integer_column = 13
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("int_col should be less than 12 but is 13")
+      List("integer_column should be less than 12 but is 13")
     )))
 
-    dto.int_col = 11
+    dto.integer_column = 11
     val ch11 = new ValidationsTestChild1
-    ch11.int_col = 0
+    ch11.integer_column = 0
     val ch12 = new ValidationsTestChild1
-    ch12.int_col = 1
+    ch12.integer_column = 1
     val ch21 = new ValidationsTestChild2
-    ch21.int_col = 0
+    ch21.integer_column = 0
     val ch22 = new ValidationsTestChild2
-    ch22.int_col = 1
+    ch22.integer_column = 1
     dto.children1 = List(ch11, ch12)
     dto.children2 = List(ch21, ch22)
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 0")),
-        ValidationResult(List("children1", 1), List("child1 int_col should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 0), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 0,11")),
-        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 1,11")))
+      List(ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 0")),
+        ValidationResult(List("children1", 1), List("child1 integer_column should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 0), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,11")),
+        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,11")))
     )
 
-    dto.int_col = 0
+    dto.integer_column = 0
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(Nil, List("int_col should be greater than 5 but is 0",
-        "int_col should be greater than 10 but is 0",
-        "Children int_col field sum must be less than parent's int_col value. Instead - 0 < 2")),
-        ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 0")),
-        ValidationResult(List("children1", 1), List("child1 int_col should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 0), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 0,0")),
-        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 1,0")))
+      List(ValidationResult(Nil, List("integer_column should be greater than 5 but is 0",
+        "integer_column should be greater than 10 but is 0",
+        "Children integer_column field sum must be less than parent's integer_column value. Instead - 0 < 2")),
+        ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 0")),
+        ValidationResult(List("children1", 1), List("child1 integer_column should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 0), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,0")),
+        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,0")))
     )
 
-    dto.int_col = 11
-    dto.children1(0).int_col = 2
-    dto.children1(1).int_col = 2
-    dto.children2(0).int_col = 3
-    dto.children2(1).int_col = 3
+    dto.integer_column = 11
+    dto.children1(0).integer_column = 2
+    dto.children1(1).integer_column = 2
+    dto.children2(0).integer_column = 3
+    dto.children2(1).integer_column = 3
     qe.save(dto)
 
-    dto.int_col = 11
-    dto.children1(0).int_col = 1
-    dto.children2(1).int_col = 2
+    dto.integer_column = 11
+    dto.children1(0).integer_column = 1
+    dto.children2(1).integer_column = 2
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(List("children1", 0), List("child1 int_col should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 1), List("child2 int_col should be greater than 2 and parent must be greater than 3 but is 2,11")))
+      List(ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 1")),
+        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 2,11")))
     )
   }
   if (isDbAvailable) it should s"support multiple schemas in $dbName" in {

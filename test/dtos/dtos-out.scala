@@ -1186,21 +1186,61 @@ class siblings_alt extends Dto {
 }
 class validations_test extends DtoWithId {
   var id: java.lang.Long = null
-  var int_col: java.lang.Integer = null
+  var integer_column: java.lang.Integer = null
   var children1: List[validations_test_child_1] = Nil
   var children2: List[validations_test_child_2] = Nil
+  def resolve_int_col(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:integer_column}"""(env.withParams(this.toMap))
+      .unique[java.lang.Integer]
+  }
+}
+object validations_test {
+  def resolve_int_col(integer_column: java.lang.Integer)(implicit env: org.tresql.Resources) = {
+    tresql"""{:integer_column}"""(env.withParams(Map("integer_column" -> integer_column)))
+      .unique[java.lang.Integer]
+  }
 }
 class validations_test_child extends DtoWithId {
   var id: java.lang.Long = null
-  var int_col: java.lang.Integer = null
+  var integer_column: java.lang.Integer = null
+  def resolve_int_col(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:integer_column}"""(env.withParams(this.toMap))
+      .unique[java.lang.Integer]
+  }
+}
+object validations_test_child {
+  def resolve_int_col(integer_column: java.lang.Integer)(implicit env: org.tresql.Resources) = {
+    tresql"""{:integer_column}"""(env.withParams(Map("integer_column" -> integer_column)))
+      .unique[java.lang.Integer]
+  }
 }
 class validations_test_child_1 extends validations_test_child with DtoWithId {
   var id: java.lang.Long = null
-  var int_col: java.lang.Integer = null
+  var integer_column: java.lang.Integer = null
+  def resolve_int_col(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:integer_column}"""(env.withParams(this.toMap))
+      .unique[java.lang.Integer]
+  }
+}
+object validations_test_child_1 {
+  def resolve_int_col(integer_column: java.lang.Integer)(implicit env: org.tresql.Resources) = {
+    tresql"""{:integer_column}"""(env.withParams(Map("integer_column" -> integer_column)))
+      .unique[java.lang.Integer]
+  }
 }
 class validations_test_child_2 extends validations_test_child with DtoWithId {
   var id: java.lang.Long = null
-  var int_col: java.lang.Integer = null
+  var integer_column: java.lang.Integer = null
+  def resolve_int_col(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:integer_column}"""(env.withParams(this.toMap))
+      .unique[java.lang.Integer]
+  }
+}
+object validations_test_child_2 {
+  def resolve_int_col(integer_column: java.lang.Integer)(implicit env: org.tresql.Resources) = {
+    tresql"""{:integer_column}"""(env.withParams(Map("integer_column" -> integer_column)))
+      .unique[java.lang.Integer]
+  }
 }
 class with_forefathers extends Dto {
   var full_name: String = null

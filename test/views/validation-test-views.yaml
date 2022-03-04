@@ -3,19 +3,19 @@ table:    validations_test_table
 api:      save
 fields:
   - id
-  - int_col
+  - integer_column = int_col -> int_col = :integer_column
   - children1 * validations_test_child_1
   - children2 * validations_test_child_2
 validations:
   - build cursors for view validations_test
-  - :int_col >  5, 'int_col should be greater than 5 but is ' || :int_col
-  - :int_col > 10, 'int_col should be greater than 10 but is ' || :int_col
-  - :int_col < 12, 'int_col should be less than 12 but is ' || :int_col
+  - :integer_column >  5, 'integer_column should be greater than 5 but is ' || :integer_column
+  - :integer_column > 10, 'integer_column should be greater than 10 but is ' || :integer_column
+  - :integer_column < 12, 'integer_column should be less than 12 but is ' || :integer_column
   - ch_sum(# ch_sum) {
-      (children1 { int_col s } ++ children2 { int_col }) sums { sum (s) }
-    }, (ch_sum{ch_sum}) <= :int_col,
-    "Children int_col field sum must be less than parent's int_col value. Instead - " ||
-    :int_col || ' < ' || (ch_sum{ch_sum})
+      (children1 { integer_column s } ++ children2 { integer_column }) sums { sum (s) }
+    }, (ch_sum{ch_sum}) <= :integer_column,
+    "Children integer_column field sum must be less than parent's integer_column value. Instead - " ||
+    :integer_column || ' < ' || (ch_sum{ch_sum})
 
 
 name:     validations_test_child
@@ -23,16 +23,16 @@ table:    validations_test_child_table
 api:      save
 fields:
   - id
-  - int_col
+  - integer_column = int_col -> int_col = :integer_column
 
 
 name:     validations_test_child_1
 extends:  validations_test_child
 validations:
-  - :int_col > 1, 'child1 int_col should be greater than 1 but is ' || :int_col
+  - :integer_column > 1, 'child1 integer_column should be greater than 1 but is ' || :integer_column
 
 
 name:     validations_test_child_2
 extends:  validations_test_child
 validations:
-  - :int_col > 2 & :__parent.int_col > 3, 'child2 int_col should be greater than 2 and parent must be greater than 3 but is ' || :int_col || ',' || :__parent.int_col
+  - :integer_column > 2 & :__parent.integer_column > 3, 'child2 integer_column should be greater than 2 and parent must be greater than 3 but is ' || :integer_column || ',' || :__parent.integer_column

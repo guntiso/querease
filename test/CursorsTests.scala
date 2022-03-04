@@ -71,11 +71,11 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
               List
               ( Map("billing_account" -> "AAA")
                 , Map("billing_account" -> "BBB", "currencies" ->
-                List(Map("code" -> "LVL"), Map("name" -> "Eiro")))))
+                List(Map("currency_code" -> "LVL"), Map("currency_name" -> "Eiro")))))
             )
           )
-        , """banks_accounts_currencies { code, name }#(null 1, 2)"""
-        , List(Map("code" -> null, "name" -> "Eiro"), Map("code" -> "LVL", "name" -> null))
+        , """banks_accounts_currencies { currency_code, currency_name }#(null 1, 2)"""
+        , List(Map("currency_code" -> null, "currency_name" -> "Eiro"), Map("currency_code" -> "LVL", "currency_name" -> null))
       )
       , ViewCursorTest
       ( "match three cursors data"
@@ -88,7 +88,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
               List
               ( Map("billing_account" -> "AAA")
                 , Map("billing_account" -> "BBB", "currencies" ->
-                List(Map("code" -> "USD"), Map("code" -> "EUR")))))
+                List(Map("currency_code" -> "USD"), Map("currency_code" -> "EUR")))))
             )
           )
         , """((banks { :name || ' (' || :code || ')' parent, code name }#(1)) ++
@@ -97,7 +97,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
             |(banks_accounts_currencies cur {
             |  (banks_accounts ba[ba.__row_nr = cur.__row_nr_ref]
             |    { ba.billing_account || ' (' || (banks b[b.__row_nr = ba.__row_nr_ref] {b.code}) || ')' }) parent,
-            |  group_concat(code)#(code) name
+            |  group_concat(currency_code)#(currency_code) name
             |}(parent)))
             |{parent, name}#(1, 2)""".stripMargin
         , List
@@ -125,7 +125,8 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   cursorData foreach { case ViewCursorTest(test, view, data, tresql, testRes) =>
     it should test in {
-      val res = Query(qe.cursorsFromViewBindVars(data, qe.viewDef(view)) + " " + tresql, data).toListOfMaps
+      val val_tresql = qe.cursorsFromViewBindVars(data, qe.viewDef(view)) + " " + tresql
+      val res = Query(val_tresql, data).toListOfMaps
       res should be (testRes)
     }
   }
