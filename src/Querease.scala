@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
-import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, Query, Resources, SingleValueResult}
+import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, OrtMetadata, Query, Resources, SingleValueResult}
 import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
@@ -68,7 +68,7 @@ abstract class Querease extends QueryStringBuilder
     filter: String = null,
     params: Map[String, Any] = null)(implicit resources: Resources): Long = {
     validate(pojo, Option(params).getOrElse(Map()))
-    val pojoPropMap = toSaveableMap(pojo)
+    val pojoPropMap = toMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
     val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
@@ -81,16 +81,28 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
+  private def mergeFilters(filterOpt: Option[String], extraFilter: String): Option[String] = {
+    if   (extraFilter == null)  filterOpt
+    else if (filterOpt.isEmpty) Option(extraFilter)
+    else filterOpt.map { f => Seq(f, extraFilter).map(a => s"($a)").mkString(" & ") }
+  }
+
   protected def insert[B <: DTO](
       tables: Seq[String],
       pojo: B,
       filter: String = null,
       propMap: Map[String, Any])(implicit resources: Resources): Long = {
-    val result =
-      if (tables.lengthCompare(1) == 0)
-        ORT.insert(tables.head, propMap, filter)
-      else
-        ORT.insertMultiple(propMap, tables: _*)(filter)
+    val v = viewDef(ManifestFactory.classType(pojo.getClass))
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
+        case md if filter == null => md
+        case md => md.copy(
+          filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
+            f.copy(insert = mergeFilters(f.insert, filter))
+          },
+        )
+      }
+    val result = ORT.insert(metadata, propMap)
     val (insertedRowCount, id) = result match {
       case x: InsertResult => (x.count.get, x.id getOrElse null)
       case a: ArrayResult[_] => //if array result consider last element as insert result
@@ -111,10 +123,17 @@ abstract class Querease extends QueryStringBuilder
       pojo: B,
       filter: String,
       propMap: Map[String, Any])(implicit resources: Resources): Unit = {
-    val updatedRowCount = if (tables.lengthCompare(1) == 0)
-      ORT.update(tables(0), propMap, filter)
-    else
-      ORT.updateMultiple(propMap, tables: _*)(filter)
+    val v = viewDef(ManifestFactory.classType(pojo.getClass))
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
+        case md if filter == null => md
+        case md => md.copy(
+          filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
+            f.copy(update = mergeFilters(f.update, filter))
+          },
+        )
+      }
+    val updatedRowCount = ORT.update(metadata, propMap)
     if (updatedRowCount == 0) throw new NotFoundException(
       s"Record not updated in table(s): ${tables.mkString(",")}")
   }

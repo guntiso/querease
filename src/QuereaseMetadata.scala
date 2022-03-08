@@ -1,11 +1,17 @@
 package org.mojoz.querease
 
-import org.tresql.compiling.TresqlFunctionSignatures
 import org.mojoz.metadata._
-import org.mojoz.metadata.TableDef.TableDefBase
+import org.mojoz.metadata.TableDef.{Ref, TableDefBase}
 import org.mojoz.metadata.ColumnDef.ColumnDefBase
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
+
+import org.tresql.compiling.TresqlFunctionSignatures
+import org.tresql.parsing.{Ident, Variable}
+import org.tresql.MacroResourcesImpl
+import org.tresql.QueryParser
+import org.tresql.OrtMetadata
+import org.tresql.OrtMetadata._
 
 import scala.collection.immutable.Seq
 import scala.util.matching.Regex
@@ -13,7 +19,7 @@ import scala.util.matching.Regex
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
 
-trait QuereaseMetadata {
+trait QuereaseMetadata { this: QuereaseExpressions =>
 
   type FieldDef = org.mojoz.metadata.FieldDef[Type]
   type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
@@ -49,6 +55,10 @@ trait QuereaseMetadata {
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
+  protected lazy val nameToPersistenceMetadata: Map[String, OrtMetadata.View] =
+    nameToViewDef.flatMap { case (name, viewDef) =>
+      toPersistenceMetadata(viewDef, nameToViewDef, throwErrors = false).toSeq.map(name -> _)
+    }
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
@@ -65,6 +75,193 @@ trait QuereaseMetadata {
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
+
+  protected def identifier(s: String) = s match {
+    case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
+    case _ => ""
+  }
+  protected def isSaveableSimpleField(
+    field: FieldDef,
+    view: ViewDef,
+    saveToMulti: Boolean,
+    saveToTableNames: Seq[String],
+  ) = {
+    (
+      field.saveTo != null
+      ||
+      field.resolver != null
+      ||
+      !field.isExpression         &&
+      !field.type_.isComplexType  &&
+      field.table != null         &&
+      (
+        !saveToMulti                &&
+        field.table == view.table   &&
+        (
+          field.tableAlias == null    ||
+          field.tableAlias == view.tableAlias
+        )
+        ||
+        saveToMulti &&
+        saveToTableNames.contains(field.table) // TODO alias?
+      )
+    ) && (
+      field.options == null       ||
+      field.options.contains('+') ||  // for insert
+      field.options.contains('=')     // for update
+    )
+  }
+  protected def isSaveableChildField(
+    field: FieldDef,
+    view: ViewDef,
+    saveToMulti: Boolean,
+    saveToTableNames: Seq[String],
+    childView: ViewDef,
+  ): Boolean = {
+    field.options == null || !field.options.contains('!')
+  }
+  protected def persistenceFilters(
+    view: ViewDef,
+  ): Filters = {
+    Filters(
+      insert = None,
+      update = None,
+      delete = None,
+    )
+  }
+  protected def toPersistenceMetadata(
+    view: ViewDef,
+    nameToViewDef:  Map[String, ViewDef],
+    parentNames:    List[String]  = Nil,
+    refsToParent:   Set[String]   = Set.empty,
+    options:        SaveOptions   = null,
+    throwErrors:    Boolean       = true,
+  ): Option[OrtMetadata.View] = {
+    if (parentNames contains view.name)
+      if (throwErrors)
+        sys.error("Saving recursive views not supported by tresql: " + (view.name :: parentNames).reverse.mkString(" -> "))
+      else return None // provide Ref(view_name) instead - when supported by tresql
+    val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
+    def saveToNames(view: ViewDef) =
+      Option(view.saveTo).getOrElse(Seq(view.table)).filter(_ != null)
+    val saveToTableNames = saveToNames(view).map(identifier)
+    def isSaveableField_(field: FieldDef): Boolean =
+      isSaveableSimpleField(field, view, saveToMulti, saveToTableNames)
+    def isSaveableChildField_(field: FieldDef, childView: ViewDef) =
+      isSaveableChildField(field, view, saveToMulti, saveToTableNames, childView)
+    def childSaveTo(field: FieldDef, childView: ViewDef) =
+      Option(field).map(_.saveTo).filter(_ != null) getOrElse saveToNames(childView)
+    def isChildTableField(field: FieldDef) =
+      !field.isExpression &&
+        field.type_.isComplexType &&
+        nameToViewDef.get(field.type_.name).map(saveToNames).orNull != null
+    val saveTo =
+      saveToTableNames.map(t => SaveTo(
+        table = t,
+        refs  = refsToParent,
+        key   = Nil,
+      ))
+    val filtersOpt = Option(persistenceFilters(view))
+    val properties = view.fields
+      .map { f =>
+        val (childViewName, childView): (String, ViewDef) =
+          if (f.type_.isComplexType) {
+            val childViewName = f.type_.name
+            val childView = nameToViewDef.get(childViewName).getOrElse(
+              sys.error(s"View $childViewName referenced from ${view.name} not found")
+            )
+            (childViewName, childView)
+          } else (null, null)
+        if (isSaveableField_(f)) {
+          val fieldName = Option(f.alias).getOrElse(f.name)
+          val saveTo = Option(f.saveTo).getOrElse(fieldName)
+          val valueTresql =
+            if (f.resolver == null)
+              ":" + fieldName
+            else {
+              parser.transformer {
+                case Ident(List("_")) => Variable(saveTo, Nil, opt = false)
+              } (parser.parseExp(if (f.resolver startsWith "(" ) f.resolver else s"(${f.resolver})")).tresql
+            }
+          Property(
+            col   = saveTo,
+            value = TresqlValue(
+              tresql    = valueTresql,
+              forInsert = f.options == null || f.options.contains('+'),
+              forUpdate = f.options == null || f.options.contains('='),
+            ),
+          )
+        } else if (isChildTableField(f) && isSaveableChildField_(f, childView)) {
+          val opt = f.options
+          val childSaveOptions = SaveOptions(
+            doInsert = (opt == null) || (opt contains '+'),
+            doUpdate = (opt == null) || (opt contains '='),
+            doDelete = (opt == null) || (opt contains '-'),
+          )
+          toPersistenceMetadata(
+            view          = childView,
+            nameToViewDef = nameToViewDef,
+            parentNames   = view.name :: parentNames,
+            refsToParent  = Set.empty,
+            options       = childSaveOptions,
+            throwErrors   = throwErrors,
+          ).map { childPersistenceMetadata =>
+            val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
+            // TODO child multi-tables?
+            val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
+            // TODO searh also reverse refs to avoid runtime exceptions
+            // TODO raise more ambiguities, refs search too liberal and thus unstable when db structure changes
+            val bestLookupRefs =
+              tables
+                .sorted( // sort is stable
+                  Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
+                    if (table.name == f.table) 0 else 1))
+                .find { table => table.refs.exists(_.refTable == childTableName) }
+                .map { table => table -> table.refs.count(_.refTable == childTableName) }
+                .map {
+                  case (table, 1) =>
+                    table.refs.find(_.refTable == childTableName).toSeq
+                  case (table, n) =>
+                    table.refs.find { t => t.refTable == childTableName &&
+                      t.defaultRefTableAlias == Option(f.alias).getOrElse(f.name)
+                    }.toSeq
+                }
+                .getOrElse(Nil)
+
+            bestLookupRefs.size match {
+              case 0 =>
+                Property(
+                  col   = f.name,
+                  value = ViewValue(childPersistenceMetadata)
+                )
+              case 1 =>
+                // TODO prefer single-col ref, throw for multi-col
+                val refColName = bestLookupRefs.head.cols.head
+                val propName = Option(f.alias).getOrElse(f.name)
+                Property(
+                  col   = refColName,
+                  value = LookupViewValue(propName, childPersistenceMetadata)
+                )
+              case n =>
+                sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
+            }
+          }.orNull
+        } else {
+          null
+        }
+      }
+      .filter(_ != null)
+    val persistenceMetadata =
+      OrtMetadata.View(
+        saveTo      = saveTo,
+        options     = options,
+        filters     = filtersOpt,
+        alias       = view.tableAlias,
+        properties  = properties,
+        db          = view.db,
+      )
+    return Option(persistenceMetadata)
+  }
 }
 
 object QuereaseMetadata {

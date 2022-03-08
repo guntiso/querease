@@ -12,12 +12,12 @@ crossScalaVersions := Seq(
 )
 
 ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
-ThisBuild / versionPolicyIntention := Compatibility.BinaryAndSourceCompatible
+ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-val tresqlV = "11.0.0"
-val mojozV  = "4.0.0"
+val tresqlV = "11.0.1-SNAPSHOT"
+val mojozV  = "4.1.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz"  %% "mojoz"  % mojozV,

@@ -215,14 +215,12 @@ fields:
 - sex
 - mother [p.mother_id = m.id] -> mother_id = person[name = :mother.name & surname = :mother.surname]{id} :
     table:  person m
-    save-to:
     fields:
     - name
     - surname
     - sex -> = coalesce(_, 'F')
 - father -> = person[name = :father.name & surname = :father.surname]{id} :
     table:  person f
-    save-to:
     fields:
     - name
     - surname

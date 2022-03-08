@@ -249,7 +249,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     child.surname = "Child"
     child.sex     = "M"
     child.toSaveableMap.filter(_._1 matches "^\\w+$").toMap shouldBe
-      Map("id" -> null, "name" -> "Some", "surname" -> "Child", "sex" -> "M", "mother" -> null, "father" -> null)
+      Map("id" -> null, "name" -> "Some", "surname" -> "Child", "sex" -> "M", "mother_id" -> null, "father_id" -> null)
     val childId = qe.save(child)
     childId shouldBe 10005
     child = qe.get[PersonWithComplexTypeResolvers1](childId).get
