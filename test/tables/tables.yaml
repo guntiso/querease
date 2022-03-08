@@ -70,3 +70,10 @@ columns:
 - id
 - person.id
 - account_name
+
+table: noid_test
+columns:
+- noid_id
+- name             ! 50
+pk:
+- noid_id

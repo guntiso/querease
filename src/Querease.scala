@@ -318,12 +318,17 @@ abstract class Querease extends QueryStringBuilder
 
   def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
-    // TODO do not use id and long, get key from tableDef
-    val qualifier = baseFieldsQualifier(viewDef[B])
+    val view = viewDef[B]
+    val qualifier = baseFieldsQualifier(view)
+    val tableDefOpt = Option(view.table).map(tableMetadata.tableDef(_, view.db))
+    val key = tableDefOpt
+      .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
+      .orNull
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
+    val idName = if (key == null || key.cols.lengthCompare(1) != 0) "id" else key.cols.head
     val extraQ = extraFilter match {
-      case null | "" => s"${prefix}id = :id"
-      case x => s"[$x] & [${prefix}id = :id]"
+      case null | "" => s"${prefix}${idName} = :id"
+      case x => s"[$x] & [${prefix}${idName} = :id]"
     }
     val extraP = extraParams match {
       case null => Map[String, Any]()

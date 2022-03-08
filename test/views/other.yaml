@@ -1,0 +1,7 @@
+name:  noid_test
+table: noid_test
+fields:
+- id  = noid_id
+- nm  = name
+order:
+- id

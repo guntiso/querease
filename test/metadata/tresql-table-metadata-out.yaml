@@ -57,6 +57,12 @@ columns:
 - name_rus ! string
 pk: code
 
+table: noid_test
+columns:
+- noid_id ! long
+- name ! string
+pk: noid_id
+
 table: person
 columns:
 - id ! long

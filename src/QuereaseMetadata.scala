@@ -173,11 +173,10 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
             (childViewName, childView)
           } else (null, null)
         if (isSaveableField_(f)) {
-          val fieldName = Option(f.alias).getOrElse(f.name)
-          val saveTo = Option(f.saveTo).getOrElse(fieldName)
+          val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
             if (f.resolver == null)
-              ":" + fieldName
+              ":" + Option(f.alias).getOrElse(f.name)
             else {
               parser.transformer {
                 case Ident(List("_")) => Variable(saveTo, Nil, opt = false)

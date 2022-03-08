@@ -99,6 +99,13 @@ class QuereaseTests extends FlatSpec with Matchers {
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother, 'null'), coalesce(:other_field, 'null')))"
     ).mkString("; "))
   }
+
+  "querease" should "build correct query" in {
+    qe.queryStringAndParams(qe.viewDef("noid_test"), Map.empty)._1 should be(
+      "noid_test {noid_test.noid_id id, noid_test.name nm}#(id)"
+    )
+  }
+
   "querease" should "select referenced fields correctly" in {
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_2"), Map.empty)._1 should be(
       "person p2 {" +
