@@ -435,7 +435,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // no-id test
     val noid = new NoidTest
-    /* TODO waiting for tresql fix
     noid.id = 0
     noid.nm = "name"
     qe.get[NoidTest](0).map(_.toMap).orNull shouldBe null
@@ -448,16 +447,28 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       Map("id" -> 0, "nm" -> "name"),
       Map("id" -> 1, "nm" -> "name"),
     )
-    */
-    noid.nm = "name"
-    qe.get[NoidTest](0).map(_.toMap).orNull shouldBe null
-    val noid_1 = qe.save(noid, forceInsert = true)
-    qe.get[NoidTest](noid_1).map(_.toMap).orNull shouldBe Map("id" -> noid_1, "nm" -> "name")
-    val noid_2 = qe.save(noid, forceInsert = true)
-    qe.get[NoidTest](noid_2).map(_.toMap).orNull shouldBe Map("id" -> noid_2, "nm" -> "name")
+    noid.nm = "updated name"
+    qe.save(noid)
+    qe.get[NoidTest](1).map(_.toMap).orNull shouldBe Map("id" -> 1, "nm" -> "updated name")
     qe.list[NoidTest](null).map(_.toMap) shouldBe List(
-      Map("id" -> noid_1, "nm" -> "name"),
-      Map("id" -> noid_2, "nm" -> "name"),
+      Map("id" -> 0, "nm" -> "name"),
+      Map("id" -> 1, "nm" -> "updated name"),
+    )
+    qe.delete(noid)
+    qe.get[NoidTest](1).map(_.toMap).orNull shouldBe null
+    qe.list[NoidTest](null).map(_.toMap) shouldBe List(
+      Map("id" -> 0, "nm" -> "name"),
+    )
+    noid.id = null
+    noid.nm = "name"
+    val noid_1 = qe.save(noid)
+    qe.get[NoidTest](noid_1).map(_.toMap).orNull shouldBe Map("id" -> noid_1, "nm" -> "name")
+    noid.id = noid_1
+    noid.nm = "updated name"
+    qe.save(noid)
+    qe.list[NoidTest](null).map(_.toMap) shouldBe List(
+      Map("id" -> 0,      "nm" -> "name"),
+      Map("id" -> noid_1, "nm" -> "updated name"),
     )
   }
 
@@ -735,6 +746,6 @@ object QuereaseDbTests {
     val currency = new Currency
     currency.code = "EUR"
     currency.name = "Euro"
-    qe.save(currency)
+    qe.save(currency, forceInsert = true)
   }
 }

@@ -71,13 +71,14 @@ abstract class Querease extends QueryStringBuilder
     val pojoPropMap = toMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
-    val (id, isNew) = propMap.get("id").filter(_ != null).map(id =>
-      (Some(id.toString.toLong), forceInsert)) getOrElse (None, true)
+    val idName = keyFieldName(viewDef(ManifestFactory.classType(pojo.getClass)))
+    val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
+      (Some(id), forceInsert)) getOrElse (None, true)
     if (isNew) {
       insert(tables, pojo, filter, propMap)
     } else {
       update(tables, pojo, filter, propMap)
-      id.get
+      Try(id.get.toString.toLong) getOrElse 0L
     }
   }
 
@@ -316,16 +317,25 @@ abstract class Querease extends QueryStringBuilder
     result(q, p)
   }
 
-  def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = {
-    val view = viewDef[B]
-    val qualifier = baseFieldsQualifier(view)
+  private def keyColName(view: ViewDef): String = {
     val tableDefOpt = Option(view.table).map(tableMetadata.tableDef(_, view.db))
     val key = tableDefOpt
       .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
       .orNull
+    if (key == null || key.cols.lengthCompare(1) != 0) "id" else key.cols.head
+  }
+
+  private def keyFieldName(view: ViewDef): String = {
+    // TODO key field names
+    "id"
+  }
+
+  def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = {
+    val view = viewDef[B]
+    val qualifier = baseFieldsQualifier(view)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val idName = if (key == null || key.cols.lengthCompare(1) != 0) "id" else key.cols.head
+    val idName = keyColName(view)
     val extraQ = extraFilter match {
       case null | "" => s"${prefix}${idName} = :id"
       case x => s"[$x] & [${prefix}${idName} = :id]"
