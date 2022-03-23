@@ -15,6 +15,7 @@ import org.tresql.parsing
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
+  // TODO convert or copy save-to maps tests to persistence metadata tests
   "objects" should "produce correct save-to maps" in {
     def asKeys(instance: Dto) =
       qe.toSaveableMap(instance).toList.sortBy(_._1).map {
@@ -98,6 +99,37 @@ class QuereaseTests extends FlatSpec with Matchers {
           " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother, 'null'), coalesce(:other_field, 'null')))"
     ).mkString("; "))
+  }
+
+  "querease" should "build correct persistence metadata" in {
+    import org.tresql.OrtMetadata._
+    // TODO use json or some other strings for persistence metadata?
+    qe.persistenceMetadata("organization_with_accounts") shouldBe View(
+      List(SaveTo("organization",Set(),List())),
+      null,
+      Some(Filters(None,None,None)),
+      null,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("main_account_id",TresqlValue("(organization_account[number = :main_account_id]{id})",true,true)),
+        Property("accounts",ViewValue(
+          View(
+            List(SaveTo("organization_account",Set(),List())),
+            SaveOptions(true,true,true),
+            Some(Filters(None,None,None)),
+            null,
+            List(
+              Property("id",TresqlValue(":id",true,true)),
+              Property("number",TresqlValue(":number",true,true)),
+              Property("balance",TresqlValue(":balance",true,true))
+            ),
+            null
+          )
+        ))
+      ),
+      null
+    )
   }
 
   "querease" should "build correct query" in {
@@ -375,6 +407,7 @@ object QuereaseTests {
        ))
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
        Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
+     def persistenceMetadata(viewName: String) = nameToPersistenceMetadata(viewName)
    }
   implicit val qe = TestQuerease
   val nl = System.getProperty("line.separator")

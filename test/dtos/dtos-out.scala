@@ -300,6 +300,27 @@ object optional_params_resolver_test_1 {
       .unique[java.lang.Long]
   }
 }
+class organization_with_accounts extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var main_account: String = null
+  var accounts: List[organization_with_accounts_accounts] = Nil
+  def resolve_main_account_id(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), 'Failed to identify value of "main_account" (from organization_with_accounts) - ' || coalesce(:main_account, 'null'))}"""(env.withParams(this.toMap))
+      .unique[java.lang.Long]
+  }
+}
+object organization_with_accounts {
+  def resolve_main_account_id(main_account: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), 'Failed to identify value of "main_account" (from organization_with_accounts) - ' || coalesce(:main_account, 'null'))}"""(env.withParams(Map("main_account" -> main_account)))
+      .unique[java.lang.Long]
+  }
+}
+class organization_with_accounts_accounts extends DtoWithId {
+  var id: java.lang.Long = null
+  var number: String = null
+  var balance: BigDecimal = null
+}
 class person extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

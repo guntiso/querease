@@ -77,3 +77,19 @@ columns:
 - name             ! 50
 pk:
 - noid_id
+
+table: organization
+columns:
+- id
+- name                 ! 51
+- main_account.id        organization_account.id
+
+
+table: organization_account
+columns:
+- id
+- number               ! 64
+- balance              ! decimal 10 2
+- organization.id      !
+uk:
+- number

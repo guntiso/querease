@@ -211,7 +211,8 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
             // TODO searh also reverse refs to avoid runtime exceptions
             // TODO raise more ambiguities, refs search too liberal and thus unstable when db structure changes
             val bestLookupRefs =
-              tables
+              if  (f.isCollection) Nil
+              else tables
                 .sorted( // sort is stable
                   Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
                     if (table.name == f.table) 0 else 1))

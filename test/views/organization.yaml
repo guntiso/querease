@@ -1,0 +1,12 @@
+name: organization_with_accounts
+table: organization
+fields:
+- id
+- name
+- main_account = organization_account a[a.id = (organization p[p.id = :id] {main_account_id})] {number} -> = organization_account[number = _]{id}
+- accounts * :
+    table: organization_account
+    fields:
+    - id
+    - number
+    - balance

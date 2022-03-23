@@ -63,6 +63,25 @@ columns:
 - name ! string
 pk: noid_id
 
+table: organization
+columns:
+- id ! long
+- name ! string
+- main_account_id long
+pk: id
+refs:
+- main_account_id -> organization_account(id)
+
+table: organization_account
+columns:
+- id ! long
+- number ! string
+- balance ! decimal
+- organization_id ! long
+pk: id
+refs:
+- organization_id -> organization(id)
+
 table: person
 columns:
 - id ! long
