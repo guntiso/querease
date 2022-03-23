@@ -164,6 +164,7 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
     val filtersOpt = Option(persistenceFilters(view))
     val properties = view.fields
       .map { f =>
+        val fieldName = Option(f.alias).getOrElse(f.name)
         val (childViewName, childView): (String, ViewDef) =
           if (f.type_.isComplexType) {
             val childViewName = f.type_.name
@@ -176,10 +177,10 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
             if (f.resolver == null)
-              ":" + Option(f.alias).getOrElse(f.name)
+              ":" + fieldName
             else {
               parser.transformer {
-                case Ident(List("_")) => Variable(saveTo, Nil, opt = false)
+                case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
               } (parser.parseExp(if (f.resolver startsWith "(" ) f.resolver else s"(${f.resolver})")).tresql
             }
           Property(
@@ -223,7 +224,7 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
                     table.refs.find(_.refTable == childTableName).toSeq
                   case (table, n) =>
                     table.refs.find { t => t.refTable == childTableName &&
-                      t.defaultRefTableAlias == Option(f.alias).getOrElse(f.name)
+                      t.defaultRefTableAlias == fieldName
                     }.toSeq
                 }
                 .getOrElse(Nil)
@@ -237,10 +238,9 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
               case 1 =>
                 // TODO prefer single-col ref, throw for multi-col
                 val refColName = bestLookupRefs.head.cols.head
-                val propName = Option(f.alias).getOrElse(f.name)
                 Property(
                   col   = refColName,
-                  value = LookupViewValue(propName, childPersistenceMetadata)
+                  value = LookupViewValue(fieldName, childPersistenceMetadata)
                 )
               case n =>
                 sys.error(s"Ambiguous references for field ${view.name}.${f.name}")

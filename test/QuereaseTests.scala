@@ -112,7 +112,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(
         Property("id",TresqlValue(":id",true,true)),
         Property("name",TresqlValue(":name",true,true)),
-        Property("main_account_id",TresqlValue("(organization_account[number = :main_account_id]{id})",true,true)),
+        Property("main_account_id",TresqlValue("(organization_account[number = :main_account]{id})",true,true)),
         Property("accounts",ViewValue(
           View(
             List(SaveTo("organization_account",Set(),List())),
