@@ -394,11 +394,16 @@ abstract class Querease extends QueryStringBuilder
   def delete[B <: DTO](instance: B, filter: String = null, params: Map[String, Any] = null)(
     implicit resources: Resources): Int = {
     val view = viewDef(ManifestFactory.classType(instance.getClass))
+    val mergedFilter = nameToPersistenceMetadata.getOrElse(
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+        case md if filter == null => md.filters.flatMap(_.delete).orNull
+        case md => mergeFilters(md.filters.flatMap(_.delete), filter).orNull
+      }
     val keyMap = this.keyMap(instance)
     val result = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       keyMap.head._2,
-      filter,
+      mergedFilter,
       params) match { case r: DeleteResult => r.count.get }
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
