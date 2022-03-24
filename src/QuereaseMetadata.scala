@@ -205,7 +205,9 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
             refsToParent  = Set.empty,
             options       = childSaveOptions,
             throwErrors   = throwErrors,
-          ).map { childPersistenceMetadata =>
+          )
+          .filter(_.saveTo.nonEmpty)
+          .map { childPersistenceMetadata =>
             val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
             // TODO child multi-tables?
             val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
