@@ -563,3 +563,16 @@ name: resolver_test_scala_escapes_01
 table: person
 fields:
 - name -> name = case(:name `~` '^\d+$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)
+
+name:   save_to_multi_test_01
+table:  sys_user u
+save-to:
+- person
+- sys_user
+joins:
+- u / person p_
+fields:
+- id
+- p_.name
+- p_.sex -> = 'M'
+- password

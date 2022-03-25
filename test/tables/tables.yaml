@@ -84,7 +84,6 @@ columns:
 - name                 ! 51
 - main_account.id        organization_account.id
 
-
 table: organization_account
 columns:
 - id
@@ -93,3 +92,9 @@ columns:
 - organization.id      !
 uk:
 - number
+
+table:   sys_user
+columns:
+- id
+- person.id            !
+- password

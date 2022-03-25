@@ -470,6 +470,25 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       Map("id" -> 0,      "nm" -> "name"),
       Map("id" -> noid_1, "nm" -> "updated name"),
     )
+
+    var multiTest       = new SaveToMultiTest01
+    multiTest.name      = "Multitest"
+    multiTest.password  = "demo"
+    val multiTestId = qe.save(multiTest)
+
+    multiTest = qe.get[SaveToMultiTest01](multiTestId).get
+    multiTest.id        shouldBe multiTestId
+    multiTest.name      shouldBe "Multitest"
+    multiTest.password  shouldBe "demo"
+
+    multiTest.name      = "Multitest2"
+    multiTest.password  = "demo2"
+    qe.save(multiTest)
+
+    multiTest = qe.get[SaveToMultiTest01](multiTestId).get
+    multiTest.id        shouldBe multiTestId
+    multiTest.name      shouldBe "Multitest2"
+    multiTest.password  shouldBe "demo2"
   }
 
   if (isDbAvailable) it should s"validate in $dbName properly" in {

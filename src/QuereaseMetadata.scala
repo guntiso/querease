@@ -155,7 +155,47 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
       !field.isExpression &&
         field.type_.isComplexType &&
         nameToViewDef.get(field.type_.name).map(saveToNames).orNull != null
+    // TODO duplicate code - saveTo(), multiSaveProp() copied from tresql
+    import org.tresql.Metadata
+    def saveTo_(tables: Seq[String], md: Metadata) = {
+      def multiSaveProp(names: Seq[String]) = {
+        /* Returns zero or one imported key from table for each relation. In the case of multiple
+         * imported keys pointing to the same relation the one specified after : symbol is chosen
+         * or exception is thrown.
+         * This is used to find relation columns for insert/update multiple methods.
+         * Additionaly, primary key of table is returned if it consists of only one column */
+        def importedKeysAndPks(tableName: String, relations: List[String]) = {
+          val x = tableName split ":"
+          val table = md.table(x.head)
+          relations.foldLeft(x.tail.toSet) { (keys, rel) =>
+            val relation = rel.split(":").head
+            val refs = table.refs(relation).filter(_.cols.size == 1)
+            (if (refs.size == 1) keys + refs.head.cols.head
+            else if (refs.isEmpty || refs.exists(r => keys.contains(r.cols.head))) keys
+            else sys.error(s"Ambiguous refs in view ${view.name}: $refs from table ${table.name} to table $relation")) ++
+              (table.key.cols match {case List(k) => Set(k) case _ => Set()})
+          }
+        }
+        names.tail.foldLeft(List(names.head)) { (ts, t) => (t.split(":")
+          .head + importedKeysAndPks(t, ts).mkString(":", ":", "")) :: ts
+        }.reverse
+      }
+      tables.map { t =>
+        val ki = t.indexOf("[")
+        if (ki != -1) {
+          (t.substring(0, ki), t.substring(ki + 1, t.length - 1).split("\\s*,\\s*").toList)
+        } else (t, Nil)
+      }.unzip match {
+        case (names, keys) => multiSaveProp(names.toIndexedSeq) zip keys map { case (table, key) =>
+          val t = table.split(":")
+          SaveTo(t.head, t.tail.toSet, key)
+        }
+      }
+    }
     val saveTo =
+      if (saveToTableNames.lengthCompare(1) > 0)
+        saveTo_(saveToTableNames, tresqlMetadata)
+      else
       saveToTableNames.map(t => SaveTo(
         table = t,
         refs  = refsToParent,

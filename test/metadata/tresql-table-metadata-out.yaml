@@ -95,6 +95,15 @@ refs:
 - mother_id -> person(id)
 - father_id -> person(id)
 
+table: sys_user
+columns:
+- id ! long
+- person_id ! long
+- password string
+pk: id
+refs:
+- person_id -> person(id)
+
 table: validations_test_child_table
 columns:
 - id ! long

@@ -130,6 +130,22 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null
     )
+    qe.persistenceMetadata("save_to_multi_test_01") shouldBe View(
+      List(
+        SaveTo("person",Set(),List()),
+        SaveTo("sys_user",Set("person_id", "id"),List()),
+      ),
+      null,
+      Some(Filters(None,None,None)),
+      "u",
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("sex",TresqlValue("('M')",true,true)),
+        Property("password",TresqlValue(":password",true,true)),
+      ),
+      null
+    )
   }
 
   "querease" should "build correct query" in {

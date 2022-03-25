@@ -1195,6 +1195,22 @@ object resolver_test_scala_escapes_01 {
       .unique[String]
   }
 }
+class save_to_multi_test_01 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var sex: String = null
+  var password: String = null
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{'M'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object save_to_multi_test_01 {
+  def resolve_sex(implicit env: org.tresql.Resources) = {
+    tresql"""{'M'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
+}
 class self_ref_test_account_1 extends Dto {
   var full_name: String = null
 }
