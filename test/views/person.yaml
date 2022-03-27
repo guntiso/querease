@@ -576,3 +576,8 @@ fields:
 - p_.name
 - p_.sex -> = 'M'
 - password
+
+name:   save_extra_props_test_01
+table:  sys_user u
+fields:
+- id

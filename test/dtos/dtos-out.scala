@@ -1195,6 +1195,9 @@ object resolver_test_scala_escapes_01 {
       .unique[String]
   }
 }
+class save_extra_props_test_01 extends DtoWithId {
+  var id: java.lang.Long = null
+}
 class save_to_multi_test_01 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

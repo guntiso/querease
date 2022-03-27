@@ -489,6 +489,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     multiTest.id        shouldBe multiTestId
     multiTest.name      shouldBe "Multitest2"
     multiTest.password  shouldBe "demo2"
+
+    // save extra props test - to be remvoed
+    val saveExtra      = new SaveExtraPropsTest01
+    val saveExtraId    = qe.save(saveExtra, extraPropsToSave = Map("person_id" -> multiTest.id))
+    tresql"sys_user[id = $saveExtraId] {person_id}".unique[Long] shouldBe multiTest.id
+    tresql"sys_user[id = $saveExtraId] {password}".unique[String] shouldBe null
+    saveExtra.id = saveExtraId
+    qe.save(saveExtra, extraPropsToSave = Map("password" -> "demo3"))
+    tresql"sys_user[id = $saveExtraId] {password}".unique[String] shouldBe "demo3"
   }
 
   if (isDbAvailable) it should s"validate in $dbName properly" in {

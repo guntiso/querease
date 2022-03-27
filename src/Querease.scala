@@ -75,9 +75,9 @@ abstract class Querease extends QueryStringBuilder
     val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
       (Some(id), forceInsert)) getOrElse (None, true)
     if (isNew) {
-      insert(tables, pojo, filter, propMap)
+      insert(tables, pojo, filter, propMap, extraPropsToSave)
     } else {
-      update(tables, pojo, filter, propMap)
+      update(tables, pojo, filter, propMap, extraPropsToSave)
       Try(id.get.toString.toLong) getOrElse 0L
     }
   }
@@ -88,11 +88,39 @@ abstract class Querease extends QueryStringBuilder
     else filterOpt.map { f => Seq(f, extraFilter).map(a => s"($a)").mkString(" & ") }
   }
 
+  private def addExtraPropsToMetadata(metadata: OrtMetadata.View, extraPropsToSave: Map[String, Any]): OrtMetadata.View = {
+    if (extraPropsToSave == null || extraPropsToSave.isEmpty) {
+      metadata
+    } else {
+      val mdCols  = metadata.properties.map(_.col).toSet
+      val xpCols  = extraPropsToSave.keySet
+      val missing = xpCols -- mdCols
+      if (missing.isEmpty) {
+        metadata
+      } else {
+        metadata.copy(
+          properties = metadata.properties ++ missing.map { col =>
+            OrtMetadata.Property(
+              col   = col,
+              value = OrtMetadata.TresqlValue(
+                tresql    = s":$col",
+                forInsert = true,
+                forUpdate = true,
+              ),
+            )
+          }
+        )
+      }
+    }
+  }
+
   protected def insert[B <: DTO](
       tables: Seq[String],
       pojo: B,
       filter: String = null,
-      propMap: Map[String, Any])(implicit resources: Resources): Long = {
+      propMap: Map[String, Any],
+      extraPropsToSave: Map[String, Any],
+    )(implicit resources: Resources): Long = {
     val v = viewDef(ManifestFactory.classType(pojo.getClass))
     val metadata = nameToPersistenceMetadata.getOrElse(
       v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
@@ -103,7 +131,7 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    val result = ORT.insert(metadata, propMap)
+    val result = ORT.insert(addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
     val (insertedRowCount, id) = result match {
       case x: InsertResult => (x.count.get, x.id getOrElse null)
       case a: ArrayResult[_] => //if array result consider last element as insert result
@@ -123,7 +151,9 @@ abstract class Querease extends QueryStringBuilder
       tables: Seq[String],
       pojo: B,
       filter: String,
-      propMap: Map[String, Any])(implicit resources: Resources): Unit = {
+      propMap: Map[String, Any],
+      extraPropsToSave: Map[String, Any],
+    )(implicit resources: Resources): Unit = {
     val v = viewDef(ManifestFactory.classType(pojo.getClass))
     val metadata = nameToPersistenceMetadata.getOrElse(
       v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
@@ -134,7 +164,7 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    val updatedRowCount = ORT.update(metadata, propMap)
+    val updatedRowCount = ORT.update(addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
     if (updatedRowCount == 0) throw new NotFoundException(
       s"Record not updated in table(s): ${tables.mkString(",")}")
   }
