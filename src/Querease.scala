@@ -16,7 +16,7 @@ class ValidationException(msg: String, val details: List[ValidationResult]) exte
 case class ValidationResult(path: List[Any], messages: List[String])
 
 abstract class Querease extends QueryStringBuilder
-  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo =>
+  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo with QuereaseResolvers =>
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"

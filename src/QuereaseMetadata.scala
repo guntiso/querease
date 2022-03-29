@@ -19,7 +19,7 @@ import scala.util.matching.Regex
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
 
-trait QuereaseMetadata { this: QuereaseExpressions =>
+trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
 
   type FieldDef = org.mojoz.metadata.FieldDef[Type]
   type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
@@ -219,9 +219,10 @@ trait QuereaseMetadata { this: QuereaseExpressions =>
             if (f.resolver == null)
               ":" + fieldName
             else {
+              val resolver = allResolvers(view, f).head
               parser.transformer {
                 case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
-              } (parser.parseExp(if (f.resolver startsWith "(" ) f.resolver else s"(${f.resolver})")).tresql
+              } (parser.parseExp(if (resolver startsWith "(" ) resolver else s"(${resolver})")).tresql
             }
           Property(
             col   = saveTo,
