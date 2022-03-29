@@ -149,6 +149,23 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null
     )
+    qe.persistenceMetadata("resolver_test_person_7") shouldBe View(
+      List(SaveTo("person",Set(),List())),
+      null,
+      Some(Filters(None,None,None)),
+      "p7",
+      List(
+        Property("mother_id",TresqlValue(
+          """(checked_resolve(:mother, array(person;person[person.father_id]person? father""" +
+            """[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]""" +
+            """{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' ||""" +
+            """ coalesce(:mother, 'null')))""",
+          true,
+          true
+        )
+      )),
+      null
+    )
   }
 
   "querease" should "build correct query" in {

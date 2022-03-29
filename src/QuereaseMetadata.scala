@@ -216,7 +216,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
-            if (f.resolver == null)
+            if (f.saveTo == null && f.resolver == null)
               ":" + fieldName
             else {
               val resolver = allResolvers(view, f).head
