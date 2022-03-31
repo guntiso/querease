@@ -106,9 +106,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
         saveToTableNames.contains(field.table) // TODO alias?
       )
     ) && (
-      field.options == null       ||
-      field.options.contains('+') ||  // for insert
-      field.options.contains('=')     // for update
+      isFieldForInsert(field) ||
+      isFieldForUpdate(field)
     )
   }
   protected def isSaveableChildField(
@@ -120,6 +119,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
   ): Boolean = {
     field.options == null || !field.options.contains('!')
   }
+  protected def isFieldForInsert(field: FieldDef): Boolean =
+    field.options == null || field.options.contains('+')
+  protected def isFieldForUpdate(field: FieldDef): Boolean =
+    field.options == null || field.options.contains('=')
   protected def persistenceFilters(
     view: ViewDef,
   ): Filters = {
