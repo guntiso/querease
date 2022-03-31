@@ -106,9 +106,10 @@ class QuereaseTests extends FlatSpec with Matchers {
     // TODO use json or some other strings for persistence metadata?
     qe.persistenceMetadata("organization_with_accounts") shouldBe View(
       List(SaveTo("organization",Set(),List())),
-      null,
       Some(Filters(None,None,None)),
       null,
+      true,
+      true,
       List(
         Property("id",TresqlValue(":id",true,true)),
         Property("name",TresqlValue(":name",true,true)),
@@ -119,16 +120,18 @@ class QuereaseTests extends FlatSpec with Matchers {
         Property("accounts",ViewValue(
           View(
             List(SaveTo("organization_account",Set(),List())),
-            SaveOptions(true,true,true),
             Some(Filters(None,None,None)),
             null,
+            true,
+            true,
             List(
               Property("id",TresqlValue(":id",true,true)),
               Property("number",TresqlValue(":number",true,true)),
               Property("balance",TresqlValue(":balance",true,true))
             ),
             null
-          )
+          ),
+          SaveOptions(true,true,true),
         ))
       ),
       null
@@ -138,9 +141,10 @@ class QuereaseTests extends FlatSpec with Matchers {
         SaveTo("person",Set(),List()),
         SaveTo("sys_user",Set("person_id", "id"),List()),
       ),
-      null,
       Some(Filters(None,None,None)),
       "u",
+      true,
+      true,
       List(
         Property("id",TresqlValue(":id",true,true)),
         Property("name",TresqlValue(":name",true,true)),
@@ -151,9 +155,10 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
     qe.persistenceMetadata("resolver_test_person_7") shouldBe View(
       List(SaveTo("person",Set(),List())),
-      null,
       Some(Filters(None,None,None)),
       "p7",
+      true,
+      true,
       List(
         Property("mother_id",TresqlValue(
           """(checked_resolve(:mother, array(person;person[person.father_id]person? father""" +

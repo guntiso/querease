@@ -137,7 +137,6 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     nameToViewDef:  Map[String, ViewDef],
     parentNames:    List[String]  = Nil,
     refsToParent:   Set[String]   = Set.empty,
-    options:        SaveOptions   = null,
     throwErrors:    Boolean       = true,
   ): Option[OrtMetadata.View] = {
     if (parentNames contains view.name)
@@ -247,10 +246,13 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
             nameToViewDef = nameToViewDef,
             parentNames   = view.name :: parentNames,
             refsToParent  = Set.empty,
-            options       = childSaveOptions,
             throwErrors   = throwErrors,
           )
           .filter(_.saveTo.nonEmpty)
+          .map(_.copy(
+            forInsert = isFieldForInsert(f),
+            forUpdate = isFieldForUpdate(f),
+          ))
           .map { childPersistenceMetadata =>
             val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
             // TODO child multi-tables?
@@ -279,7 +281,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
               case 0 =>
                 Property(
                   col   = f.name,
-                  value = ViewValue(childPersistenceMetadata)
+                  value = ViewValue(childPersistenceMetadata, childSaveOptions)
                 )
               case 1 =>
                 // TODO prefer single-col ref, throw for multi-col
@@ -300,9 +302,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     val persistenceMetadata =
       OrtMetadata.View(
         saveTo      = saveTo,
-        options     = options,
         filters     = filtersOpt,
         alias       = view.tableAlias,
+        forInsert   = true,
+        forUpdate   = true,
         properties  = properties,
         db          = view.db,
       )
