@@ -475,7 +475,7 @@ abstract class Querease extends QueryStringBuilder
     val key_fields = keyFields(view)
     if (key_fields == null || key_fields.isEmpty)
       sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
-    val key        = key_fields.map(f => f.name).toList
+    val key        = key_fields.map(f => f.name)
     val keyPropMap = key_fields.map(f => f.name -> propMap.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
     val result = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
