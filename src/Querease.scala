@@ -32,6 +32,7 @@ abstract class Querease extends QueryStringBuilder
     else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
+  @annotation.nowarn("cat=deprecation") // OK to call deprecated save here - same tables will be extracted again
   def save[B <: DTO](
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
@@ -46,6 +47,7 @@ abstract class Querease extends QueryStringBuilder
       filter,
       params)
 
+  @deprecated("Parameter 'tableName' is ignored, this method will not work as expected and will be removed", "6.1")
   def saveTo[B <: DTO](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
@@ -60,6 +62,7 @@ abstract class Querease extends QueryStringBuilder
       filter,
       params)
 
+  @deprecated("Parameter 'tables' is ignored, this method will not work as expected and will be removed", "6.1")
   def saveToMultiple[B <: DTO](
     tables: Seq[String],
     pojo: B,
@@ -114,6 +117,7 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
+  @deprecated("Parameter 'tables' is ignored, only keys are used from 'extraPropsToSave' - this method will be removed", "6.1")
   protected def insert[B <: DTO](
       tables: Seq[String],
       pojo: B,
@@ -131,7 +135,24 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    val result = ORT.insert(addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
+    insert(v, addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
+  }
+
+  def insert(
+    view: ViewDef,
+    data: Map[String, Any],
+  )(implicit resources: Resources): Long = {
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    insert(view, metadata, data)
+  }
+
+  protected def insert(
+    view: ViewDef,
+    metadata: OrtMetadata.View,
+    data: Map[String, Any],
+  )(implicit resources: Resources): Long = {
+    val result = ORT.insert(metadata, data)
     val (insertedRowCount, id) = result match {
       case x: InsertResult => (x.count.get, x.id getOrElse null)
       case a: ArrayResult[_] => //if array result consider last element as insert result
@@ -139,14 +160,18 @@ abstract class Querease extends QueryStringBuilder
           case x: InsertResult => (x.count.get, x.id getOrElse null)
         }
     }
-    if (insertedRowCount == 0) throw new NotFoundException(
-      s"Record not inserted into table(s): ${tables.mkString(",")}")
+    if (insertedRowCount == 0) {
+      val tables = metadata.saveTo.map(_.table)
+      throw new NotFoundException(
+        s"Record not inserted into table(s): ${tables.mkString(",")}")
+    }
     else id match {
       case id: Long => id
       case xx       => 0L
     }
   }
 
+  @deprecated("Parameter 'tables' is ignored, only keys are used from 'extraPropsToSave' - this method will be removed", "6.1")
   protected def update[B <: DTO](
       tables: Seq[String],
       pojo: B,
@@ -164,9 +189,29 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    val updatedRowCount = ORT.update(addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
-    if (updatedRowCount == 0) throw new NotFoundException(
-      s"Record not updated in table(s): ${tables.mkString(",")}")
+    update(v, addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
+  }
+
+  def update[B <: DTO](
+    view: ViewDef,
+    data: Map[String, Any],
+  )(implicit resources: Resources): Unit = {
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    update(view, metadata, data)
+  }
+
+  protected def update[B <: DTO](
+    view: ViewDef,
+    metadata: OrtMetadata.View,
+    data: Map[String, Any],
+  )(implicit resources: Resources): Unit = {
+    val updatedRowCount = ORT.update(metadata, data)
+    if (updatedRowCount == 0) {
+      val tables = metadata.saveTo.map(_.table)
+      throw new NotFoundException(
+        s"Record not updated in table(s): ${tables.mkString(",")}")
+    }
   }
 
   def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
