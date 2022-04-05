@@ -203,8 +203,8 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     else s
 
   override def toSaveableMap[B <: DTO](instance: B) = pojoToSaveableMap(instance)
+  @deprecated("Results of this method are not used and this method will be removed", "6.1")
   override def keyMap[B <: DTO](instance: B) =
-    // FIXME when key != id, use viewDef to get key-values if defined
     Map("id" -> getId(instance))
   def pojoToSaveableMap[B <: DTO](pojo: B) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {

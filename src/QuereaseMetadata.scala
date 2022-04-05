@@ -76,6 +76,17 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
 
+  protected def keyFields(view: ViewDef): Seq[FieldDef] =
+    Option(view.table)
+      .map(tableMetadata.tableDef(_, view.db))
+      .flatMap { t =>
+        ((if (t.pk != null) t.pk.toSeq else Nil) ++
+         (if (t.uk != null) t.uk       else Nil)
+        ).filter(_ != null)
+         .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
+      } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
+        .orNull
+
   protected def identifier(s: String) = s match {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
     case _ => ""

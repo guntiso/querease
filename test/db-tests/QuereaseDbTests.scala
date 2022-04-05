@@ -470,6 +470,54 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       Map("id" -> 0,      "nm" -> "name"),
       Map("id" -> noid_1, "nm" -> "updated name"),
     )
+    noid.id = 0
+    qe.delete(noid)
+    noid.id = noid_1
+    qe.delete(noid)
+    qe.list[NoidTest](null).map(_.toMap) shouldBe Nil
+
+    // no-id test 2
+    val noid2 = new NoidTest2
+    noid2.no_id = 0
+    noid2.no_nm = "name"
+    qe.get[NoidTest2](0).map(_.toMap).orNull shouldBe null
+    qe.save(noid2, forceInsert = true)
+    qe.get[NoidTest2](0).map(_.toMap).orNull shouldBe Map("no_id" -> 0, "no_nm" -> "name")
+    noid2.no_id = 1
+    qe.save(noid2, forceInsert = true)
+    qe.get[NoidTest2](1).map(_.toMap).orNull shouldBe Map("no_id" -> 1, "no_nm" -> "name")
+    qe.list[NoidTest2](null).map(_.toMap) shouldBe List(
+      Map("no_id" -> 0, "no_nm" -> "name"),
+      Map("no_id" -> 1, "no_nm" -> "name"),
+    )
+    noid2.no_nm = "updated name"
+    qe.save(noid2)
+    qe.get[NoidTest2](1).map(_.toMap).orNull shouldBe Map("no_id" -> 1, "no_nm" -> "updated name")
+    qe.list[NoidTest2](null).map(_.toMap) shouldBe List(
+      Map("no_id" -> 0, "no_nm" -> "name"),
+      Map("no_id" -> 1, "no_nm" -> "updated name"),
+    )
+    qe.delete(noid2)
+    qe.get[NoidTest2](1).map(_.toMap).orNull shouldBe null
+    qe.list[NoidTest2](null).map(_.toMap) shouldBe List(
+      Map("no_id" -> 0, "no_nm" -> "name"),
+    )
+    noid2.no_id = null
+    noid2.no_nm = "name"
+    val noid2_1 = qe.save(noid2)
+    qe.get[NoidTest2](noid2_1).map(_.toMap).orNull shouldBe Map("no_id" -> noid2_1, "no_nm" -> "name")
+    noid2.no_id = noid2_1
+    noid2.no_nm = "updated name"
+    qe.save(noid2)
+    qe.list[NoidTest2](null).map(_.toMap) shouldBe List(
+      Map("no_id" -> 0,      "no_nm" -> "name"),
+      Map("no_id" -> noid2_1, "no_nm" -> "updated name"),
+    )
+    noid2.no_id = 0
+    qe.delete(noid2)
+    noid2.no_id = noid2_1
+    qe.delete(noid2)
+    qe.list[NoidTest2](null).map(_.toMap) shouldBe Nil
 
     var multiTest       = new SaveToMultiTest01
     multiTest.name      = "Multitest"

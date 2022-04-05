@@ -12,5 +12,6 @@ trait QuereaseIo { this: Querease =>
   def toMap[B <: DTO](instance: B): Map[String, _]
   @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1")
   def toSaveableMap[B <: DTO](instance: B): Map[String, _]
+  @deprecated("Results of this method are not used and this method will be removed", "6.1")
   def keyMap[B <: DTO](instance: B): Map[String, _]
 }

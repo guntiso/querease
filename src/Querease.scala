@@ -71,7 +71,7 @@ abstract class Querease extends QueryStringBuilder
     val pojoPropMap = toMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
-    val idName = keyFieldName(viewDef(ManifestFactory.classType(pojo.getClass)))
+    val idName = keyFieldNames(viewDef(ManifestFactory.classType(pojo.getClass))).headOption getOrElse "id"
     val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
       (Some(id), forceInsert)) getOrElse (None, true)
     if (isNew) {
@@ -347,17 +347,14 @@ abstract class Querease extends QueryStringBuilder
     result(q, p)
   }
 
-  private def keyColName(view: ViewDef): String = {
-    val tableDefOpt = Option(view.table).map(tableMetadata.tableDef(_, view.db))
-    val key = tableDefOpt
-      .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
-      .orNull
-    if (key == null || key.cols.lengthCompare(1) != 0) "id" else key.cols.head
+  private def keyColNames(view: ViewDef): Seq[String] = keyFields(view) match {
+    case null   => Nil
+    case fields => fields.map(_.name)
   }
 
-  private def keyFieldName(view: ViewDef): String = {
-    // TODO key field names
-    "id"
+  private def keyFieldNames(view: ViewDef): Seq[String] = keyFields(view) match {
+    case null   => Nil
+    case fields => fields.map(f => Option(f.alias).getOrElse(f.name))
   }
 
   def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
@@ -365,7 +362,7 @@ abstract class Querease extends QueryStringBuilder
     val view = viewDef[B]
     val qualifier = baseFieldsQualifier(view)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val idName = keyColName(view)
+    val idName = keyColNames(view).headOption getOrElse "id"
     val extraQ = extraFilter match {
       case null | "" => s"${prefix}${idName} = :id"
       case x => s"[$x] & [${prefix}${idName} = :id]"
@@ -429,12 +426,18 @@ abstract class Querease extends QueryStringBuilder
         case md if filter == null => md.filters.flatMap(_.delete).orNull
         case md => mergeFilters(md.filters.flatMap(_.delete), filter).orNull
       }
-    val keyMap = this.keyMap(instance)
+    val propMap = toMap(instance)
+    val key_fields = keyFields(view)
+    if (key_fields == null || key_fields.isEmpty)
+      sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
+    val key        = key_fields.map(f => f.name).toList
+    val keyPropMap = key_fields.map(f => f.name -> propMap.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
     val result = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
-      keyMap.head._2,
+      key,
+      if (params == null) keyPropMap else keyPropMap ++ params,
       mergedFilter,
-      params) match { case r: DeleteResult => r.count.get }
+    ) match { case r: DeleteResult => r.count.get }
     if (result == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
     else result

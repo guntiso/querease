@@ -5,3 +5,10 @@ fields:
 - nm  = name
 order:
 - id
+
+
+name:  noid_test_2
+table: noid_test
+fields:
+- no_id  = noid_id
+- no_nm  = name

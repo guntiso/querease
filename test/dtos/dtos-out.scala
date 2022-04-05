@@ -277,6 +277,10 @@ class noid_test extends DtoWithId {
   var id: java.lang.Long = null
   var nm: String = null
 }
+class noid_test_2 extends Dto {
+  var no_id: java.lang.Long = null
+  var no_nm: String = null
+}
 class optional_params_resolver_test_1 extends DtoWithId {
   var id: java.lang.Long = null
   var mother_id: java.lang.Long = null
