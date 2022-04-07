@@ -392,32 +392,62 @@ abstract class Querease extends QueryStringBuilder
     result(q, p)
   }
 
-  private def keyColNames(view: ViewDef): Seq[String] = keyFields(view) match {
-    case null   => Nil
-    case fields => fields.map(_.name)
-  }
-
   private def keyFieldNames(view: ViewDef): Seq[String] = keyFields(view) match {
     case null   => Nil
     case fields => fields.map(f => Option(f.alias).getOrElse(f.name))
   }
 
-  def get[B <: DTO](id: Long, extraFilter: String = null, extraParams: Map[String, Any] = null)(
+  def get[B <: DTO](id: Long)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), null, null)
+  def get[B <: DTO](id: Long, extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), extraFilter, null)
+  def get[B <: DTO](id: Long, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), null, extraParams)
+  def get[B <: DTO](id: Long, extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), extraFilter, extraParams)
+
+  def get[B <: DTO](code: String)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), null, null)
+  def get[B <: DTO](code: String, extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), extraFilter, null)
+  def get[B <: DTO](code: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), null, extraParams)
+  def get[B <: DTO](code: String, extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), extraFilter, extraParams)
+
+  def get[B <: DTO](keyValues: Seq[Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, null, null)
+  def get[B <: DTO](keyValues: Seq[Any], extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, extraFilter, null)
+  def get[B <: DTO](keyValues: Seq[Any], extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, null, extraParams)
+  def get[B <: DTO](keyValues: Seq[Any], extraFilter: String, extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
     val view = viewDef[B]
     val qualifier = baseFieldsQualifier(view)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val idName = keyColNames(view).headOption getOrElse "id"
+    val key_fields = keyFields(view)
+    if (key_fields.isEmpty)
+      sys.error(s"Key not found for $mf, can not get")
+    if (key_fields.length != keyValues.length)
+      sys.error(s"Expecting ${key_fields.length} value(s) as key for $mf but got ${keyValues.length}, can not get")
+    val keysAndValues = key_fields zip keyValues
+    val keyFilter = keysAndValues.map {
+      case (field, value) => s"${prefix}${field.name} = :${Option(field.alias).getOrElse(field.name)}"
+    }.mkString(" & ")
+    val params = keysAndValues.map {
+      case (field, value) => Option(field.alias).getOrElse(field.name) -> value
+    }.toMap
     val extraQ = extraFilter match {
-      case null | "" => s"${prefix}${idName} = :id"
-      case x => s"[$x] & [${prefix}${idName} = :id]"
+      case null | "" =>    keyFilter
+      case x => s"[$x] & [$keyFilter]"
     }
     val extraP = extraParams match {
       case null => Map[String, Any]()
       case m => m
     }
     val (q, p) = queryStringAndParams(viewDef[B],
-      Map("id" -> id), 0, 2, "", extraQ, extraP)
+      params, 0, 2, "", extraQ, extraP)
     val result = list(q, p)
     if (result.lengthCompare(1) > 0)
       sys.error("Too many rows returned by query for get method for " + mf)
@@ -473,7 +503,7 @@ abstract class Querease extends QueryStringBuilder
       }
     val propMap = toMap(instance)
     val key_fields = keyFields(view)
-    if (key_fields == null || key_fields.isEmpty)
+    if (key_fields.isEmpty)
       sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
     val key        = key_fields.map(f => f.name)
     val keyPropMap = key_fields.map(f => f.name -> propMap.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap

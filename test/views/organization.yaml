@@ -10,3 +10,29 @@ fields:
     - id
     - number
     - balance
+
+
+name:   organization_key_test
+table:  organization
+fields:
+- name
+- main_account:
+    table: organization_account
+    fields:
+    - number
+    - balance
+- accounts * :
+    table: organization_account
+    fields:
+    - number
+    - balance
+    order:
+    - number
+
+
+name:   organization_account_key_test
+table:  organization_account
+fields:
+- organization_id
+- number
+- balance

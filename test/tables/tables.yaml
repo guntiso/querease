@@ -83,13 +83,15 @@ columns:
 - id
 - name                 ! 51
 - main_account.id        organization_account.id
+uk:
+- name
 
 table: organization_account
 columns:
 - id
 - number               ! 64
 - balance              ! decimal 10 2
-- organization.id      !
+- organization.id
 uk:
 - number
 

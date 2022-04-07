@@ -77,7 +77,7 @@ columns:
 - id ! long
 - number ! string
 - balance ! decimal
-- organization_id ! long
+- organization_id long
 pk: id
 refs:
 - organization_id -> organization(id)

@@ -85,7 +85,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
         ).filter(_ != null)
          .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
       } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
-        .orNull
+        .getOrElse(Nil)
 
   protected def identifier(s: String) = s match {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
@@ -208,12 +208,16 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     val saveTo =
       if (saveToTableNames.lengthCompare(1) > 0)
         saveTo_(saveToTableNames, tresqlMetadata)
-      else
-      saveToTableNames.map(t => SaveTo(
-        table = t,
-        refs  = refsToParent,
-        key   = Nil,
-      ))
+      else {
+        val keyCols = keyFields(view).map(_.name)
+        saveToTableNames.map(t => SaveTo(
+          table = t,
+          refs  = refsToParent,
+          key   = tableMetadata.tableDef(t, view.db).pk.map { pk =>
+            if (pk.cols == keyCols) Nil else keyCols // TODO annoying, improve tresql?
+          }.getOrElse(Nil),
+        ))
+      }
     val filtersOpt = Option(persistenceFilters(view))
     val properties = view.fields
       .map { f =>

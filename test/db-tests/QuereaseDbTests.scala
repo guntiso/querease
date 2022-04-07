@@ -510,9 +510,11 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     noid2.no_nm = "updated name"
     qe.save(noid2)
     qe.list[NoidTest2](null).map(_.toMap) shouldBe List(
-      Map("no_id" -> 0,      "no_nm" -> "name"),
+      Map("no_id" -> 0,       "no_nm" -> "name"),
       Map("no_id" -> noid2_1, "no_nm" -> "updated name"),
     )
+    qe.get[NoidTest2](0).map(_.toMap).orNull       shouldBe Map("no_id" -> 0,       "no_nm" -> "name")
+    qe.get[NoidTest2](noid2_1).map(_.toMap).orNull shouldBe Map("no_id" -> noid2_1, "no_nm" -> "updated name")
     noid2.no_id = 0
     qe.delete(noid2)
     noid2.no_id = noid2_1
@@ -696,6 +698,67 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     //test list with macro
     qe.list[Person2](Map[String, Any](), orderBy = "id").head.notes shouldBe("no_args")
     tresql"{ no_args_macro() x }".map(_.x).toList.head shouldBe("no_args")
+  }
+
+  if (isDbAvailable) it should s"crud by keys in $dbName" in {
+    val org = new OrganizationKeyTest
+    var org_saved: OrganizationKeyTest = null
+    val org_main_account = new OrganizationKeyTestMainAccount
+
+    org.name = "org"
+    org_main_account.number = "A1"
+    org_main_account.balance = 100
+    org.main_account = org_main_account
+    qe.save(org, forceInsert = true)
+
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.name shouldBe "org"
+    org_saved.main_account.number shouldBe "A1"
+    org_saved.main_account.balance shouldBe 100
+    org_main_account.balance = 200
+    qe.save(org)
+
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.name shouldBe "org"
+    org_saved.main_account.number shouldBe "A1"
+    org_saved.main_account.balance shouldBe 200
+
+    val a2 = new OrganizationKeyTestAccounts
+    a2.number = "A2"
+    a2.balance = 2
+    val a3 = new OrganizationKeyTestAccounts
+    a3.number = "A3"
+    a3.balance = 3
+
+    org.accounts = List(a2)
+    qe.save(org)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.accounts.map(_.toMap) shouldBe org.accounts.map(_.toMap)
+
+    org.accounts = List(a2, a3)
+    qe.save(org)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.accounts.map(_.toMap) shouldBe org.accounts.map(_.toMap)
+
+    a2.balance = 222
+    qe.save(org)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.accounts.map(_.toMap) shouldBe org.accounts.map(_.toMap)
+    org_saved.accounts(0).balance shouldBe 222
+
+    org.accounts = List(a2)
+    qe.save(org)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    /* FIXME
+    org_saved.accounts.map(_.toMap) shouldBe org.accounts.map(_.toMap)
+    */
+
+    val a1k = qe.get[OrganizationAccountKeyTest]("A1").get
+    a1k.organization_id = Query("organization[name = 'org'] {id}").unique[Long]
+    qe.save(a1k)
+
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.accounts.map(_.toMap) shouldBe List(org_main_account, a2, a3).map(_.toMap)
   }
 }
 

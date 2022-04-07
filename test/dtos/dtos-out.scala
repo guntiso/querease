@@ -304,6 +304,24 @@ object optional_params_resolver_test_1 {
       .unique[java.lang.Long]
   }
 }
+class organization_account_key_test extends Dto {
+  var organization_id: java.lang.Long = null
+  var number: String = null
+  var balance: BigDecimal = null
+}
+class organization_key_test extends Dto {
+  var name: String = null
+  var main_account: organization_key_test_main_account = null
+  var accounts: List[organization_key_test_accounts] = Nil
+}
+class organization_key_test_accounts extends Dto {
+  var number: String = null
+  var balance: BigDecimal = null
+}
+class organization_key_test_main_account extends Dto {
+  var number: String = null
+  var balance: BigDecimal = null
+}
 class organization_with_accounts extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
