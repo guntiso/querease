@@ -131,7 +131,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             ),
             null
           ),
-          SaveOptions(true,true,true),
+          SaveOptions(true,false,true),
         ))
       ),
       null
@@ -205,7 +205,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             ),
             null
           ),
-          SaveOptions(true,true,true),
+          SaveOptions(true,false,true),
         )),
       ),
       null,

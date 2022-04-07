@@ -253,7 +253,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
           val opt = f.options
           val childSaveOptions = SaveOptions(
             doInsert = (opt == null) || (opt contains '+'),
-            doUpdate = (opt == null) || (opt contains '='),
+            doUpdate = (opt != null) && (opt contains '='), // TODO invert default for doUpdate when child has key?
             doDelete = (opt == null) || (opt contains '-'),
           )
           toPersistenceMetadata(
