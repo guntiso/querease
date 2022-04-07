@@ -749,16 +749,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org.accounts = List(a2)
     qe.save(org)
     org_saved = qe.get[OrganizationKeyTest]("org").get
-    /* FIXME
     org_saved.accounts.map(_.toMap) shouldBe org.accounts.map(_.toMap)
-    */
 
     val a1k = qe.get[OrganizationAccountKeyTest]("A1").get
     a1k.organization_id = Query("organization[name = 'org'] {id}").unique[Long]
     qe.save(a1k)
 
     org_saved = qe.get[OrganizationKeyTest]("org").get
-    org_saved.accounts.map(_.toMap) shouldBe List(org_main_account, a2, a3).map(_.toMap)
+    org_saved.accounts.map(_.toMap) shouldBe List(org_main_account, a2).map(_.toMap)
   }
 }
 

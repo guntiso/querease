@@ -171,6 +171,45 @@ class QuereaseTests extends FlatSpec with Matchers {
       )),
       null
     )
+
+    qe.persistenceMetadata("organization_key_test") shouldBe View(
+      List(SaveTo("organization",Set(),List("name"))),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("name",TresqlValue(":name",true,true)),
+        Property("main_account_id",LookupViewValue("main_account",View(
+          List(SaveTo("organization_account",Set(),List("number"))),
+          Some(Filters(None,None,None)),
+          null,
+          true,
+          true,
+          List(
+            Property("number",TresqlValue(":number",true,true)),
+            Property("balance",TresqlValue(":balance",true,true)),
+          ),
+          null,
+        ))),
+        Property("accounts",ViewValue(
+          View(
+            List(SaveTo("organization_account",Set(),List("number"))),
+            Some(Filters(None,None,None)),
+            null,
+            true,
+            true,
+            List(
+              Property("number",TresqlValue(":number",true,true)),
+              Property("balance",TresqlValue(":balance",true,true)),
+            ),
+            null
+          ),
+          SaveOptions(true,true,true),
+        )),
+      ),
+      null,
+    )
   }
 
   "querease" should "build correct query" in {
