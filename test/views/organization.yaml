@@ -36,3 +36,9 @@ fields:
 - organization_id
 - number
 - balance
+
+
+name:     organization_readonly_children_test
+extends:  organization_key_test
+fields:
+- accounts [!] * organization_key_test_accounts
