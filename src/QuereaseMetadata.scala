@@ -54,11 +54,16 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     viewDefLoader
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
+  // TODO merge all extra metadata, attach to view: ordering, persistence metadata, key fields, ...
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
   protected lazy val nameToPersistenceMetadata: Map[String, OrtMetadata.View] =
     nameToViewDef.flatMap { case (name, viewDef) =>
       toPersistenceMetadata(viewDef, nameToViewDef, throwErrors = false).toSeq.map(name -> _)
     }
+  lazy val viewNameToKeyFields: Map[String, Seq[FieldDef]] =
+    nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
+  lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
+    viewNameToKeyFields.map { case (name, fields) => (name, fields.map(f => Option(f.alias).getOrElse(f.name))) }
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
@@ -209,7 +214,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
       if (saveToTableNames.lengthCompare(1) > 0)
         saveTo_(saveToTableNames, tresqlMetadata)
       else {
-        val keyCols = keyFields(view).map(_.name)
+        val keyCols = viewNameToKeyFields(view.name).map(_.name)
         saveToTableNames.map(t => SaveTo(
           table = t,
           refs  = refsToParent,

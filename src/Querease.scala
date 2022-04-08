@@ -74,7 +74,8 @@ abstract class Querease extends QueryStringBuilder
     val pojoPropMap = toMap(pojo)
     val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
-    val idName = keyFieldNames(viewDef(ManifestFactory.classType(pojo.getClass))).headOption getOrElse "id"
+    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    val idName = viewNameToKeyFieldNames(view.name).headOption getOrElse "id"
     val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
       (Some(id), forceInsert)) getOrElse (None, true)
     if (isNew) {
@@ -392,11 +393,6 @@ abstract class Querease extends QueryStringBuilder
     result(q, p)
   }
 
-  private def keyFieldNames(view: ViewDef): Seq[String] = keyFields(view) match {
-    case null   => Nil
-    case fields => fields.map(f => Option(f.alias).getOrElse(f.name))
-  }
-
   def get[B <: DTO](id: Long)(
       implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), null, null)
   def get[B <: DTO](id: Long, extraFilter: String)(
@@ -426,7 +422,7 @@ abstract class Querease extends QueryStringBuilder
     val view = viewDef[B]
     val qualifier = baseFieldsQualifier(view)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val key_fields = keyFields(view)
+    val key_fields = viewNameToKeyFields(view.name)
     if (key_fields.isEmpty)
       sys.error(s"Key not found for $mf, can not get")
     if (key_fields.length != keyValues.length)
@@ -502,7 +498,7 @@ abstract class Querease extends QueryStringBuilder
         case md => mergeFilters(md.filters.flatMap(_.delete), filter).orNull
       }
     val propMap = toMap(instance)
-    val key_fields = keyFields(view)
+    val key_fields = viewNameToKeyFields(view.name)
     if (key_fields.isEmpty)
       sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
     val key        = key_fields.map(f => f.name)
