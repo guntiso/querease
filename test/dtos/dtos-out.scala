@@ -327,6 +327,14 @@ class organization_readonly_children_test extends organization_key_test with Dto
   var main_account: organization_key_test_main_account = null
   // override var accounts: List[organization_key_test_accounts] = Nil
 }
+class organization_ref_only_update_test_1 extends Dto {
+  var name: String = null
+  var main_account: organization_ref_only_update_test_1_main_account = null
+}
+class organization_ref_only_update_test_1_main_account extends Dto {
+  var number: String = null
+  var balance: BigDecimal = null
+}
 class organization_with_accounts extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

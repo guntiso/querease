@@ -763,6 +763,22 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.save(org_roc)
     org_saved = qe.get[OrganizationKeyTest]("org").get
     org_saved.accounts.map(_.toMap) shouldBe List(org_main_account, a2).map(_.toMap)
+
+    val org_rfo = qe.get[OrganizationRefOnlyUpdateTest1]("org").get
+    org_rfo.main_account.number   shouldBe org_main_account.number
+    org_rfo.main_account.balance  shouldBe org_main_account.balance
+
+    org_rfo.main_account.number   = a2.number
+    org_rfo.main_account.balance  = a2.balance - 100
+    qe.save(org_rfo)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account.number   shouldBe a2.number
+    org_saved.main_account.balance  shouldBe a2.balance
+
+    org_rfo.main_account = null
+    qe.save(org_rfo)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account shouldBe null
   }
 }
 
