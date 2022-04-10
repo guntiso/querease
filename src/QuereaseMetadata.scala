@@ -126,6 +126,25 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
       isFieldForUpdate(field)
     )
   }
+  protected def fieldOptionsSelf(field: FieldDef) =
+    Option(field.options)
+      .map(_.replace("[", "").replace("]", ""))
+      .map(_.split("/", 2))
+      .map { arr =>
+        if  (arr.length == 0 ||
+             arr.length == 1 && field.type_.isComplexType && !arr(0).contains('!'))
+             null
+        else arr(0)
+      }
+      .filter(_ != "")
+      .orNull
+  protected def fieldOptionsRef(field: FieldDef) =
+    Option(field.options)
+      .map(_.replace("[", "").replace("]", ""))
+      .map(_.split("/", 2))
+      .map { arr => if (arr.length == 0) null else arr(arr.length - 1) }
+      .filter(_ != "")
+      .orNull
   protected def isSaveableChildField(
     field: FieldDef,
     view: ViewDef,
@@ -133,12 +152,17 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     saveToTableNames: Seq[String],
     childView: ViewDef,
   ): Boolean = {
-    field.options == null || !field.options.contains('!')
+    val opt = fieldOptionsRef(field)
+    opt == null || !opt.contains('!')
   }
-  protected def isFieldForInsert(field: FieldDef): Boolean =
-    field.options == null || field.options.contains('+')
-  protected def isFieldForUpdate(field: FieldDef): Boolean =
-    field.options == null || field.options.contains('=')
+  protected def isFieldForInsert(field: FieldDef): Boolean = {
+    val opt = fieldOptionsSelf(field)
+    opt == null || opt.contains('+') && !opt.contains('!')
+  }
+  protected def isFieldForUpdate(field: FieldDef): Boolean = {
+    val opt = fieldOptionsSelf(field)
+    opt == null || opt.contains('=') && !opt.contains('!')
+  }
   protected def persistenceFilters(
     view: ViewDef,
   ): Filters = {
@@ -246,20 +270,21 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
                 case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
               } (parser.parseExp(if (resolver startsWith "(" ) resolver else s"(${resolver})")).tresql
             }
+          val opt = fieldOptionsSelf(f)
           Property(
             col   = saveTo,
             value = TresqlValue(
               tresql    = valueTresql,
-              forInsert = f.options == null || f.options.contains('+'),
-              forUpdate = f.options == null || f.options.contains('='),
+              forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
+              forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
             ),
           )
         } else if (isChildTableField(f) && isSaveableChildField_(f, childView)) {
-          val opt = f.options
+          val opt = fieldOptionsRef(f)
           val childSaveOptions = SaveOptions(
-            doInsert = (opt == null) || (opt contains '+'),
-            doUpdate = (opt != null) && (opt contains '='), // TODO invert default for doUpdate when child has key?
-            doDelete = (opt == null) || (opt contains '-'),
+            doInsert = (opt == null) || (opt contains '+') && !opt.contains('!'),
+            doUpdate = (opt != null) && (opt contains '=') && !opt.contains('!'), // TODO invert default for doUpdate when child has key?
+            doDelete = (opt == null) || (opt contains '-') && !opt.contains('!'),
           )
           toPersistenceMetadata(
             view          = childView,

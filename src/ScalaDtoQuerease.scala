@@ -231,12 +231,19 @@ trait Dto { self =>
       !field.isExpression &&
         field.type_.isComplexType &&
         qe.viewDefOption(field.type_.name).map(tablesTo).orNull != null
+    def fieldOptionsRef(field: QuereaseMetadata#FieldDef) =
+      Option(field.options)
+        .map(_.replace("[", "").replace("]", ""))
+        .map(_.split("/", 2))
+        .map { arr => if (arr.length == 0) null else arr(arr.length - 1) }
+        .filter(_ != "")
+        .orNull
     def saveableEntries(f: QuereaseMetadata#FieldDef, v: Any): Seq[(String, Any)] = {
       // TODO various mixes of options and params etc?
       val name = f.name
       def alias = Option(f.alias).getOrElse(f.name)
       if (f.saveTo == null && f.resolver == null)
-        Seq(name + Option(f.options).getOrElse("") -> v)
+        Seq(name + Option(fieldOptionsRef(f)).getOrElse("") -> v)
       else {
         val resolvers = qe.allResolvers(view, f)
         if (resolvers.isEmpty) {
@@ -268,12 +275,12 @@ trait Dto { self =>
             .filter(_._2 != null)
             .filter(vs => isSaveableChildField(f, vs._1))
             .map(_._2)
-            .map(_ + Option(f.options).getOrElse("") -> Nil))
+            .map(_ + Option(fieldOptionsRef(f)).getOrElse("") -> Nil))
           .orElse(Some("*" + propName -> Nil)) // prefix * to avoid clashes
           .toList
         case s: Seq[_] =>
           val options = childTableFieldDefOpt
-            .map(_.options).filter(_ != null) getOrElse ""
+            .map(fieldOptionsRef).filter(_ != null) getOrElse ""
           val f = childTableFieldDefOpt.orNull
           //objects from one list can be put into different tables
           s map { d =>
@@ -309,7 +316,7 @@ trait Dto { self =>
                         f.name + "_id"
                     }.getOrElse(childTableName)
                 }
-            key + Option(f.options).getOrElse("") -> value
+            key + Option(fieldOptionsRef(f)).getOrElse("") -> value
           }
           .orElse(Some("*" + propName -> value)) // prefix * to avoid clashes
           .toList
