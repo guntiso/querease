@@ -259,6 +259,36 @@ class filter_with_resolver_test_3_b extends Dto {
 class filter_with_resolver_test_4 extends Dto {
   var name: String = null
 }
+class mother extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var sex: String = null
+  var daughters: List[mother_daughters] = Nil
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{'F'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object mother {
+  def resolve_sex(implicit env: org.tresql.Resources) = {
+    tresql"""{'F'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
+}
+class mother_daughters extends Dto {
+  var name: String = null
+  var sex: String = null
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{'F'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object mother_daughters {
+  def resolve_sex(implicit env: org.tresql.Resources) = {
+    tresql"""{'F'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
+}
 class nested_resolver_test_1 extends Dto {
   var other_field: String = null
   var mother: String = null

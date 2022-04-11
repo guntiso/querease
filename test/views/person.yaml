@@ -581,3 +581,20 @@ name:   save_extra_props_test_01
 table:  sys_user u
 fields:
 - id
+
+name:   mother
+table:  person m
+fields:
+- id
+- name
+- sex -> = 'F'
+- daughters * [m.id = d.mother_id] :
+    table:    person d
+    save-to:  person:mother_id    # Ambiguous references resolved for save
+    fields:
+    - name
+    - sex -> sex = 'F'
+    filter:
+    - sex = 'F'
+filter:
+- sex = 'F'

@@ -780,6 +780,32 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_saved = qe.get[OrganizationKeyTest]("org").get
     org_saved.main_account shouldBe null
   }
+
+  if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {
+    val m = new Mother
+    var m_saved: Mother = null
+
+    m.name = "Mommy"
+    m.id = qe.save(m)
+
+    m_saved = qe.get[Mother](m.id).get
+    m_saved.name shouldBe "Mommy"
+    m_saved.sex shouldBe "F"
+    m_saved.daughters shouldBe Nil
+
+    val d1 = new MotherDaughters()
+    d1.name = "D1"
+    val d2 = new MotherDaughters()
+    d2.name = "D2"
+    m.daughters = List(d1, d2)
+    qe.save(m)
+    m_saved = qe.get[Mother](m.id).get
+    m_saved.daughters.length shouldBe 2
+    m_saved.daughters(0).name shouldBe d1.name
+    m_saved.daughters(0).sex  shouldBe "F"
+    m_saved.daughters(1).name shouldBe d2.name
+    m_saved.daughters(1).sex  shouldBe "F"
+  }
 }
 
 object QuereaseDbTests {

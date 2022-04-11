@@ -187,6 +187,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     def saveToNames(view: ViewDef) =
       Option(view.saveTo).getOrElse(Seq(view.table)).filter(_ != null)
     val saveToTableNames = saveToNames(view).map(identifier)
+    val saveToTableNamesWithRefsAndKeys = saveToNames(view)
     def isSaveableField_(field: FieldDef): Boolean =
       isSaveableSimpleField(field, view, saveToMulti, saveToTableNames)
     def isSaveableChildField_(field: FieldDef, childView: ViewDef) =
@@ -235,8 +236,14 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
       }
     }
     val saveTo =
-      if (saveToTableNames.lengthCompare(1) > 0)
-        saveTo_(saveToTableNames, tresqlMetadata)
+      // TODO wt?
+      if (saveToTableNamesWithRefsAndKeys.lengthCompare(1) > 0 ||
+          saveToTableNamesWithRefsAndKeys.lengthCompare(0) > 0 && (
+            saveToTableNamesWithRefsAndKeys(0).indexOf(':') >= 0 ||
+            saveToTableNamesWithRefsAndKeys(0).indexOf('[') >= 0
+          )
+         )
+        saveTo_(saveToTableNamesWithRefsAndKeys, tresqlMetadata)
       else {
         val keyCols = viewNameToKeyFields(view.name).map(_.name)
         saveToTableNames.map(t => SaveTo(
