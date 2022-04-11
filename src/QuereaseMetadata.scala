@@ -239,8 +239,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
       // TODO wt?
       if (saveToTableNamesWithRefsAndKeys.lengthCompare(1) > 0 ||
           saveToTableNamesWithRefsAndKeys.lengthCompare(0) > 0 && (
-            saveToTableNamesWithRefsAndKeys(0).indexOf(':') >= 0 ||
-            saveToTableNamesWithRefsAndKeys(0).indexOf('[') >= 0
+            saveToTableNamesWithRefsAndKeys.head.indexOf(':') >= 0 ||
+            saveToTableNamesWithRefsAndKeys.head.indexOf('[') >= 0
           )
          )
         saveTo_(saveToTableNamesWithRefsAndKeys, tresqlMetadata)
@@ -261,7 +261,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
         val (childViewName, childView): (String, ViewDef) =
           if (f.type_.isComplexType) {
             val childViewName = f.type_.name
-            val childView = nameToViewDef.get(childViewName).getOrElse(
+            val childView = nameToViewDef.getOrElse(childViewName,
               sys.error(s"View $childViewName referenced from ${view.name} not found")
             )
             (childViewName, childView)
