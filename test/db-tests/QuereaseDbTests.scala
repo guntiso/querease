@@ -829,6 +829,7 @@ object QuereaseDbTests {
   val TresqlLogger: Logging#TresqlLogger = { (msg, _, topic) =>
     val topicName = topic match {
       case LogTopic.info   => "info  "
+      case LogTopic.ort    => null
       case LogTopic.params => "params"
       case LogTopic.sql    => "sql --"
       case LogTopic.tresql => "tresql"
