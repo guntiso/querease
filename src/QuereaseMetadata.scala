@@ -258,14 +258,14 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     val properties = view.fields
       .map { f =>
         val fieldName = Option(f.alias).getOrElse(f.name)
-        val (childViewName, childView): (String, ViewDef) =
+        val childView =
           if (f.type_.isComplexType) {
             val childViewName = f.type_.name
             val childView = nameToViewDef.getOrElse(childViewName,
               sys.error(s"View $childViewName referenced from ${view.name} not found")
             )
-            (childViewName, childView)
-          } else (null, null)
+            childView
+          } else null
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
