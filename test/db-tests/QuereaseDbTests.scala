@@ -764,7 +764,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_saved = qe.get[OrganizationKeyTest]("org").get
     org_saved.accounts.map(_.toMap) shouldBe List(org_main_account, a2).map(_.toMap)
 
-    val org_rfo = qe.get[OrganizationRefOnlyUpdateTest1]("org").get
+    val org_rfo = qe.get[OrganizationRefOnlyUpdateTest]("org").get
     org_rfo.main_account.number   shouldBe org_main_account.number
     org_rfo.main_account.balance  shouldBe org_main_account.balance
 
@@ -779,6 +779,38 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.save(org_rfo)
     org_saved = qe.get[OrganizationKeyTest]("org").get
     org_saved.main_account shouldBe null
+
+    org_rfo.main_account = new OrganizationRefOnlyUpdateTestMainAccount
+    org_rfo.main_account.number   = org_main_account.number
+    org_rfo.main_account.balance  = org_main_account.balance
+    qe.save(org_rfo)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account.number   shouldBe org_main_account.number
+    org_saved.main_account.balance  shouldBe org_main_account.balance
+
+    val org_rfl = qe.get[OrganizationRefOnlyUpdateLegacyTest]("org").get
+    org_rfl.main_account.number   shouldBe org_main_account.number
+    org_rfl.main_account.balance  shouldBe org_main_account.balance
+
+    org_rfl.main_account.number   = a2.number
+    org_rfl.main_account.balance  = a2.balance - 100
+    qe.save(org_rfl)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account.number   shouldBe a2.number
+    org_saved.main_account.balance  shouldBe a2.balance
+
+    org_rfl.main_account = null
+    qe.save(org_rfl)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account shouldBe null
+
+    org_rfl.main_account = new OrganizationRefOnlyUpdateLegacyTestMainAccount
+    org_rfl.main_account.number   = org_main_account.number
+    org_rfl.main_account.balance  = org_main_account.balance
+    qe.save(org_rfl)
+    org_saved = qe.get[OrganizationKeyTest]("org").get
+    org_saved.main_account.number   shouldBe org_main_account.number
+    org_saved.main_account.balance  shouldBe org_main_account.balance
   }
 
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {

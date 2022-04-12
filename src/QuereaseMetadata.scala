@@ -19,7 +19,7 @@ import scala.util.matching.Regex
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
 
-trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
+trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder =>
 
   type FieldDef = org.mojoz.metadata.FieldDef[Type]
   type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
@@ -145,6 +145,13 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
       .map { arr => if (arr.length == 0) null else arr(arr.length - 1) }
       .filter(_ != "")
       .orNull
+  protected def isSaveableRefToReadonlyChildField(field: FieldDef): Boolean = {
+    val opt_self  = fieldOptionsSelf(field)
+    val opt_ref   = fieldOptionsRef(field)
+    field.type_.isComplexType && !field.isCollection &&
+      (opt_self == null || !opt_self.contains('!'))  &&
+       opt_ref  != null &&  opt_ref.contains('!')
+  }
   protected def isSaveableChildField(
     field: FieldDef,
     view: ViewDef,
@@ -258,6 +265,29 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
     val properties = view.fields
       .map { f =>
         val fieldName = Option(f.alias).getOrElse(f.name)
+        def bestLookupRefs = {
+          val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
+          // TODO child multi-tables?
+          val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
+          // TODO searh also reverse refs to avoid runtime exceptions
+          // TODO raise more ambiguities, refs search too liberal and thus unstable when db structure changes
+          if  (f.isCollection) Nil
+          else tables
+            .sorted( // sort is stable
+              Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
+                if (table.name == f.table) 0 else 1))
+            .find { table => table.refs.exists(_.refTable == childTableName) }
+            .map { table => table -> table.refs.count(_.refTable == childTableName) }
+            .map {
+              case (table, 1) =>
+                table.refs.find(_.refTable == childTableName).toSeq
+              case (table, n) =>
+                table.refs.find { t => t.refTable == childTableName &&
+                  t.defaultRefTableAlias == fieldName
+                }.toSeq
+            }
+            .getOrElse(Nil)
+        }
         val childView =
           if (f.type_.isComplexType) {
             val childViewName = f.type_.name
@@ -286,6 +316,35 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
               forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
             ),
           )
+        } else if (isSaveableRefToReadonlyChildField(f)) {
+          bestLookupRefs match {
+            case Nil =>
+              sys.error(s"Reference not found for field ${view.name}.${f.name}")
+            case Seq(ref) =>
+              // TODO support multi-col refs here?
+              if (ref.cols.size != 1)
+                sys.error(s"Multi-column reference not supported to persist field ${view.name}.${f.name}")
+              val refColName = ref.cols.head
+              val refFieldDef = new FieldDef(ref.refCols.head).copy(table = ref.refTable)
+              val childKey = viewNameToKeyFields(childView.name)
+              val childKeyFilter = childKey.map { cf =>
+                s"${cf.name} = :${Option(f.alias).getOrElse(f.name)}.${Option(cf.alias).getOrElse(cf.name)}"
+              }.mkString(" & ")
+              // TODO extra filter (auth filter) for child view "get"?
+              val filter = childKeyFilter
+              val refQuery = queryString(childView, Seq(refFieldDef), Nil, filter)
+              val opt = fieldOptionsSelf(f)
+              Property(
+                col   = refColName,
+                value = TresqlValue(
+                  tresql    = s"($refQuery)",
+                  forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
+                  forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
+                ),
+              )
+            case refs =>
+              sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
+          }
         } else if (isChildTableField(f) && isSaveableChildField_(f, childView)) {
           val opt = fieldOptionsRef(f)
           val childSaveOptions = SaveOptions(
@@ -306,43 +365,20 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers =>
             forUpdate = isFieldForUpdate(f),
           ))
           .map { childPersistenceMetadata =>
-            val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
-            // TODO child multi-tables?
-            val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
-            // TODO searh also reverse refs to avoid runtime exceptions
-            // TODO raise more ambiguities, refs search too liberal and thus unstable when db structure changes
-            val bestLookupRefs =
-              if  (f.isCollection) Nil
-              else tables
-                .sorted( // sort is stable
-                  Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
-                    if (table.name == f.table) 0 else 1))
-                .find { table => table.refs.exists(_.refTable == childTableName) }
-                .map { table => table -> table.refs.count(_.refTable == childTableName) }
-                .map {
-                  case (table, 1) =>
-                    table.refs.find(_.refTable == childTableName).toSeq
-                  case (table, n) =>
-                    table.refs.find { t => t.refTable == childTableName &&
-                      t.defaultRefTableAlias == fieldName
-                    }.toSeq
-                }
-                .getOrElse(Nil)
-
-            bestLookupRefs.size match {
-              case 0 =>
+            bestLookupRefs match {
+              case Nil =>
                 Property(
                   col   = f.name,
                   value = ViewValue(childPersistenceMetadata, childSaveOptions)
                 )
-              case 1 =>
+              case Seq(ref) =>
                 // TODO prefer single-col ref, throw for multi-col
-                val refColName = bestLookupRefs.head.cols.head
+                val refColName = ref.cols.head
                 Property(
                   col   = refColName,
                   value = LookupViewValue(fieldName, childPersistenceMetadata)
                 )
-              case n =>
+              case refs =>
                 sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
             }
           }.orNull

@@ -239,6 +239,23 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null,
     )
+
+    qe.persistenceMetadata("organization_ref_only_update_test") shouldBe View(
+      List(SaveTo("organization",Set(),List("name"))),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("name",TresqlValue(":name",true,true)),
+        Property("main_account_id",TresqlValue(
+          "(organization_account[number = :main_account.number] {organization_account.id})",
+          true,
+          true,
+        )),
+      ),
+      null,
+    )
   }
 
   "querease" should "build correct query" in {

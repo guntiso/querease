@@ -30,7 +30,18 @@ fields:
     - number
 
 
-name:   organization_ref_only_update_test_1
+name:   organization_ref_only_update_test
+table:  organization
+fields:
+- name
+- main_account [/!]:
+    table: organization_account
+    fields:
+    - number
+    - balance
+
+
+name:   organization_ref_only_update_legacy_test
 table:  organization
 fields:
 - name
