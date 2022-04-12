@@ -327,17 +327,22 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               val refColName = ref.cols.head
               val refFieldDef = new FieldDef(ref.refCols.head).copy(table = ref.refTable)
               val childKey = viewNameToKeyFields(childView.name)
-              val childKeyFilter = childKey.map { cf =>
-                s"${cf.name} = :${Option(f.alias).getOrElse(f.name)}.${Option(cf.alias).getOrElse(cf.name)}"
-              }.mkString(" & ")
+              def bindVarName(cf: FieldDef) =
+                s"${Option(f.alias).getOrElse(f.name)}.${Option(cf.alias).getOrElse(cf.name)}"
+              val childKeyFilter = childKey.map(cf => s"${cf.name} = :${bindVarName(cf)}").mkString(" & ")
               // TODO extra filter (auth filter) for child view "get"?
               val filter = childKeyFilter
               val refQuery = queryString(childView, Seq(refFieldDef), Nil, filter)
+              val contextName = "resolver"
+              val resolvables = childKey.map(cf => (s":${bindVarName(cf)}", Option(cf.type_))).toList // TODO allow seq!
+              val resolvablesExpr = resolvablesExpression(view.name, fieldName, contextName, resolvables)
+              val errorMessage = resolverErrorMessageExpression(view.name, fieldName, contextName, resolvables)
+              val resolverExpr = resolverExpression(resolvablesExpr, refQuery, errorMessage)
               val opt = fieldOptionsSelf(f)
               Property(
                 col   = refColName,
                 value = TresqlValue(
-                  tresql    = s"($refQuery)",
+                  tresql    = s"($resolverExpr)",
                   forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
                   forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
                 ),

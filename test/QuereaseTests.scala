@@ -249,7 +249,10 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(
         Property("name",TresqlValue(":name",true,true)),
         Property("main_account_id",TresqlValue(
-          "(organization_account[number = :main_account.number] {organization_account.id})",
+          """(checked_resolve(:main_account.number,""" +
+            """ array(organization_account[number = :main_account.number] {organization_account.id}),""" +
+            """ 'Failed to identify value of "main_account"""" +
+            """ (from organization_ref_only_update_test) - ' || coalesce(:main_account.number, 'null')))""",
           true,
           true,
         )),
