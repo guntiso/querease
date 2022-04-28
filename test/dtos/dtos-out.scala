@@ -339,6 +339,9 @@ class organization_account_key_test extends Dto {
   var number: String = null
   var balance: BigDecimal = null
 }
+class organization_account_key_test_2 extends Dto {
+  var balance: BigDecimal = null
+}
 class organization_key_test extends Dto {
   var name: String = null
   var main_account: organization_key_test_main_account = null

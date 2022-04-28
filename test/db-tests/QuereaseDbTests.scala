@@ -811,6 +811,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_saved = qe.get[OrganizationKeyTest]("org").get
     org_saved.main_account.number   shouldBe org_main_account.number
     org_saved.main_account.balance  shouldBe org_main_account.balance
+
+    val main_account_id = Query("organization[name = 'org'] {main_account_id}").unique[Long]
+    qe.get[OrganizationAccountKeyTest2]("A1").get.balance             shouldBe org_main_account.balance
+    qe.get[OrganizationAccountKeyTest2](main_account_id).get.balance  shouldBe org_main_account.balance
   }
 
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {

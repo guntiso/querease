@@ -60,6 +60,12 @@ fields:
 - balance
 
 
+name:   organization_account_key_test_2
+table:  organization_account
+fields:
+- balance
+
+
 name:     organization_readonly_children_test
 extends:  organization_key_test
 fields:

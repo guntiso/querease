@@ -64,6 +64,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
   lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
     viewNameToKeyFields.map { case (name, fields) => (name, fields.map(f => Option(f.alias).getOrElse(f.name))) }
+  lazy val viewNameTokeyColNameForGetById: Map[String, String] =
+    nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetById(viewDef)) }
+  lazy val viewNameTokeyColNameForGetByCode: Map[String, String] =
+    nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetByCode(viewDef)) }
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
@@ -91,6 +95,28 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
          .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
       } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
         .getOrElse(Nil)
+
+  protected def keyColNameForGetById(view: ViewDef): String =
+    Option(view.table)
+      .map(tableMetadata.tableDef(_, view.db))
+      .flatMap { t =>
+        ((if (t.pk != null) t.pk.toSeq else Nil) ++
+         (if (t.uk != null) t.uk       else Nil)
+        ).filter(_ != null)
+         .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == "long") }
+      } .map(_.cols.head)
+        .orNull
+
+  protected def keyColNameForGetByCode(view: ViewDef): String =
+    Option(view.table)
+      .map(tableMetadata.tableDef(_, view.db))
+      .flatMap { t =>
+        ((if (t.pk != null) t.pk.toSeq else Nil) ++
+         (if (t.uk != null) t.uk       else Nil)
+        ).filter(_ != null)
+         .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == "string") }
+      } .map(_.cols.head)
+        .orNull
 
   protected def identifier(s: String) = s match {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident

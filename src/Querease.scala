@@ -417,23 +417,44 @@ abstract class Querease extends QueryStringBuilder
       implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, extraFilter, null)
   def get[B <: DTO](keyValues: Seq[Any], extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, null, extraParams)
+
+  // TODO if view contains fields for columns - use field names, otherwise use column names?
   def get[B <: DTO](keyValues: Seq[Any], extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources): Option[B] = {
+    val view = viewDef[B]
+    keyValues match {
+      case Nil =>
+        get(keyValues, Nil, extraFilter, extraParams)
+      case Seq(id: Long) =>
+        val keyColName = viewNameTokeyColNameForGetById(view.name)
+        if (keyColName == null)
+          sys.error(s"Key of long type not found for $mf, can not get")
+        get(keyValues, Seq(keyColName), extraFilter, extraParams)
+      case Seq(code: String) =>
+        val keyColName = viewNameTokeyColNameForGetByCode(view.name)
+        if (keyColName == null)
+          sys.error(s"Key of string type not found for $mf, can not get")
+        get(keyValues, Seq(keyColName), extraFilter, extraParams)
+      case values =>
+        val key_fields = viewNameToKeyFields(view.name)
+        if (key_fields.isEmpty)
+          sys.error(s"Key not found for $mf, can not get")
+        val keyColNames = key_fields.map(_.name)
+        get(keyValues, keyColNames, extraFilter, extraParams)
+    }
+  }
+  def get[B <: DTO](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
     val view = viewDef[B]
     val qualifier = baseFieldsQualifier(view)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
-    val key_fields = viewNameToKeyFields(view.name)
-    if (key_fields.isEmpty)
-      sys.error(s"Key not found for $mf, can not get")
-    if (key_fields.length != keyValues.length)
-      sys.error(s"Expecting ${key_fields.length} value(s) as key for $mf but got ${keyValues.length}, can not get")
-    val keysAndValues = key_fields zip keyValues
+    if (keyColNames.length != keyValues.length)
+      sys.error(s"Expecting ${keyColNames.length} value(s) as key for $mf but got ${keyValues.length}, can not get")
+    val keysAndValues = keyColNames zip keyValues
     val keyFilter = keysAndValues.map {
-      case (field, value) => s"${prefix}${field.name} = :${Option(field.alias).getOrElse(field.name)}"
+      case (col, value) => s"${prefix}${col} = :${col}"
     }.mkString(" & ")
-    val params = keysAndValues.map {
-      case (field, value) => Option(field.alias).getOrElse(field.name) -> value
-    }.toMap
+    val params = keysAndValues.toMap
     val extraQ = extraFilter match {
       case null | "" =>    keyFilter
       case x => s"[$x] & [$keyFilter]"
