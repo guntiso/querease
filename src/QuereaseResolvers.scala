@@ -90,7 +90,7 @@ trait QuereaseResolvers { this: Querease =>
                       throw new RuntimeException(
                         s"View $refViewName referenced from ${view.name}.$alias is not found")
                     }
-                  val refFieldDef = refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+                  val refFieldDef = refViewDef.fieldOpt(refFieldName)
                     .getOrElse {
                       throw new RuntimeException(
                         s"Field $refViewName.$refFieldName referenced from ${view.name}.$alias is not found")

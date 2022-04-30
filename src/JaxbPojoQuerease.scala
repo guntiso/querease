@@ -225,8 +225,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
       def isSaveable(f: FieldDef) = !f.isExpression
       def getFieldDef(fieldName: String) =
-        viewDef.fields.find(f =>
-          Option(f.alias).getOrElse(f.name) == fieldName).getOrElse(sys.error(
+        viewDef.fieldOpt(fieldName).getOrElse(sys.error(
           "Field not found for property: " + viewDef.name + "." + fieldName))
       propMap.filter(_._1 != "clazz").map {
         case (key, list: List[_]) =>

@@ -290,7 +290,7 @@ trait QuereaseExpressions { this: Querease =>
           throw new RuntimeException(
             s"View $refViewName referenced from $fullContextName is not found")
         }
-      val refFieldDef = refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+      val refFieldDef = refViewDef.fieldOpt(refFieldName)
         .getOrElse {
           throw new RuntimeException(
             s"Field $refViewName.$refFieldName referenced from $fullContextName is not found")
@@ -459,7 +459,7 @@ trait QuereaseExpressions { this: Querease =>
             val refFields = fieldRefs
               .map(_.substring(1))
               .map { refFieldName =>
-                refViewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == refFieldName)
+                refViewDef.fieldOpt(refFieldName)
                   .getOrElse {
                     throw new RuntimeException(
                       s"Field $refViewName.$refFieldName referenced from $fullContextName is not found")

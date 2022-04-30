@@ -67,7 +67,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
                 .orNull
             @tailrec
             def hasMatchingSuperResolver(viewDef: MojozViewDefBase): Boolean = {
-              val fSuperOpt = viewDef.fields.find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+              val fSuperOpt = viewDef.fieldOpt(fieldName)
               if (fSuperOpt.nonEmpty &&
                   resolvers(viewDef, fSuperOpt.toList, manageOverrides = false)
                     .exists(_.parameterTypes == pSearch))
