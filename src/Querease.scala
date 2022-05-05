@@ -426,12 +426,12 @@ abstract class Querease extends QueryStringBuilder
       case Nil =>
         get(keyValues, Nil, extraFilter, extraParams)
       case Seq(id: Long) =>
-        val keyColName = viewNameTokeyColNameForGetById(view.name)
+        val keyColName = viewNameToKeyColNameForGetById(view.name)
         if (keyColName == null)
           sys.error(s"Key of long type not found for $mf, can not get")
         get(keyValues, Seq(keyColName), extraFilter, extraParams)
       case Seq(code: String) =>
-        val keyColName = viewNameTokeyColNameForGetByCode(view.name)
+        val keyColName = viewNameToKeyColNameForGetByCode(view.name)
         if (keyColName == null)
           sys.error(s"Key of string type not found for $mf, can not get")
         get(keyValues, Seq(keyColName), extraFilter, extraParams)

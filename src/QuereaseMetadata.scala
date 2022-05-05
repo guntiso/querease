@@ -64,9 +64,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
   lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
     viewNameToKeyFields.map { case (name, fields) => (name, fields.map(f => Option(f.alias).getOrElse(f.name))) }
-  lazy val viewNameTokeyColNameForGetById: Map[String, String] =
+  lazy val viewNameToKeyColNameForGetById: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetById(viewDef)) }
-  lazy val viewNameTokeyColNameForGetByCode: Map[String, String] =
+  lazy val viewNameToKeyColNameForGetByCode: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetByCode(viewDef)) }
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
