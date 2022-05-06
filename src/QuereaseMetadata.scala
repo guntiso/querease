@@ -13,7 +13,7 @@ import org.tresql.QueryParser
 import org.tresql.OrtMetadata
 import org.tresql.OrtMetadata._
 
-import scala.collection.immutable.Seq
+import scala.collection.immutable.{Map, Seq, TreeMap}
 import scala.util.matching.Regex
 
 case class ViewNotFoundException(message: String) extends Exception(message)
@@ -59,6 +59,11 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   protected lazy val nameToPersistenceMetadata: Map[String, OrtMetadata.View] =
     nameToViewDef.flatMap { case (name, viewDef) =>
       toPersistenceMetadata(viewDef, nameToViewDef, throwErrors = false).toSeq.map(name -> _)
+    }
+  lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
+    nameToViewDef.map { case (name, viewDef) =>
+      (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
+        viewDef.fields.map(f => (Option(f.alias).getOrElse(f.name), null)))
     }
   lazy val viewNameToKeyFields: Map[String, Seq[FieldDef]] =
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
