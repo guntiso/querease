@@ -63,7 +63,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
       (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
-        viewDef.fields.map(f => (Option(f.alias).getOrElse(f.name), null)))
+        viewDef.fields.map(f => (Option(f.alias).getOrElse(f.name), if (f.isCollection) Nil else null)))
     }
   lazy val viewNameToKeyFields: Map[String, Seq[FieldDef]] =
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
