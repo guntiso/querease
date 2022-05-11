@@ -154,13 +154,8 @@ abstract class Querease extends QueryStringBuilder
     data: Map[String, Any],
   )(implicit resources: Resources): Long = {
     val result = ORT.insert(metadata, data)
-    val (insertedRowCount, id) = result match {
-      case x: InsertResult => (x.count.get, x.id getOrElse null)
-      case a: ArrayResult[_] => //if array result consider last element as insert result
-         a.values.last match {
-          case x: InsertResult => (x.count.get, x.id getOrElse null)
-        }
-    }
+    val (insertedRowCount, id) =
+      (result.count.get, result.id.orNull)
     if (insertedRowCount == 0) {
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
@@ -207,7 +202,7 @@ abstract class Querease extends QueryStringBuilder
     metadata: OrtMetadata.View,
     data: Map[String, Any],
   )(implicit resources: Resources): Unit = {
-    val updatedRowCount = ORT.update(metadata, data)
+    val updatedRowCount = ORT.update(metadata, data).count getOrElse -1
     if (updatedRowCount == 0) {
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
@@ -524,15 +519,15 @@ abstract class Querease extends QueryStringBuilder
       sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
     val key        = key_fields.map(f => f.name)
     val keyPropMap = key_fields.map(f => f.name -> propMap.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
-    val result = ORT.delete(
+    val delCount   = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       key,
       if (params == null) keyPropMap else keyPropMap ++ params,
       mergedFilter,
-    ) match { case r: DeleteResult => r.count.get }
-    if (result == 0)
+    ).count.get
+    if (delCount == 0)
       throw new NotFoundException(s"Record not deleted in table ${view.table}")
-    else result
+    else delCount
   }
 }
 
