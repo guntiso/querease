@@ -221,6 +221,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       if (throwErrors)
         sys.error("Saving recursive views not supported by tresql: " + (view.name :: parentNames).reverse.mkString(" -> "))
       else return None // provide Ref(view_name) instead - when supported by tresql
+    val keyFields = if (parentNames == Nil) viewNameToKeyFields(view.name) else Nil
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     def saveToNames(view: ViewDef) =
       Option(view.saveTo).getOrElse(Seq(view.table)).filter(_ != null)
@@ -293,11 +294,11 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         ))
       }
     val filtersOpt = Option(persistenceFilters(view))
+    lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
     val properties = view.fields
       .map { f =>
         val fieldName = Option(f.alias).getOrElse(f.name)
         def bestLookupRefs = {
-          val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
           // TODO child multi-tables?
           val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
           // TODO searh also reverse refs to avoid runtime exceptions
@@ -319,6 +320,22 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             }
             .getOrElse(Nil)
         }
+        def persistencePropertyValue(valueTresql: String) = {
+          val opt = fieldOptionsSelf(f)
+          val tresqlValue = TresqlValue(
+            tresql    = valueTresql,
+            forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
+            forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
+          )
+          val isKeyValueSupported = // TODO remove - waiting for https://github.com/mrumkovskis/tresql/issues/42
+            !tables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
+          if (keyFields.contains(f) && isKeyValueSupported)
+            KeyValue(
+              whereTresql = s"if_defined_or_else(:_old_key.$fieldName?, :_old_key.$fieldName?, :$fieldName)",
+              valueTresql = tresqlValue,
+            )
+          else tresqlValue
+        }
         val childView =
           if (f.type_.isComplexType) {
             val childViewName = f.type_.name
@@ -338,14 +355,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
                 case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
               } (parser.parseExp(if (resolver startsWith "(" ) resolver else s"(${resolver})")).tresql
             }
-          val opt = fieldOptionsSelf(f)
           Property(
             col   = saveTo,
-            value = TresqlValue(
-              tresql    = valueTresql,
-              forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
-              forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
-            ),
+            value = persistencePropertyValue(valueTresql),
           )
         } else if (isSaveableRefToReadonlyChildField(f)) {
           bestLookupRefs match {
@@ -369,14 +381,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               val resolvablesExpr = resolvablesExpression(view.name, fieldName, contextName, resolvables)
               val errorMessage = resolverErrorMessageExpression(view.name, fieldName, contextName, resolvables)
               val resolverExpr = resolverExpression(resolvablesExpr, refQuery, errorMessage)
-              val opt = fieldOptionsSelf(f)
               Property(
                 col   = refColName,
-                value = TresqlValue(
-                  tresql    = s"($resolverExpr)",
-                  forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
-                  forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
-                ),
+                value = persistencePropertyValue(s"($resolverExpr)"),
               )
             case refs =>
               sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
