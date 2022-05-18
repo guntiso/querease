@@ -11,6 +11,8 @@ extends: account
 fields:
 - bank.code
 - bank.name
+key:
+- bank_id, bank_code
 
 name: account_choice
 extends: account

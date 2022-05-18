@@ -90,7 +90,13 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
 
-  protected def keyFields(view: ViewDef): Seq[FieldDef] =
+  protected def keyFields(view: ViewDef): Seq[FieldDef] = {
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    Option(view.keyFieldNames)
+      .filter(_.nonEmpty)
+      .map(_.map { fieldName =>
+        view.fieldOpt(fieldName).getOrElse(sys.error(s"Custom key field $fieldName not found, view ${view.name}"))
+      }) getOrElse
     Option(view.table)
       .map(tableMetadata.tableDef(_, view.db))
       .flatMap { t =>
@@ -100,6 +106,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
          .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
       } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
         .getOrElse(Nil)
+  }
 
   protected def keyColNameForGetById(view: ViewDef): String =
     Option(view.table)
@@ -446,10 +453,12 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
 
 object QuereaseMetadata {
   trait QuereaseViewDefExtras {
+    // val keyFieldNames:         Seq[String] // TODO Minor binary incompatible. Why this trait, remove it?
     val validations: Seq[String]
   }
 
   private [querease] case class QuereaseViewDef(
+    keyFieldNames: Seq[String] = Nil,
     validations: Seq[String] = Nil
   ) extends QuereaseViewDefExtras
 
@@ -482,6 +491,7 @@ object QuereaseMetadata {
   implicit class AugmentedQuereaseViewDef(viewDef: QuereaseMetadata#ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
+    val keyFieldNames        = quereaseExtras.keyFieldNames
     override val validations = quereaseExtras.validations
     def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): QuereaseMetadata#ViewDef =
       updateExtras(QuereaseViewExtrasKey, updater, defaultExtras)
@@ -506,6 +516,7 @@ object QuereaseMetadata {
   def toQuereaseViewDef(viewDef: MojozViewDef): MojozViewDef = {
     import scala.jdk.CollectionConverters._
     val Initial = "initial"
+    val Key     = "key"
     val Validations = "validations"
     def getExtraOpt(f: MojozFieldDef, key: String) =
       Option(f.extras).flatMap(_ get key).map {
@@ -540,7 +551,9 @@ object QuereaseMetadata {
       val initial = getExtraOpt(f, Initial).orNull
       f.updateExtras(_ => QuereaseFieldDef(initial))
     }
+    val keyFieldNames = getStringSeq(Key, viewDef.extras).flatMap(
+      Option(_).map(_.split(",").filter(_ != "").map(_.trim).toList).getOrElse(Nil))
     val validations = getStringSeq(Validations, viewDef.extras)
-    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(validations))
+    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(keyFieldNames, validations))
   }
 }

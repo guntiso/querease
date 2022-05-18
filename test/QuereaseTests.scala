@@ -267,6 +267,12 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
   }
 
+  "querease" should "support custom key fields" in {
+    qe.viewNameToKeyFields("account_details").size shouldBe 2
+    qe.viewNameToKeyFields("account_details")
+      .map(f => Option(f.alias).getOrElse(f.name)).mkString(", ") shouldBe "bank_id, bank_code"
+  }
+
   "querease" should "select referenced fields correctly" in {
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_2"), Map.empty)._1 should be(
       "person p2 {" +
