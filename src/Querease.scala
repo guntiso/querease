@@ -531,7 +531,7 @@ abstract class Querease extends QueryStringBuilder
     val delCount   = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       key,
-      if (params == null) keyPropMap else keyPropMap ++ params,
+      if (params == null || params.isEmpty) keyPropMap else keyPropMap ++ params,
       mergedFilter,
     ).count.get
     if (delCount == 0)
