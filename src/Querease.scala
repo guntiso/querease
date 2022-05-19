@@ -70,18 +70,29 @@ abstract class Querease extends QueryStringBuilder
     forceInsert: Boolean = false,
     filter: String = null,
     params: Map[String, Any] = null)(implicit resources: Resources): Long = {
-    validate(pojo, Option(params).getOrElse(Map()))
     val pojoPropMap = toMap(pojo)
-    val propMap = pojoPropMap ++ (if (extraPropsToSave != null) extraPropsToSave
-      else Map()) ++ Option(params).getOrElse(Map())
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    save(view, pojoPropMap, extraPropsToSave, forceInsert, filter, params)
+  }
+
+  def save(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    extraPropsToSave: Map[String, Any],
+    forceInsert: Boolean,
+    filter: String,
+    params: Map[String, Any],
+  )(implicit resources: Resources): Long = {
+    validate(view, data, Option(params).getOrElse(Map()))
+    val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
+      else Map()) ++ Option(params).getOrElse(Map())
     val idName = viewNameToKeyFieldNames(view.name).headOption getOrElse "id"
     val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
       (Some(id), forceInsert)) getOrElse (None, true)
     if (isNew) {
-      insert(tables, pojo, filter, propMap, extraPropsToSave)
+      insert(view, propMap, filter, extraPropsToSave)
     } else {
-      update(tables, pojo, filter, propMap, extraPropsToSave)
+      update(view, propMap, filter, extraPropsToSave)
       Try(id.get.toString.toLong) getOrElse 0L
     }
   }
@@ -118,17 +129,14 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
-  @deprecated("Parameter 'tables' is ignored, only keys are used from 'extraPropsToSave' - this method will be removed", "6.1")
-  protected def insert[B <: DTO](
-      tables: Seq[String],
-      pojo: B,
-      filter: String = null,
-      propMap: Map[String, Any],
-      extraPropsToSave: Map[String, Any],
-    )(implicit resources: Resources): Long = {
-    val v = viewDef(ManifestFactory.classType(pojo.getClass))
+  protected def insert(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+    extraPropsToSave: Map[String, Any],
+  )(implicit resources: Resources): Long = {
     val metadata = nameToPersistenceMetadata.getOrElse(
-      v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
         case md if filter == null => md
         case md => md.copy(
           filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
@@ -136,7 +144,7 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    insert(v, addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
+    insert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
   }
 
   def insert(
@@ -167,17 +175,14 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
-  @deprecated("Parameter 'tables' is ignored, only keys are used from 'extraPropsToSave' - this method will be removed", "6.1")
   protected def update[B <: DTO](
-      tables: Seq[String],
-      pojo: B,
-      filter: String,
-      propMap: Map[String, Any],
-      extraPropsToSave: Map[String, Any],
-    )(implicit resources: Resources): Unit = {
-    val v = viewDef(ManifestFactory.classType(pojo.getClass))
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+    extraPropsToSave: Map[String, Any],
+  )(implicit resources: Resources): Unit = {
     val metadata = nameToPersistenceMetadata.getOrElse(
-      v.name, toPersistenceMetadata(v, nameToViewDef, throwErrors = true).get) match {
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
         case md if filter == null => md
         case md => md.copy(
           filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
@@ -185,7 +190,7 @@ abstract class Querease extends QueryStringBuilder
           },
         )
       }
-    update(v, addExtraPropsToMetadata(metadata, extraPropsToSave), propMap)
+    update(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
   }
 
   def update[B <: DTO](
