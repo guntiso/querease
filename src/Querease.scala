@@ -508,17 +508,26 @@ abstract class Querease extends QueryStringBuilder
   def delete[B <: DTO](instance: B, filter: String = null, params: Map[String, Any] = null)(
     implicit resources: Resources): Int = {
     val view = viewDef(ManifestFactory.classType(instance.getClass))
+    val propMap = toMap(instance)
+    delete(view, propMap, filter, params)
+  }
+
+  def delete(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+    params: Map[String, Any],
+  )(implicit resources: Resources): Int = {
     val mergedFilter = nameToPersistenceMetadata.getOrElse(
       view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
         case md if filter == null => md.filters.flatMap(_.delete).orNull
         case md => mergeFilters(md.filters.flatMap(_.delete), filter).orNull
       }
-    val propMap = toMap(instance)
     val key_fields = viewNameToKeyFields(view.name)
     if (key_fields.isEmpty)
-      sys.error(s"Key not found for ${instance.getClass.getName}, can not delete")
+      sys.error(s"Key not found for view ${view.name}, can not delete")
     val key        = key_fields.map(f => f.name)
-    val keyPropMap = key_fields.map(f => f.name -> propMap.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
+    val keyPropMap = key_fields.map(f => f.name -> data.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
     val delCount   = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       key,
