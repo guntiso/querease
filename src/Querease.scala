@@ -86,9 +86,10 @@ abstract class Querease extends QueryStringBuilder
     validate(view, data, Option(params).getOrElse(Map()))
     val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
-    val idName = viewNameToKeyFieldNames(view.name).headOption getOrElse "id"
-    val (id, isNew) = propMap.get(idName).filter(_ != null).map(id =>
-      (Some(id), forceInsert)) getOrElse (None, true)
+    val keyFields = viewNameToKeyFields(view.name)
+    val idName    = keyFields.find(_.type_.name == "long").map(_.fieldName) getOrElse "id"
+    val id        = propMap.get(idName).filter(_ != null)
+    val isNew     = forceInsert || !keyFields.exists( f => propMap.getOrElse(f.fieldName, null) != null)
     if (isNew) {
       insert(view, propMap, filter, extraPropsToSave)
     } else {
