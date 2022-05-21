@@ -221,13 +221,8 @@ trait QuereaseExpressions { this: Querease =>
     }.getOrElse(bindVars.map(_ -> None))
 
   def findField(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Option[FieldDefBase[Type]] = {
-    def findField_(viewDef: ViewDefBase[FieldDefBase[Type]], name: String) =
-      Option(viewDef)
-        .map(_.fields)
-        .filter(_ != null)
-        .flatMap(_.find(f => Option(f.alias).getOrElse(f.name) == name))
     if (SimpleIdentR.pattern.matcher(path).matches)
-      findField_(viewDef, path)
+      Option(viewDef).flatMap(_.fieldOpt(path))
     else {
       val nameParts =
         parser.extractVariables(if (path == "?") path else ":" + path)
@@ -241,7 +236,7 @@ trait QuereaseExpressions { this: Querease =>
                 .flatMap(f => viewDefOption(f.type_.name))
             }
         }.getOrElse(null)
-      findField_(descViewDef, nameParts.last)
+      Option(descViewDef).flatMap(_.fieldOpt(nameParts.last))
     }
   }
 
