@@ -30,14 +30,14 @@ trait BindVarsOps { this: Querease =>
       val id_fields = idFields(addParentField)
       if (!cursors.contains(cName)) {
         cursors += (cName -> Cursor(
-          id_fields ++ primitive_fields.map(fn),
+          id_fields ++ primitive_fields.map(_.fieldName),
           AB(id_fields.map(_ => "null::long") ++ primitive_fields.map(f => emptyVal(f.type_.name))),
           true))
       }
       complex_fields.foreach { f =>
         val tn = f.type_.name
         if (!visited(tn))
-          addEmptyCursor(cName + "_" + fn(f), viewDef(tn), true, visited + tn)
+          addEmptyCursor(cName + "_" + f.fieldName, viewDef(tn), true, visited + tn)
       }
     }
 
@@ -47,7 +47,7 @@ trait BindVarsOps { this: Querease =>
       def addVals(rows: AB[Seq[String]]) = {
         val bind_var_prefix = path.reverse.mkString(":", ".", ".")
         rows += ((id :: parent_id.toList) ++ cols.map { col =>
-          val n = fn(col)
+          val n = col.fieldName
           (if (row.contains(n)) bind_var_prefix + n else "null") + typeCast(col.type_.name)
         })
         rows
@@ -59,7 +59,7 @@ trait BindVarsOps { this: Querease =>
       }.getOrElse {
         //create new cursor
         cursors += (cName -> Cursor(
-          idFields(parent_id.nonEmpty) ++ cols.map(fn), addVals(AB()), false))
+          idFields(parent_id.nonEmpty) ++ cols.map(_.fieldName), addVals(AB()), false))
         () // for scala 2.12 compilation
       }
     }
@@ -70,7 +70,7 @@ trait BindVarsOps { this: Querease =>
         addRow(cName, primitive_fields, path, values)
       }
       complex_fields.foreach { f =>
-        val fn = this.fn(f)
+        val fn = f.fieldName
         val ch_view = viewDef(f.type_.name)
         val ch_cursor = (if (cName == null || cName.isEmpty) "" else cName + "_") + fn
         def hasParentId = path.exists(p => Try(p.toInt).toOption.nonEmpty)
@@ -120,7 +120,7 @@ trait BindVarsOps { this: Querease =>
   def emptyData(view: ViewDef): Map[String, Any] = {
     def calc(vd: ViewDef, visited: Set[String]): Map[String, Any] = {
       vd.fields.map { f =>
-        fn(f) -> {
+        f.fieldName -> {
           if (f.type_.isComplexType) {
             val n = f.type_.name
             if (visited(n)) null
@@ -134,6 +134,4 @@ trait BindVarsOps { this: Querease =>
     }
     calc(view, Set())
   }
-
-  private def fn(f: FieldDef) = Option(f.alias).getOrElse(f.name)
 }

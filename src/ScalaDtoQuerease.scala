@@ -144,7 +144,7 @@ trait Dto { self =>
 
   def toString(implicit qe: QE): String = {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
-    val fieldNames = view.fields.map { f => Option(f.alias) getOrElse f.name }
+    val fieldNames = view.fields.map(_.fieldName)
     toString(fieldNames)
   }
 
@@ -241,7 +241,7 @@ trait Dto { self =>
     def saveableEntries(f: QuereaseMetadata#FieldDef, v: Any): Seq[(String, Any)] = {
       // TODO various mixes of options and params etc?
       val name = f.name
-      def alias = Option(f.alias).getOrElse(f.name)
+      def alias = f.fieldName
       if (f.saveTo == null && f.resolver == null)
         Seq(name + Option(fieldOptionsRef(f)).getOrElse("") -> v)
       else {
@@ -260,8 +260,7 @@ trait Dto { self =>
     }
     propName => {
       val fieldName = propToDbName(propName)
-      val propFieldDefOpt = view.fields
-        .find(f => Option(f.alias).getOrElse(f.name) == fieldName)
+      val propFieldDefOpt = view.fieldOpt(fieldName)
       val childTableFieldDefOpt = propFieldDefOpt
         .filter(isChildTableField)
       def toSaveable(x: Any) = x match {

@@ -257,7 +257,7 @@ trait QuereaseExpressions { this: Querease =>
   def transformExpression(
       expression: String, viewDef: ViewDef, fieldDef: FieldDef, mdContext: MdContext,
       baseTableAlias: String = null, pathToAlias: Map[List[String], String] = null): String = {
-    val fieldName = Option(fieldDef).map(f => Option(f.alias).getOrElse(f.name)).orNull
+    val fieldName = Option(fieldDef).map(_.fieldName).orNull
     val ctx = Context(viewDef, fieldDef, fieldName, baseTableAlias, pathToAlias, mdContext,
       RootCtx, addParensToSubquery = mdContext == Field)
     expressionTransformer(ctx)(
@@ -508,9 +508,8 @@ trait QuereaseExpressions { this: Querease =>
       case iexpr @ Ident(List(ident)) if ident.startsWith("^") =>
         val name = ident.substring(1)
         lazy val pathToAlias = if (ctx.pathToAlias != null) ctx.pathToAlias else this.fromAndPathToAlias(ctx.viewDef)._2
-        Seq(ctx.viewDef).filter(_ != null)
-          .flatMap(_.fields)
-          .find(f => Option(f.alias).getOrElse(f.name) == name)
+        Option(ctx.viewDef)
+          .flatMap(_.fieldOpt(name))
           .map(f => parseExp(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias)).getOrElse(
              Option(f.tableAlias).orElse(Option(ctx.baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)

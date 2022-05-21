@@ -12,7 +12,7 @@ trait QuereaseResolvers { this: Querease =>
         def allResolversRaw(view: ViewDef, f: FieldDef): Seq[String] = {
 
           val name = f.name
-          val alias = Option(f.alias).getOrElse(f.name)
+          val alias = f.fieldName
           val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
           val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
 

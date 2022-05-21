@@ -35,7 +35,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   }
   object FieldOrdering {
     def apply(view: ViewDef) =
-      new FieldOrdering(view.fields.map(f => Option(f.alias) getOrElse f.name).zipWithIndex.toMap)
+      new FieldOrdering(view.fields.map(_.fieldName).zipWithIndex.toMap)
   }
 
   protected lazy val yamlMetadata = YamlMd.fromResources()
@@ -63,12 +63,12 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
       (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
-        viewDef.fields.map(f => (Option(f.alias).getOrElse(f.name), if (f.isCollection) Nil else null)))
+        viewDef.fields.map(f => (f.fieldName, if (f.isCollection) Nil else null)))
     }
   lazy val viewNameToKeyFields: Map[String, Seq[FieldDef]] =
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
   lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
-    viewNameToKeyFields.map { case (name, fields) => (name, fields.map(f => Option(f.alias).getOrElse(f.name))) }
+    viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.fieldName)) }
   lazy val viewNameToKeyColNameForGetById: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetById(viewDef)) }
   lazy val viewNameToKeyColNameForGetByCode: Map[String, String] =
@@ -304,7 +304,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
     val properties = view.fields
       .map { f =>
-        val fieldName = Option(f.alias).getOrElse(f.name)
+        val fieldName = f.fieldName
         def bestLookupRefs = {
           // TODO child multi-tables?
           val childTableName = nameToViewDef.get(f.type_.name).flatMap(saveToNames(_).headOption).orNull
@@ -378,7 +378,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               val refFieldDef = new FieldDef(ref.refCols.head).copy(table = ref.refTable)
               val childKey = viewNameToKeyFields(childView.name)
               def bindVarName(cf: FieldDef) =
-                s"${Option(f.alias).getOrElse(f.name)}.${Option(cf.alias).getOrElse(cf.name)}"
+                s"${f.fieldName}.${cf.fieldName}"
               val childKeyFilter = childKey.map(cf => s"${cf.name} = :${bindVarName(cf)}").mkString(" & ")
               // TODO extra filter (auth filter) for child view "get"?
               val filter = childKeyFilter

@@ -485,7 +485,7 @@ abstract class Querease extends QueryStringBuilder
               s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
             else
               "null"
-          expr + " " + Option(f.alias).getOrElse(f.name)
+          expr + " " + f.fieldName
         }.mkString("{", ", ", "}")
       val result = list(query, params)
       if (result.isEmpty)
@@ -532,7 +532,7 @@ abstract class Querease extends QueryStringBuilder
     if (key_fields.isEmpty)
       sys.error(s"Key not found for view ${view.name}, can not delete")
     val key        = key_fields.map(f => f.name)
-    val keyPropMap = key_fields.map(f => f.name -> data.getOrElse(Option(f.alias).getOrElse(f.name), null)).toMap
+    val keyPropMap = key_fields.map(f => f.name -> data.getOrElse(f.fieldName, null)).toMap
     val delCount   = ORT.delete(
       ortDbPrefix(view.db) + view.table + ortAliasSuffix(view.tableAlias),
       key,
@@ -641,7 +641,7 @@ trait QueryStringBuilder { this: Querease =>
   val paramsFilter =
     Option(params).map(_.Filter).filter(_ != null).map(_.toList) getOrElse Nil
   import org.mojoz.metadata.Naming.{ dbNameToXsdName => xsdName }
-  val fieldNameToDefMap = view.fields.map(f => xsdName(Option(f.alias) getOrElse f.name) -> f).toMap
+  val fieldNameToDefMap = view.fields.map(f => xsdName(f.fieldName) -> f).toMap
   // FIXME extra order by, injection-safe!
   val safeExpr = List("decode(cnt, null, 0, 1)",
     "decode(sign(next_reregistration_date - sysdate), 1, 0, 0, 0, 1)")
@@ -746,7 +746,7 @@ trait QueryStringBuilder { this: Querease =>
       /*
       lazy val sortDetailsDbName = Naming.xsdNameToDbName(sortDetails)
       val isSortFieldIncluded = sortDetails == null ||
-        childViewDef.fields.map(f => Option(f.alias) getOrElse f.name).toSet
+        childViewDef.fields.map(_.fieldName).toSet
         .contains(sortDetailsDbName)
       val extendedChildViewDef = // XXX add missing TODO GET RID OF THIS BS
         if (isSortFieldIncluded) childViewDef

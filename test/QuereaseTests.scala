@@ -270,7 +270,7 @@ class QuereaseTests extends FlatSpec with Matchers {
   "querease" should "support custom key fields" in {
     qe.viewNameToKeyFields("account_details").size shouldBe 2
     qe.viewNameToKeyFields("account_details")
-      .map(f => Option(f.alias).getOrElse(f.name)).mkString(", ") shouldBe "bank_id, bank_code"
+      .map(_.fieldName).mkString(", ") shouldBe "bank_id, bank_code"
   }
 
   "querease" should "select referenced fields correctly" in {
@@ -537,7 +537,7 @@ object QuereaseTests {
      override protected lazy val viewNameToFieldOrdering =
        nameToViewDef.map(kv => (kv._1, new FieldOrdering(
          kv._2.fields
-          .map(f => Option(f.alias) getOrElse f.name)
+          .map(_.fieldName)
           .zipWithIndex.toMap)
        ))
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
