@@ -27,7 +27,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   private val q3 = "\"\"\"" // https://github.com/scala/bug/issues/6476
   override def scalaClassTraits(viewDef: MojozViewDefBase): Seq[String] =
     if (qe.viewDefOption(viewDef.name).getOrElse(viewDef)
-          .fields.exists(f => Option(f.alias).getOrElse(f.name) == "id" && f.type_.name == "long"))
+          .fieldOpt("id").exists(_.type_.name == "long"))
       List("DtoWithId")
     else List("Dto")
   def useTresqlInterpolator = true
