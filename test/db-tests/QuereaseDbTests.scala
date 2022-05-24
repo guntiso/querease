@@ -796,6 +796,31 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_saved.main_account.number   shouldBe a2.number
     org_saved.main_account.balance  shouldBe a2.balance
 
+    // upsert test
+    org_rfo.name   = "org_ups"
+    val org_count_before_ups = Query("organization {count(*)}").unique[Int]
+    val org_ups_id = qe.upsert(qe.viewDef("organization_ref_only_update_test"), org_rfo.toMap)._2
+    org_ups_id should be > 0L
+    val org_count_after_ups  = Query("organization {count(*)}").unique[Int]
+    org_count_after_ups shouldBe org_count_before_ups + 1
+    org_saved = qe.get[OrganizationKeyTest](org_ups_id).get
+    org_saved.main_account.number   shouldBe a2.number
+    org_saved.main_account.balance  shouldBe a2.balance
+    org_saved = qe.get[OrganizationKeyTest]("org_ups").get
+    org_saved.main_account.number   shouldBe a2.number
+    org_saved.main_account.balance  shouldBe a2.balance
+    qe.upsert(qe.viewDef("organization_ref_only_update_test"), org_rfo.toMap)
+    val org_count_after_ups2 = Query("organization {count(*)}").unique[Int]
+    org_count_after_ups2 shouldBe org_count_after_ups
+    org_saved = qe.get[OrganizationKeyTest]("org_ups").get
+    org_saved.main_account.number   shouldBe a2.number
+    org_saved.main_account.balance  shouldBe a2.balance
+    org_rfo.main_account = null
+    qe.upsert(qe.viewDef("organization_ref_only_update_test"), org_rfo.toMap)
+    org_saved = qe.get[OrganizationKeyTest]("org_ups").get
+    org_saved.main_account shouldBe null
+
+    org_rfo.name   = "org"
     org_rfo.main_account = null
     qe.save(org_rfo)
     org_saved = qe.get[OrganizationKeyTest]("org").get

@@ -5,7 +5,8 @@ import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
-import org.tresql.{ArrayResult, DeleteResult, InsertResult, ORT, OrtMetadata, Query, Resources, SingleValueResult}
+import org.tresql.{ArrayResult, DeleteResult, InsertResult, UpdateResult}
+import org.tresql.{ORT, OrtMetadata, Query, Resources, SingleValueResult}
 import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
@@ -14,6 +15,12 @@ import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmd
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
 case class ValidationResult(path: List[Any], messages: List[String])
+
+object SaveMethod extends Enumeration {
+  type SaveMethod = Value
+  val Save, Insert, Update, Upsert = Value
+}
+import SaveMethod._
 
 abstract class Querease extends QueryStringBuilder
   with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo with QuereaseResolvers =>
@@ -72,14 +79,15 @@ abstract class Querease extends QueryStringBuilder
     params: Map[String, Any] = null)(implicit resources: Resources): Long = {
     val pojoPropMap = toMap(pojo)
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
-    save(view, pojoPropMap, extraPropsToSave, forceInsert, filter, params)
+    val method = if (forceInsert) Insert else Save
+    save(view, pojoPropMap, extraPropsToSave, method, filter, params)
   }
 
   def save(
     view:   ViewDef,
     data:   Map[String, Any],
     extraPropsToSave: Map[String, Any],
-    forceInsert: Boolean,
+    method: SaveMethod,
     filter: String,
     params: Map[String, Any],
   )(implicit resources: Resources): Long = {
@@ -89,12 +97,23 @@ abstract class Querease extends QueryStringBuilder
     val keyFields = viewNameToKeyFields(view.name)
     val idName    = keyFields.find(_.type_.name == "long").map(_.fieldName) getOrElse "id"
     val id        = propMap.get(idName).filter(_ != null)
-    val isNew     = forceInsert || !keyFields.exists( f => propMap.getOrElse(f.fieldName, null) != null)
-    if (isNew) {
-      insert(view, propMap, filter, extraPropsToSave)
-    } else {
-      update(view, propMap, filter, extraPropsToSave)
-      Try(id.get.toString.toLong) getOrElse 0L
+    val resolvedMethod =
+      if  (method == Save)
+        if (keyFields.forall(f => propMap.get(f.fieldName).orNull == null)) Insert else Update
+      else method
+    resolvedMethod match {
+      case Insert =>
+        insert(view, propMap, filter, extraPropsToSave)
+      case Update =>
+        update(view, propMap, filter, extraPropsToSave)
+        Try(id.get.toString.toLong) getOrElse 0L
+      case Upsert =>
+        upsert(view, propMap, filter, extraPropsToSave) match {
+          case (Insert, insertedId) =>
+            insertedId
+          case (Update, _)          =>
+            Try(id.get.toString.toLong) getOrElse 0L
+        }
     }
   }
 
@@ -213,6 +232,56 @@ abstract class Querease extends QueryStringBuilder
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
         s"Record not updated in table(s): ${tables.mkString(",")}")
+    }
+  }
+
+  protected def upsert(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+    extraPropsToSave: Map[String, Any],
+  )(implicit resources: Resources): (SaveMethod, Long) = {
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+        case md if filter == null => md
+        case md => md.copy(
+          filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
+            f.copy(
+              insert = mergeFilters(f.insert, filter),
+              update = mergeFilters(f.update, filter),
+            )
+          },
+        )
+      }
+    upsert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
+  }
+
+  def upsert(
+    view: ViewDef,
+    data: Map[String, Any],
+  )(implicit resources: Resources): (SaveMethod, Long) = {
+    val metadata = nameToPersistenceMetadata.getOrElse(
+      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    upsert(view, metadata, data)
+  }
+
+  protected def upsert(
+    view: ViewDef,
+    metadata: OrtMetadata.View,
+    data: Map[String, Any],
+  )(implicit resources: Resources): (SaveMethod, Long) = {
+    val result = ORT.save(metadata, data)
+    val (method, affectedRowCount, id) = result match {
+      case ir: InsertResult => (Insert, result.count.get, result.id.orNull)
+      case ur: UpdateResult => (Update, result.count.get, 0L)
+    }
+    if (affectedRowCount == 0) {
+      val tables = metadata.saveTo.map(_.table)
+      throw new NotFoundException(
+        s"Record not upserted in table(s): ${tables.mkString(",")}")
+    } else id match {
+      case id: Long => (method, id)
+      case xx       => (method, 0L)
     }
   }
 
