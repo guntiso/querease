@@ -149,6 +149,24 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
+  // TODO get rid of toSaveableMap(map, view)
+  protected def toSaveableMap(map: Map[String, Any], view: ViewDef): Map[String, Any] = {
+    (if (view.fields.forall(map contains _.fieldName)) map else viewNameToMapZero(view.name) ++ map) ++
+      view.fields
+        .filter(_.type_.isComplexType)
+        .map(f => f.fieldName -> (map.getOrElse(f.fieldName, null) match {
+          case null if f.isCollection => Nil
+          case null => null
+          case Nil  => Nil
+          case seq: Seq[_] => seq map {
+            case m: Map[String, Any]@unchecked => toSaveableMap(m, viewDef(f.type_.name))
+            case x => x
+          }
+          case m: Map[String, Any]@unchecked => toSaveableMap(m, viewDef(f.type_.name))
+          case x => x
+        }))
+  }
+
   protected def insert(
     view:   ViewDef,
     data:   Map[String, Any],
@@ -181,7 +199,7 @@ abstract class Querease extends QueryStringBuilder
     metadata: OrtMetadata.View,
     data: Map[String, Any],
   )(implicit resources: Resources): Long = {
-    val result = ORT.insert(metadata, data)
+    val result = ORT.insert(metadata, toSaveableMap(data, view))
     val (insertedRowCount, id) =
       (result.count.get, result.id.orNull)
     if (insertedRowCount == 0) {
@@ -227,7 +245,7 @@ abstract class Querease extends QueryStringBuilder
     metadata: OrtMetadata.View,
     data: Map[String, Any],
   )(implicit resources: Resources): Unit = {
-    val updatedRowCount = ORT.update(metadata, data).count getOrElse -1
+    val updatedRowCount = ORT.update(metadata, toSaveableMap(data, view)).count getOrElse -1
     if (updatedRowCount == 0) {
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
@@ -270,7 +288,7 @@ abstract class Querease extends QueryStringBuilder
     metadata: OrtMetadata.View,
     data: Map[String, Any],
   )(implicit resources: Resources): (SaveMethod, Long) = {
-    val result = ORT.save(metadata, data)
+    val result = ORT.save(metadata, toSaveableMap(data, view))
     val (method, affectedRowCount, id) = result match {
       case ir: InsertResult => (Insert, result.count.get, result.id.orNull)
       case ur: UpdateResult => (Update, result.count.get, 0L)
