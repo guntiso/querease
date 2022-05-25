@@ -179,7 +179,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       true,
       true,
       List(
-        Property("name",KeyValue("if_defined_or_else(:_old_key.name?, :_old_key.name?, :name)",TresqlValue(":name",true,true))),
+        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true))),
         Property("main_account_id",LookupViewValue("main_account",View(
           List(SaveTo("organization_account",Set(),List("number"))),
           Some(Filters(None,None,None)),
@@ -247,7 +247,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       true,
       true,
       List(
-        Property("name",KeyValue("if_defined_or_else(:_old_key.name?, :_old_key.name?, :name)",TresqlValue(":name",true,true))),
+        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true))),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account.number,""" +
             """ array(organization_account[number = :main_account.number] {organization_account.id}),""" +

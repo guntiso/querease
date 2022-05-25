@@ -217,6 +217,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       delete = None,
     )
   }
+  def oldKeyParamName = "old key"
+  private lazy val oldKeyRef = org.tresql.parsing.Variable(oldKeyParamName, Nil, opt = false).tresql
   protected def toPersistenceMetadata(
     view: ViewDef,
     nameToViewDef:  Map[String, ViewDef],
@@ -338,7 +340,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             !tables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
-              whereTresql = s"if_defined_or_else(:_old_key.$fieldName?, :_old_key.$fieldName?, :$fieldName)",
+              whereTresql = s"if_defined_or_else($oldKeyRef.$fieldName?, $oldKeyRef.$fieldName?, :$fieldName)",
               valueTresql = tresqlValue,
             )
           else tresqlValue
