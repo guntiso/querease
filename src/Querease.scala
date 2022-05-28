@@ -5,7 +5,7 @@ import scala.language.postfixOps
 import scala.util.Try
 import scala.util.control.NonFatal
 import scala.reflect.ManifestFactory
-import org.tresql.{ArrayResult, DeleteResult, InsertResult, UpdateResult}
+import org.tresql.{Result, RowLike, ArrayResult, DeleteResult, InsertResult, UpdateResult}
 import org.tresql.{ORT, OrtMetadata, Query, Resources, SingleValueResult}
 import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
 import org.mojoz.metadata.in.Join
@@ -479,6 +479,13 @@ abstract class Querease extends QueryStringBuilder
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilter, extraParams)
     result(q, p)
+  }
+  def rowsResult(viewDef: ViewDef, params: Map[String, Any],
+      offset: Int, limit: Int, orderBy: String, extraFilter: String)(
+        implicit resources: Resources): Result[RowLike] = {
+    val (q, p) = queryStringAndParams(viewDef, params,
+        offset, limit, orderBy, extraFilter, Map.empty)
+    Query(q, p)
   }
 
   def get[B <: DTO](id: Long)(
