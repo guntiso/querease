@@ -540,11 +540,27 @@ abstract class Querease extends QueryStringBuilder
   }
   def get[B <: DTO](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
-    val view = viewDef[B]
-    val qualifier = baseFieldsQualifier(view)
+    val result = get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams)
+    if (result.hasNext) {
+      val value = convertRow[B](result.next())
+      result.hasNext // XXX maybe fail with too many rows
+      Option(value)
+    } else None
+  }
+
+  def get(
+    viewDef:     ViewDef,
+    keyValues:   Seq[Any],
+    keyColNames: Seq[String],
+    extraFilter: String,
+    extraParams: Map[String, Any],
+  )(implicit resources: Resources): Iterator[RowLike] with AutoCloseable = {
+    import viewDef.name
+    val qualifier = baseFieldsQualifier(viewDef)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
     if (keyColNames.length != keyValues.length)
-      sys.error(s"Expecting ${keyColNames.length} value(s) as key for $mf but got ${keyValues.length}, can not get")
+      sys.error(
+        s"Expecting ${keyColNames.length} value(s) as key for $name but got ${keyValues.length}, can not get")
     val keysAndValues = keyColNames zip keyValues
     val keyFilter = keysAndValues.map {
       case (col, value) => s"${prefix}${col} = :${col}"
@@ -558,12 +574,33 @@ abstract class Querease extends QueryStringBuilder
       case null => Map[String, Any]()
       case m => m
     }
-    val (q, p) = queryStringAndParams(viewDef[B],
+    val (q, p) = queryStringAndParams(viewDef,
       params, 0, 2, "", extraQ, extraP)
-    val result = list(q, p)
-    if (result.lengthCompare(1) > 0)
-      sys.error("Too many rows returned by query for get method for " + mf)
-    result.headOption
+    new Iterator[RowLike] with AutoCloseable {
+      private val result  = Query(q, p)
+      private var isBeforeFirst = true
+      private def failWithTooManyRows = {
+        result.close()
+        sys.error("Too many rows returned by query for get method for " + name)
+      }
+      override def hasNext = {
+        if (result.hasNext)
+          if (!isBeforeFirst)
+            failWithTooManyRows
+          else true
+        else false
+      }
+      override def next()  = {
+        val row = result.next()
+        if (!isBeforeFirst)
+          failWithTooManyRows
+        isBeforeFirst = false
+        row
+      }
+      override def close = {
+        result.close()
+      }
+    }
   }
 
   def create[B <: DTO](params: Map[String, Any] = Map.empty)(
