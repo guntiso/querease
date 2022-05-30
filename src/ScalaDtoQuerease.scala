@@ -113,7 +113,9 @@ trait Dto { self =>
       setExtras(dbName, r)
     }
   protected def setExtras(dbName: String, r: RowLike)(implicit qe: QE): AnyRef = {
-    throw new RuntimeException(s"Setter for '$dbName' not found")
+    // Exception disabled because DynamicResult leaks synthetic helper columns - ignoring unknown columns
+    // throw new RuntimeException(s"Setter for '$dbName' not found")
+    null: AnyRef
   }
   protected def dbToPropName(name: String) = name // .toLowerCase
   protected def propToDbName(name: String) = name

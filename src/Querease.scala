@@ -540,12 +540,7 @@ abstract class Querease extends QueryStringBuilder
   }
   def get[B <: DTO](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
-    val result = get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams)
-    if (result.hasNext) {
-      val value = convertRow[B](result.next())
-      result.hasNext // XXX maybe fail with too many rows
-      Option(value)
-    } else None
+    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams).map(convertRow[B])
   }
 
   def get(
@@ -554,7 +549,7 @@ abstract class Querease extends QueryStringBuilder
     keyColNames: Seq[String],
     extraFilter: String,
     extraParams: Map[String, Any],
-  )(implicit resources: Resources): Iterator[RowLike] with AutoCloseable = {
+  )(implicit resources: Resources): Option[RowLike] = {
     import viewDef.name
     val qualifier = baseFieldsQualifier(viewDef)
     val prefix = Option(qualifier).map(_ + ".") getOrElse ""
@@ -576,30 +571,10 @@ abstract class Querease extends QueryStringBuilder
     }
     val (q, p) = queryStringAndParams(viewDef,
       params, 0, 2, "", extraQ, extraP)
-    new Iterator[RowLike] with AutoCloseable {
-      private val result  = Query(q, p)
-      private var isBeforeFirst = true
-      private def failWithTooManyRows = {
-        result.close()
-        sys.error("Too many rows returned by query for get method for " + name)
-      }
-      override def hasNext = {
-        if (result.hasNext)
-          if (!isBeforeFirst)
-            failWithTooManyRows
-          else true
-        else false
-      }
-      override def next()  = {
-        val row = result.next()
-        if (!isBeforeFirst)
-          failWithTooManyRows
-        isBeforeFirst = false
-        row
-      }
-      override def close = {
-        result.close()
-      }
+    try Query(q, p).uniqueOption catch {
+      case util.control.NonFatal(ex) =>
+        throw new RuntimeException(
+          s"Failed to get unique optional row for view $name: ${ex.getMessage}", ex)
     }
   }
 
