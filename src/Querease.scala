@@ -572,6 +572,8 @@ abstract class Querease extends QueryStringBuilder
     val (q, p) = queryStringAndParams(viewDef,
       params, 0, 2, "", extraQ, extraP)
     try Query(q, p).uniqueOption catch {
+      case ex: org.tresql.MissingBindVariableException  => throw ex
+      case ex: org.tresql.TresqlException               => throw ex
       case util.control.NonFatal(ex) =>
         throw new RuntimeException(
           s"Failed to get unique optional row for view $name: ${ex.getMessage}", ex)
