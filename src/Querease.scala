@@ -540,7 +540,11 @@ abstract class Querease extends QueryStringBuilder
   }
   def get[B <: DTO](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
       implicit mf: Manifest[B], resources: Resources): Option[B] = {
-    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams).map(convertRow[B])
+    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams).map { row =>
+      val converted = convertRow[B](row)
+      row.close()
+      converted
+    }
   }
 
   def get(
