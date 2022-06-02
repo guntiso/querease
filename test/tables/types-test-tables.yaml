@@ -9,7 +9,7 @@ columns:
 - int               int
 - bigint            integer
 - double            double
-- decimal           decimal
+- decimal           decimal  20 2
 - boolean           boolean
 - bytes             bytes
 - child.id          types_test_child.id
