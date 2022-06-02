@@ -337,10 +337,10 @@ object optional_params_resolver_test_1 {
 class organization_account_key_test extends Dto {
   var organization_id: java.lang.Long = null
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_account_key_test_2 extends Dto {
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_key_test extends Dto {
   var name: String = null
@@ -349,11 +349,11 @@ class organization_key_test extends Dto {
 }
 class organization_key_test_accounts extends Dto {
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_key_test_main_account extends Dto {
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_readonly_children_test extends organization_key_test with Dto {
   var name: String = null
@@ -366,7 +366,7 @@ class organization_ref_only_update_legacy_test extends Dto {
 }
 class organization_ref_only_update_legacy_test_main_account extends Dto {
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_ref_only_update_test extends Dto {
   var name: String = null
@@ -374,7 +374,7 @@ class organization_ref_only_update_test extends Dto {
 }
 class organization_ref_only_update_test_main_account extends Dto {
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class organization_with_accounts extends DtoWithId {
   var id: java.lang.Long = null
@@ -395,7 +395,7 @@ object organization_with_accounts {
 class organization_with_accounts_accounts extends DtoWithId {
   var id: java.lang.Long = null
   var number: String = null
-  var balance: BigDecimal = null
+  var balance: scala.math.BigDecimal = null
 }
 class person extends DtoWithId {
   var id: java.lang.Long = null
@@ -1309,11 +1309,12 @@ class types_test extends DtoWithId {
   var long: java.lang.Long = null
   var string: String = null
   var date: java.sql.Date = null
+  var time: java.sql.Time = null
   var date_time: java.sql.Timestamp = null
   var int: java.lang.Integer = null
-  var bigint: BigInt = null
+  var bigint: scala.math.BigInt = null
   var double: java.lang.Double = null
-  var decimal: BigDecimal = null
+  var decimal: scala.math.BigDecimal = null
   var boolean: java.lang.Boolean = null
   var bytes: Array[Byte] = null
   var child: types_test_child = null

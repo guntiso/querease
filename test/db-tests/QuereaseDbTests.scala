@@ -912,6 +912,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // strings and dates
     obj.string = "Rūķīši-X-123"
     obj.date = java.sql.Date.valueOf("2021-12-21")
+    obj.time = java.sql.Time.valueOf("10:42:15")
     obj.date_time = java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
     toCompatibleMapFromDb(obj) shouldBe obj.toMap
 

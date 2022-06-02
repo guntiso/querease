@@ -110,6 +110,7 @@ columns:
 - long long
 - string string
 - date date
+- time time
 - date_time dateTime
 - int int
 - bigint integer

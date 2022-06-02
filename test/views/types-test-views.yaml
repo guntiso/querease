@@ -5,6 +5,7 @@ fields:
 - long
 - string
 - date
+- time
 - date_time
 - int
 - bigint
