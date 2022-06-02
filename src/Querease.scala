@@ -1,5 +1,6 @@
 package org.mojoz.querease
 
+import org.mojoz.metadata.Type
 import org.mojoz.metadata.in.{Join, JoinsParser}
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 import org.tresql.parsing.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
@@ -154,6 +155,9 @@ abstract class Querease extends QueryStringBuilder
       .filter(_._2 != null)
       .toMap
 
+  protected def typedValue(row: RowLike, index: Int, type_ : Type) =
+    row.typed(index, typeNameToScalaTypeName.get(type_.name).orNull)
+
   def toCompatibleSeqOfMaps(result: Result[RowLike], view: ViewDef): Seq[Map[String, Any]] =
     result.foldLeft(List[Map[String, Any]]()) { (l, childRow) =>
       toCompatibleMap(childRow, view) :: l
@@ -175,7 +179,7 @@ abstract class Querease extends QueryStringBuilder
         else
           sys.error(s"Incompatible result for field $field of view ${view.name} - expected one row, got more")
       } else {
-        row.typed(index, typeNameToScalaTypeName.get(field.type_.name).orNull)
+        typedValue(row, index, field.type_)
       }
     }
     for (i <- 0 until row.columnCount) row.column(i) match {
