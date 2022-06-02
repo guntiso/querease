@@ -919,8 +919,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // negatives
     obj.long = Long.MinValue
     obj.int = Integer.MIN_VALUE
-    if (dbName != "hsqldb") // FIXME BigInt for hsqldb
-      obj.bigint = BigInt(Long.MinValue) - 1
+    obj.bigint = BigInt(Long.MinValue) - 1
     obj.double = Double.MinValue
     if (dbName != "hsqldb") // FIXME BigDecimal for hsqldb
       obj.decimal = BigDecimal(Long.MinValue, 2)
@@ -930,8 +929,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // positives
     obj.long = Long.MaxValue
     obj.int = Integer.MAX_VALUE
-    if (dbName != "hsqldb") // FIXME BigInt for hsqldb
-      obj.bigint = BigInt(Long.MaxValue) + 1
+    obj.bigint = BigInt(Long.MaxValue) + 1
     obj.double = Double.MaxValue
     if (dbName != "hsqldb") // FIXME BigDecimal for hsqldb
       obj.decimal = BigDecimal(Long.MaxValue, 2)
