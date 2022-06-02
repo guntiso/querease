@@ -1,0 +1,38 @@
+name:   types_test
+table:  types_test
+fields:
+- id
+- long
+- string
+- date
+- date_time
+- int
+- bigint
+- double
+- decimal
+- boolean
+- bytes
+- child             types_test_child
+- children        * types_test_child
+
+
+name:   types_test_child
+table:  types_test_child
+fields:
+- name
+- date
+- date_time
+
+
+name:   types_test_small
+table:  types_test
+fields:
+- id
+- long
+
+
+name:   types_test_small_fake
+table:  types_test
+fields:
+- id
+- fake = 'fake'

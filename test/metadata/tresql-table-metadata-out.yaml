@@ -104,6 +104,35 @@ pk: id
 refs:
 - person_id -> person(id)
 
+table: types_test
+columns:
+- id ! long
+- long long
+- string string
+- date date
+- date_time dateTime
+- int int
+- bigint integer
+- double double
+- decimal decimal
+- boolean boolean
+- bytes base64Binary
+- child_id long
+pk: id
+refs:
+- child_id -> types_test_child(id)
+
+table: types_test_child
+columns:
+- id ! long
+- types_test_id long
+- name string
+- date date
+- date_time dateTime
+pk: id
+refs:
+- types_test_id -> types_test(id)
+
 table: validations_test_child_table
 columns:
 - id ! long

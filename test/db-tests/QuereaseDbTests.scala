@@ -888,6 +888,71 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     m_saved.daughters(1).name shouldBe d2.name
     m_saved.daughters(1).sex  shouldBe "F"
   }
+
+  if (isDbAvailable) it should s"convert result to compatible map for view from $dbName" in {
+    val bytesR = "Rūķīši".getBytes("UTF-8")
+    def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes
+    def comparable(map: Map[String, Any]): Map[String, Any] = // scalatest does not compare bytes - normalize
+      map.updated("bytes",     Option(map("bytes")).map(_.asInstanceOf[Array[Byte]]).map(normalizeBytes).orNull)
+    val typesTestView = qe.viewDef("types_test")
+    def toCompatibleMapFromDb(obj: TypesTest, viewName: String = "types_test"): Map[String, Any] = {
+      val id = qe.save(obj)
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map("id" -> id))
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, typesTestView).head
+    }
+    // empty
+    val obj = new TypesTest
+    obj.id  = qe.save(obj)
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+    toCompatibleMapFromDb(obj, "types_test_small")      shouldBe obj.toMap
+    toCompatibleMapFromDb(obj, "types_test_small_fake") shouldBe obj.toMap
+
+    // strings and dates
+    obj.string = "Rūķīši-X-123"
+    obj.date = java.sql.Date.valueOf("2021-12-21")
+    obj.date_time = java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+
+    // negatives
+    obj.long = Long.MinValue
+    obj.int = Integer.MIN_VALUE
+    if (dbName != "hsqldb") // FIXME BigInt for hsqldb
+      obj.bigint = BigInt(Long.MinValue) - 1
+    obj.double = Double.MinValue
+    if (dbName != "hsqldb") // FIXME BigDecimal for hsqldb
+      obj.decimal = BigDecimal(Long.MinValue, 2)
+    obj.boolean = false
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+
+    // positives
+    obj.long = Long.MaxValue
+    obj.int = Integer.MAX_VALUE
+    if (dbName != "hsqldb") // FIXME BigInt for hsqldb
+      obj.bigint = BigInt(Long.MaxValue) + 1
+    obj.double = Double.MaxValue
+    if (dbName != "hsqldb") // FIXME BigDecimal for hsqldb
+      obj.decimal = BigDecimal(Long.MaxValue, 2)
+    obj.boolean = true
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+
+    obj.bytes = bytesR
+    comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
+
+    // child view
+    obj.child = new TypesTestChild
+    obj.child.name = "CHILD-1"
+    obj.child.date = java.sql.Date.valueOf("2021-11-08")
+    obj.child.date_time = java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+    comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
+
+    // children
+    obj.children = List(new TypesTestChild, new TypesTestChild)
+    obj.children(0).name = "CHILD-2"
+    obj.children(1).name = "CHILD-3"
+    comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
+  }
 }
 
 object QuereaseDbTests {

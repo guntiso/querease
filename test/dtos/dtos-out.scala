@@ -1304,6 +1304,34 @@ class siblings_alt extends Dto {
   var sibling1: String = null
   var sibling2: String = null
 }
+class types_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var long: java.lang.Long = null
+  var string: String = null
+  var date: java.sql.Date = null
+  var date_time: java.sql.Timestamp = null
+  var int: java.lang.Integer = null
+  var bigint: BigInt = null
+  var double: java.lang.Double = null
+  var decimal: BigDecimal = null
+  var boolean: java.lang.Boolean = null
+  var bytes: Array[Byte] = null
+  var child: types_test_child = null
+  var children: List[types_test_child] = Nil
+}
+class types_test_child extends Dto {
+  var name: String = null
+  var date: java.sql.Date = null
+  var date_time: java.sql.Timestamp = null
+}
+class types_test_small extends DtoWithId {
+  var id: java.lang.Long = null
+  var long: java.lang.Long = null
+}
+class types_test_small_fake extends DtoWithId {
+  var id: java.lang.Long = null
+  var fake: String = null
+}
 class validations_test extends DtoWithId {
   var id: java.lang.Long = null
   var integer_column: java.lang.Integer = null

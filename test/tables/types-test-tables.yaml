@@ -1,0 +1,23 @@
+table:    types_test
+columns:
+- id
+- long              long
+- string            string
+- date              date
+- date_time         dateTime
+- int               int
+- bigint            integer
+- double            double
+- decimal           decimal
+- boolean           boolean
+- bytes             bytes
+- child.id          types_test_child.id
+
+
+table:    types_test_child
+columns:
+- id
+- types_test.id
+- name              string
+- date              date
+- date_time         dateTime

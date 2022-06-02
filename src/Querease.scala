@@ -1,16 +1,15 @@
 package org.mojoz.querease
 
+import org.mojoz.metadata.in.{Join, JoinsParser}
+import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
+import org.tresql.parsing.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
+import org.tresql.{Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
+
 import scala.annotation.tailrec
 import scala.language.postfixOps
+import scala.reflect.ManifestFactory
 import scala.util.Try
 import scala.util.control.NonFatal
-import scala.reflect.ManifestFactory
-import org.tresql.{Result, RowLike, ArrayResult, DeleteResult, InsertResult, UpdateResult}
-import org.tresql.{ORT, OrtMetadata, Query, Resources, SingleValueResult}
-import org.tresql.parsing.{Arr, Exp, Fun, Ident, Null, With, Query => QueryParser_Query}
-import org.mojoz.metadata.in.Join
-import org.mojoz.metadata.in.JoinsParser
-import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
@@ -20,7 +19,7 @@ object SaveMethod extends Enumeration {
   type SaveMethod = Value
   val Save, Insert, Update, Upsert = Value
 }
-import SaveMethod._
+import org.mojoz.querease.SaveMethod._
 
 abstract class Querease extends QueryStringBuilder
   with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo with QuereaseResolvers =>
@@ -147,6 +146,44 @@ abstract class Querease extends QueryStringBuilder
         )
       }
     }
+  }
+
+  protected lazy val typeNameToScalaTypeName =
+    typeDefs
+      .map(td => td.name -> td.targetNames.get("scala").orNull)
+      .filter(_._2 != null)
+      .toMap
+
+  def toCompatibleSeqOfMaps(result: Result[RowLike], view: ViewDef): Seq[Map[String, Any]] =
+    result.foldLeft(List[Map[String, Any]]()) { (l, childRow) =>
+      toCompatibleMap(childRow, view) :: l
+    }.reverse
+
+  def toCompatibleMap(row: RowLike, view: ViewDef): Map[String, Any] = {
+    var compatibleMap = viewNameToMapZero(view.name)
+    def typed(name: String, index: Int) = view.fieldOpt(name).map { field =>
+      if (field.type_.isComplexType) {
+        val childView = viewDef(field.type_.name)
+        val childResult = row.result(index)
+        val childSeq = toCompatibleSeqOfMaps(childResult, childView)
+        if (field.isCollection)
+          childSeq
+        else if (childSeq.lengthCompare(0) == 0)
+          null
+        else if (childSeq.lengthCompare(1) == 0)
+          childSeq.head
+        else
+          sys.error(s"Incompatible result for field $field of view ${view.name} - expected one row, got more")
+      } else {
+        row.typed(index, typeNameToScalaTypeName.get(field.type_.name).orNull)
+      }
+    }
+    for (i <- 0 until row.columnCount) row.column(i) match {
+      case Column(_, name, _) if name != null =>
+        typed(name, i).foreach(value => compatibleMap += (name -> value))
+      case _ =>
+    }
+    compatibleMap
   }
 
   // TODO get rid of toSaveableMap(map, view)
