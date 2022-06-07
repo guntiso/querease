@@ -950,6 +950,22 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     obj.children(1).name = "CHILD-3"
     comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
   }
+
+  if (isDbAvailable) it should s"support ro lookup plus rw ref in $dbName" in {
+    var nc_test = new RoChildRefClashTest
+    val p = new Person
+    p.name = "nct_name"
+    p.sex  = "M"
+    val p_id = qe.save(p)
+    nc_test.person_id = p_id
+    val id = qe.save(nc_test)
+    nc_test = qe.get[RoChildRefClashTest](id).get
+    nc_test.person.name shouldBe "nct_name"
+    nc_test.person.name =        "nct_name_altered"
+    qe.save(nc_test)
+    nc_test = qe.get[RoChildRefClashTest](id).get
+    nc_test.person.name shouldBe "nct_name"
+  }
 }
 
 object QuereaseDbTests {

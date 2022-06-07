@@ -52,6 +52,14 @@ columns:
 - father.id              person.id
 pk: id
 
+table:   passport
+columns:
+- id
+- name                 ! 100
+- previous_passport.id   passport.id
+refs:
+- previous_passport_id -> passport(id) on delete set null
+
 table: car_schema.person_car
 columns:
 - id

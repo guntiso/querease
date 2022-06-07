@@ -82,6 +82,15 @@ pk: id
 refs:
 - organization_id -> organization(id)
 
+table: passport
+columns:
+- id ! long
+- name ! string
+- previous_passport_id long
+pk: id
+refs:
+- previous_passport_id -> passport(id)
+
 table: person
 columns:
 - id ! long

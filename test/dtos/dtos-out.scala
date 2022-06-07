@@ -1271,6 +1271,11 @@ object resolver_test_scala_escapes_01 {
       .unique[String]
   }
 }
+class ro_child_ref_clash_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var person: person = null
+  var person_id: java.lang.Long = null
+}
 class save_extra_props_test_01 extends DtoWithId {
   var id: java.lang.Long = null
 }

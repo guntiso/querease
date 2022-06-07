@@ -598,3 +598,11 @@ fields:
     - sex = 'F'
 filter:
 - sex = 'F'
+
+
+name:   ro_child_ref_clash_test
+table:  sys_user u
+fields:
+- id
+- person [!] person
+- person_id
