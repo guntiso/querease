@@ -625,12 +625,14 @@ abstract class Querease extends QueryStringBuilder
     }
   }
 
-  def create[B <: DTO](params: Map[String, Any] = Map.empty)(
-      implicit mf: Manifest[B], resources: Resources): B = {
-    val view = this.viewDef
+  def create(
+    view:   ViewDef,
+    params: Map[String, Any],
+  )(implicit resources: Resources): RowLike = {
     import QuereaseMetadata.AugmentedQuereaseFieldDef
+    import view.name
+    val q =
     if (view.fields.exists(_.initial != null)) {
-      val query =
         view.fields.map { f =>
           val expr =
             if (f.initial != null)
@@ -641,12 +643,26 @@ abstract class Querease extends QueryStringBuilder
               "null"
           expr + " " + f.fieldName
         }.mkString("{", ", ", "}")
-      val result = list(query, params)
-      if (result.isEmpty)
-        sys.error("No rows returned by query for create method for " + mf)
-      if (result.lengthCompare(1) > 0)
-        sys.error("Too many rows returned by query for create method for " + mf)
-      result.head
+    } else "{'__fake__' __fake__}"
+    try Query(q, params).uniqueOption.get catch {
+      case ex: org.tresql.MissingBindVariableException  => throw ex
+      case ex: org.tresql.TresqlException               => throw ex
+      case util.control.NonFatal(ex) =>
+        throw new RuntimeException(
+          s"Failed to execute query to create data for new instance, view $name: ${ex.getMessage}", ex)
+    }
+  }
+
+  def create[B <: DTO](params: Map[String, Any] = Map.empty)(
+      implicit mf: Manifest[B], resources: Resources): B = {
+    import QuereaseMetadata.AugmentedQuereaseFieldDef
+    val view = this.viewDef
+    if (view.fields.exists(_.initial != null)) {
+      Option(create(view, params)).map { row =>
+        val converted = convertRow[B](row)
+        row.close()
+        converted
+      }.get
     } else {
       mf.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B]
     }

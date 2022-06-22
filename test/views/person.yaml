@@ -13,7 +13,8 @@ db:     querease2
 table:  person
 fields:
 - id
-- full_name
+- full_name:
+  - initial: "'Name Surname'"
 - notes = no_args_macro()
 
 name:   person_accounts_2

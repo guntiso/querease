@@ -966,6 +966,25 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     nc_test = qe.get[RoChildRefClashTest](id).get
     nc_test.person.name shouldBe "nct_name"
   }
+
+  if (isDbAvailable) it should s"create new instances using $dbName" in {
+    qe.create[Person](Map.empty).toMap shouldBe (new Person).toMap
+    Option(qe.create(qe.viewDef("person"), Map.empty)).map { row =>
+      val p = new Person
+      p.fill(row)
+      row.close
+      p
+    }.get.toMap shouldBe (new Person).toMap
+    val p2 = new Person2
+    p2.full_name = "Name Surname"
+    qe.create[Person2](Map.empty).toMap shouldBe p2.toMap
+    Option(qe.create(qe.viewDef("person_2"), Map.empty)).map { row =>
+      val p = new Person2
+      p.fill(row)
+      row.close
+      p
+    }.get.toMap shouldBe p2.toMap
+  }
 }
 
 object QuereaseDbTests {
