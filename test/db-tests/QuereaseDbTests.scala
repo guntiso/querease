@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
 import org.mojoz.querease.{QuereaseMacros, TresqlMetadata, ValidationException, ValidationResult}
+import org.mojoz.querease.SaveMethod._
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
 import org.tresql.macro_.TresqlMacroInterpolator
@@ -984,6 +985,13 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       row.close
       p
     }.get.toMap shouldBe p2.toMap
+  }
+
+  if (isDbAvailable) it should s"return id on insert and save to $dbName" in {
+    qe.insert(qe.viewDef("noid_test"),   Map("id"    -> 42, "nm"    -> "dadada")) shouldBe 42
+    qe.save  (qe.viewDef("noid_test"),   Map("id"    -> 42, "nm"    -> "dadadu"), null, Update, null, null) shouldBe 42
+    qe.insert(qe.viewDef("noid_test_2"), Map("no_id" -> 44, "no_nm" -> "dadada")) shouldBe 44
+    qe.save  (qe.viewDef("noid_test_2"), Map("no_id" -> 44, "no_nm" -> "dadadu"), null, Update, null, null) shouldBe 44
   }
 }
 

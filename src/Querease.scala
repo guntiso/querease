@@ -250,6 +250,7 @@ abstract class Querease extends QueryStringBuilder
     }
     else id match {
       case id: Long => id
+      case id: Int  => id
       case xx       => 0L
     }
   }
@@ -340,6 +341,7 @@ abstract class Querease extends QueryStringBuilder
         s"Record not upserted in table(s): ${tables.mkString(",")}")
     } else id match {
       case id: Long => (method, id)
+      case id: Int  => (method, id)
       case xx       => (method, 0L)
     }
   }
