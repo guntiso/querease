@@ -136,6 +136,38 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null
     )
+    qe.persistenceMetadata("organization_with_accounts_and_key") shouldBe View(
+      List(SaveTo("organization",Set(),List())),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("main_account_id",TresqlValue(
+          """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
+          """'Failed to identify value of "main_account" (from organization_with_accounts_and_key) - ' || coalesce(:main_account, 'null')))""",
+          true,true)),
+        Property("accounts",ViewValue(
+          View(
+            List(SaveTo("organization_account",Set(),List())),
+            Some(Filters(None,None,None)),
+            null,
+            true,
+            true,
+            List(
+              Property("id",TresqlValue(":id",true,true)),
+              Property("number",TresqlValue(":number",true,true)),
+              Property("balance",TresqlValue(":balance",true,true))
+            ),
+            null
+          ),
+          SaveOptions(true,false,true),
+        ))
+      ),
+      null
+    )
     qe.persistenceMetadata("save_to_multi_test_01") shouldBe View(
       List(
         SaveTo("person",Set(),List()),
