@@ -217,6 +217,19 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       delete = None,
     )
   }
+  protected def hasExplicitKey(view: ViewDef) = {
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    Option(view.keyFieldNames)
+      .filter(_.nonEmpty)
+      .isDefined
+  }
+  // FIXME remove isKeyValueSupported_ - waiting for https://github.com/mrumkovskis/tresql/issues/42
+  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDefBase[_]]) = {
+    hasExplicitKey(view) ||
+    !keyFields.exists { f =>
+      saveToTables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
+    }
+  }
   def oldKeyParamName = "old key"
   private lazy val oldKeyRef = org.tresql.parsing.Variable(oldKeyParamName, Nil, opt = false).tresql
   protected def toPersistenceMetadata(
@@ -298,12 +311,14 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           table = t,
           refs  = refsToParent,
           key   = tableMetadata.tableDef(t, view.db).pk.map { pk =>
-            if (pk.cols == keyCols) Nil else keyCols // TODO annoying, improve tresql?
+            if (!hasExplicitKey(view) && pk.cols == keyCols) Nil else keyCols // TODO annoying, improve tresql?
           }.getOrElse(Nil),
         ))
       }
     val filtersOpt = Option(persistenceFilters(view))
     lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
+    val isKeyValueSupported = // FIXME remove - waiting for https://github.com/mrumkovskis/tresql/issues/42
+      isKeyValueSupported_(view, keyFields, tables)
     val properties = view.fields
       .map { f =>
         val fieldName = f.fieldName
@@ -336,8 +351,6 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
             forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
           )
-          val isKeyValueSupported = // TODO remove - waiting for https://github.com/mrumkovskis/tresql/issues/42
-            !tables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
               whereTresql = s"if_defined_or_else($oldKeyRef.$fieldName?, $oldKeyRef.$fieldName?, :$fieldName)",

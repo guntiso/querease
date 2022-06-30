@@ -137,13 +137,13 @@ class QuereaseTests extends FlatSpec with Matchers {
       null
     )
     qe.persistenceMetadata("organization_with_accounts_and_key") shouldBe View(
-      List(SaveTo("organization",Set(),List())),
+      List(SaveTo("organization",Set(),List("id"))),
       Some(Filters(None,None,None)),
       null,
       true,
       true,
       List(
-        Property("id",TresqlValue(":id",true,true)),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)",TresqlValue(":id",true,true))),
         Property("name",TresqlValue(":name",true,true)),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
