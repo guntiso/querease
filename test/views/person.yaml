@@ -73,6 +73,15 @@ order:
 - name
 - surname
 
+name:  person_father_save
+table: person p
+fields:
+- name
+- sponsor [f.id = p.father_id] -> person:father_id:
+    table:  person f
+    fields:
+      - name
+
 name:   person_name
 table:  person c
 fields: name

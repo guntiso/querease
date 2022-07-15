@@ -141,7 +141,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     saveToTableNames: Seq[String],
   ) = {
     (
-      field.saveTo != null
+      field.saveTo != null        &&
+      field.saveTo.indexOf(':') < 0
       ||
       field.resolver != null
       ||
@@ -372,10 +373,15 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             if (f.saveTo == null && f.resolver == null)
               ":" + fieldName
             else {
-              val resolver = allResolvers(view, f).head
-              parser.transformer {
-                case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
-              } (parser.parseExp(if (resolver startsWith "(" ) resolver else s"(${resolver})")).tresql
+              val resolvers = allResolvers(view, f)
+              if (resolvers.nonEmpty) {
+                val resolver = resolvers.head
+                parser.transformer {
+                  case Ident(List("_")) => Variable(fieldName, Nil, opt = false)
+                } (parser.parseExp(if (resolver startsWith "(" ) resolver else s"(${resolver})")).tresql
+              } else {
+                f.saveTo
+              }
             }
           Property(
             col   = saveTo,
@@ -417,6 +423,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             doUpdate = (opt != null) && (opt contains '=') && !opt.contains('!'), // TODO invert default for doUpdate when child has key?
             doDelete = (opt == null) || (opt contains '-') && !opt.contains('!'),
           )
+          val childSaveTo =
+            if (f.saveTo != null && f.saveTo.contains(':'))
+              saveTo_(Seq(f.saveTo), tresqlMetadata)
+            else null
           toPersistenceMetadata(
             view          = childView,
             nameToViewDef = nameToViewDef,
@@ -424,6 +434,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             refsToParent  = Set.empty,
             throwErrors   = throwErrors,
           )
+          .map(md => if (childSaveTo != null) md.copy(saveTo = childSaveTo) else md)
           .filter(_.saveTo.nonEmpty)
           .map(_.copy(
             forInsert = isFieldForInsert(f),

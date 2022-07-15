@@ -517,6 +517,13 @@ object person_choice_resolver_provided {
 class person_choice_without_resolver extends Dto {
   var full_name: String = null
 }
+class person_father_save extends Dto {
+  var name: String = null
+  var sponsor: person_father_save_sponsor = null
+}
+class person_father_save_sponsor extends Dto {
+  var name: String = null
+}
 class person_from_multiple_db_1 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

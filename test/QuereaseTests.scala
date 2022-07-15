@@ -272,6 +272,32 @@ class QuereaseTests extends FlatSpec with Matchers {
       null,
     )
 
+    qe.persistenceMetadata("person_father_save") shouldBe View(
+      List(SaveTo("person",Set(),List())),
+      Some(Filters(None,None,None)),
+      "p",
+      true,
+      true,
+      List(
+        Property("name",TresqlValue(":name",true,true)),
+        Property("sponsor",ViewValue(
+          View(
+            List(SaveTo("person",Set("father_id"),List())),
+            Some(Filters(None,None,None)),
+            "f",
+            true,
+            true,
+            List(
+              Property("name",TresqlValue(":name",true,true)),
+            ),
+            null,
+          ),
+          SaveOptions(true,false,true),
+        )),
+      ),
+      null,
+    )
+
     qe.persistenceMetadata("organization_ref_only_update_test") shouldBe View(
       List(SaveTo("organization",Set(),List("name"))),
       Some(Filters(None,None,None)),
