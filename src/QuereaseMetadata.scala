@@ -239,7 +239,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     parentNames:    List[String]  = Nil,
     refsToParent:   Set[String]   = Set.empty,
     throwErrors:    Boolean       = true,
-  ): Option[OrtMetadata.View] = {
+  ): Option[OrtMetadata.View] = try {
     if (parentNames contains view.name)
       if (throwErrors)
         sys.error("Saving recursive views not supported by tresql: " + (view.name :: parentNames).reverse.mkString(" -> "))
@@ -321,7 +321,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     val isKeyValueSupported = // FIXME remove - waiting for https://github.com/mrumkovskis/tresql/issues/42
       isKeyValueSupported_(view, keyFields, tables)
     val properties = view.fields
-      .map { f =>
+      .map { f => try {
         val fieldName = f.fieldName
         def bestLookupRefs = {
           // TODO child multi-tables?
@@ -461,7 +461,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         } else {
           null
         }
-      }
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Failed to build persistenceMetadata for field ${f.fieldName}", ex)
+      }}
       .filter(_ != null)
     val persistenceMetadata =
       OrtMetadata.View(
@@ -474,6 +477,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         db          = view.db,
       )
     return Option(persistenceMetadata)
+  } catch {
+    case util.control.NonFatal(ex) =>
+      throw new RuntimeException(s"Failed to build persistenceMetadata for view ${view.name}", ex)
   }
 }
 
