@@ -190,7 +190,7 @@ abstract class Querease extends QueryStringBuilder
     compatibleMap
   }
 
-  // TODO get rid of toSaveableMap(map, view)
+  /** Provides missing fields, override to convert types to compatible with your jdbc driver */
   protected def toSaveableMap(map: Map[String, Any], view: ViewDef): Map[String, Any] = {
     (if (view.fields.forall(map contains _.fieldName)) map else viewNameToMapZero(view.name) ++ map) ++
       view.fields
