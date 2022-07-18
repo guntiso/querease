@@ -56,7 +56,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.save(bank)
     qe.countAll[BankListRow](null) should be(2)
     qe.get[BankWithAccount1](10000).get.account shouldBe null
-    // FIXME qe.save(qe.get[BankWithAccount1](10000).get)
+    qe.save(qe.get[BankWithAccount1](10000).get) shouldBe 10000
     val b1 = qe.get[BankListRow](10000).get
     b1.name should be("Bank 1")
     val b2 = qe.get[BankListRow](10001).get
@@ -436,6 +436,22 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.save(pwp)
     qe.get[Person](pwpId).get.mother_id shouldBe pwpMotherId
     qe.get[Person](pwpId).get.father_id shouldBe null
+
+    // single child save test
+    val bwa1 = qe.get[BankWithAccount1](accb.id).get
+    val bwa1a = bwa1.account
+    tresql"-account_currency[account_id = ${bwa1a.id}]"
+    bwa1a.billing_account shouldBe bacNr2
+    bwa1a.billing_account = bacNr
+    qe.save(bwa1)
+    qe.get[BankWithAccount1](accb.id).get.account.billing_account shouldBe bacNr
+    bwa1.account = null
+    qe.save(bwa1)
+    qe.get[BankWithAccount1](accb.id).get.account shouldBe null
+    bwa1.account = bwa1a
+    bwa1a.billing_account = bacNr2
+    qe.save(bwa1)
+    qe.get[BankWithAccount1](accb.id).get.account.billing_account shouldBe bacNr2
 
     // no-id test
     val noid = new NoidTest
