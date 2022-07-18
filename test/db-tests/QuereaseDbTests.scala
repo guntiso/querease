@@ -55,6 +55,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     bank.name = "Bank 2"
     qe.save(bank)
     qe.countAll[BankListRow](null) should be(2)
+    qe.get[BankWithAccount1](10000).get.account shouldBe null
+    // FIXME qe.save(qe.get[BankWithAccount1](10000).get)
     val b1 = qe.get[BankListRow](10000).get
     b1.name should be("Bank 1")
     val b2 = qe.get[BankListRow](10001).get
@@ -244,6 +246,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val accountId = qe.save(acc)
     accountId shouldBe 10004
     qe.get[AccountWithBank](accountId).get.bank.id shouldBe accb.id
+    qe.get[BankWithAccount1](10001).get.account.billing_account shouldBe bacNr
 
     var child = new PersonWithComplexTypeResolvers1
     child.name    = "Some"

@@ -98,6 +98,27 @@ class bank_list_row_with_having extends Dto {
   var name: String = null
   var total: java.lang.Integer = null
 }
+class bank_with_account_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var code: String = null
+  var name: String = null
+  var account: bank_with_account_1_account = null
+}
+class bank_with_account_1_account extends DtoWithId {
+  var id: java.lang.Long = null
+  var billing_account: String = null
+  var last_modified: java.sql.Timestamp = null
+  def resolve_last_modified(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{now()}"""(env.withParams(this.toMap))
+      .unique[java.sql.Timestamp]
+  }
+}
+object bank_with_account_1_account {
+  def resolve_last_modified(implicit env: org.tresql.Resources) = {
+    tresql"""{now()}"""(env.withParams(Map.empty))
+      .unique[java.sql.Timestamp]
+  }
+}
 class bank_with_accounts_1 extends DtoWithId {
   var id: java.lang.Long = null
   var code: String = null
