@@ -7,6 +7,7 @@ import org.tresql.parsing.{Arr, Exp, Ident, Null, With, Query => QueryParser_Que
 import org.tresql.{Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import scala.annotation.tailrec
+import scala.collection.immutable.Set
 import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
@@ -37,6 +38,14 @@ abstract class Querease extends QueryStringBuilder
         .map(t => Seq(ortDbPrefix(viewDef.db) + t + ortAliasSuffix(viewDef.tableAlias)))
         .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
     else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
+
+  val supportedIdTypeNames: Set[String] = Set("long", "int", "short")
+  protected def idToLong(id: Any): Long = id match {
+    case id: Long   => id
+    case id: Int    => id
+    case id: Short  => id
+    case xx         => 0L
+  }
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   @annotation.nowarn("cat=deprecation") // OK to call deprecated save here - same tables will be extracted again
@@ -95,8 +104,8 @@ abstract class Querease extends QueryStringBuilder
     val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
     val keyFields = viewNameToKeyFields(view.name)
-    val idName    = keyFields.find(_.type_.name == "long").map(_.fieldName) getOrElse "id"
-    val id        = propMap.get(idName).filter(_ != null)
+    val idName    = keyFields.find(f => supportedIdTypeNames.contains(f.type_.name)).map(_.fieldName)
+    val id        = idName.flatMap(propMap.get).filter(_ != null)
     val resolvedMethod =
       if  (method == Save)
         if (keyFields.forall(f => propMap.get(f.fieldName).orNull == null)) Insert else Update
@@ -248,11 +257,7 @@ abstract class Querease extends QueryStringBuilder
       throw new NotFoundException(
         s"Record not inserted into table(s): ${tables.mkString(",")}")
     }
-    else id match {
-      case id: Long => id
-      case id: Int  => id
-      case xx       => 0L
-    }
+    else idToLong(id)
   }
 
   protected def update[B <: DTO](
@@ -339,11 +344,7 @@ abstract class Querease extends QueryStringBuilder
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
         s"Record not upserted in table(s): ${tables.mkString(",")}")
-    } else id match {
-      case id: Long => (method, id)
-      case id: Int  => (method, id)
-      case xx       => (method, 0L)
-    }
+    } else (method, idToLong(id))
   }
 
   def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
