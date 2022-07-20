@@ -104,8 +104,20 @@ abstract class Querease extends QueryStringBuilder
     val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
     val keyFields = viewNameToKeyFields(view.name)
-    val idName    = keyFields.find(f => supportedIdTypeNames.contains(f.type_.name)).map(_.fieldName)
-    val id        = idName.flatMap(propMap.get).filter(_ != null)
+    lazy val idName = {
+      tableMetadata.tableDefOption(view.table, view.db).flatMap { t =>
+        t.pk
+          .map(_.cols)
+          .filter(_.size == 1)
+          .map(_.head)
+          .flatMap { pk =>
+            keyFields.find { f =>
+              f.table == t.name && f.name == pk && supportedIdTypeNames.contains(f.type_.name)
+            }.map(_.fieldName)
+          }
+      }
+    }
+    lazy val id = idName.flatMap(propMap.get).filter(_ != null)
     val resolvedMethod =
       if  (method == Save)
         if (keyFields.forall(f => propMap.get(f.fieldName).orNull == null)) Insert else Update
