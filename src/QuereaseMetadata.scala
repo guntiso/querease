@@ -73,6 +73,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetById(viewDef)) }
   lazy val viewNameToKeyColNameForGetByCode: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetByCode(viewDef)) }
+  lazy val viewNameToIdFieldName: Map[String, String] =
+    nameToViewDef.map { case (name, viewDef) => (name, idFieldName(viewDef)) }.filter(_._2 != null).toMap
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
@@ -129,6 +131,20 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
          .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == "string") }
       } .map(_.cols.head)
         .orNull
+
+  val supportedIdTypeNames: Set[String] = Set("long", "int", "short")
+  protected def idFieldName(view: ViewDef): String =
+    tableMetadata.tableDefOption(view.table, view.db).flatMap { t =>
+      t.pk
+        .map(_.cols)
+        .filter(_.size == 1)
+        .map(_.head)
+        .flatMap { pk =>
+          viewNameToKeyFields(view.name).find { f =>
+            f.table == t.name && f.name == pk && supportedIdTypeNames.contains(f.type_.name)
+          }.map(_.fieldName)
+        }
+    }.orNull
 
   protected def identifier(s: String) = s match {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
