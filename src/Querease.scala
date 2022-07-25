@@ -633,7 +633,6 @@ abstract class Querease extends QueryStringBuilder
     import QuereaseMetadata.AugmentedQuereaseFieldDef
     import view.name
     val q =
-    if (view.fields.exists(_.initial != null)) {
         view.fields.map { f =>
           val expr =
             if (f.initial != null)
@@ -644,7 +643,6 @@ abstract class Querease extends QueryStringBuilder
               "null"
           expr + " " + f.fieldName
         }.mkString("{", ", ", "}")
-    } else "{'__fake__' __fake__}"
     try Query(q, params).uniqueOption.get catch {
       case ex: org.tresql.MissingBindVariableException  => throw ex
       case ex: org.tresql.TresqlException               => throw ex
