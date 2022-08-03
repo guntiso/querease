@@ -573,10 +573,9 @@ abstract class Querease extends QueryStringBuilder
           sys.error(s"Key of string type not found for $mf, can not get")
         get(keyValues, Seq(keyColName), extraFilter, extraParams)
       case values =>
-        val key_fields = viewNameToKeyFields(view.name)
-        if (key_fields.isEmpty)
+        val keyColNames = viewNameToKeyColNames(view.name)
+        if (keyColNames.isEmpty)
           sys.error(s"Key not found for $mf, can not get")
-        val keyColNames = key_fields.map(_.name)
         get(keyValues, keyColNames, extraFilter, extraParams)
     }
   }

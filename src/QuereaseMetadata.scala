@@ -69,6 +69,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
   lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
     viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.fieldName)) }
+  lazy val viewNameToKeyColNames: Map[String, Seq[String]] =
+    viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.name)) }
   lazy val viewNameToKeyColNameForGetById: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetById(viewDef)) }
   lazy val viewNameToKeyColNameForGetByCode: Map[String, String] =
@@ -323,7 +325,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
          )
         saveTo_(saveToTableNamesWithRefsAndKeys, tresqlMetadata)
       else {
-        val keyCols = viewNameToKeyFields(view.name).map(_.name)
+        val keyCols = viewNameToKeyColNames(view.name)
         saveToTableNames.map(t => SaveTo(
           table = t,
           refs  = refsToParent,
