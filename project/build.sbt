@@ -3,7 +3,7 @@ resolvers ++= Seq(
 )
 
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % "11.1.0",
+  "org.tresql" %% "tresql" % "11.1.1",
   "org.mojoz"  %% "mojoz"  % "4.1.0",
 )
 
