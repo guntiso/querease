@@ -603,7 +603,7 @@ abstract class Querease extends QueryStringBuilder
         s"Expecting ${keyColNames.length} value(s) as key for $name but got ${keyValues.length}, can not get")
     val keysAndValues = keyColNames zip keyValues
     val keyFilter = keysAndValues.map {
-      case (col, value) => s"${prefix}${col} = :${col}"
+      case (col, value) => s"${prefix}${col} = ${if (value == null) "null" else s":${col}"}"
     }.mkString(" & ")
     val params = keysAndValues.toMap
     val extraQ = extraFilter match {
