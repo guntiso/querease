@@ -62,7 +62,7 @@ abstract class Querease extends QueryStringBuilder
       filter,
       params)
 
-  @deprecated("Parameter 'tableName' is ignored, this method will not work as expected and will be removed", "6.1")
+  @deprecated("Parameter 'tableName' is ignored, this method will not work as expected and will be removed", "6.1.0")
   def saveTo[B <: DTO](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
@@ -77,7 +77,7 @@ abstract class Querease extends QueryStringBuilder
       filter,
       params)
 
-  @deprecated("Parameter 'tables' is ignored, this method will not work as expected and will be removed", "6.1")
+  @deprecated("Parameter 'tables' is ignored, this method will not work as expected and will be removed", "6.1.0")
   def saveToMultiple[B <: DTO](
     tables: Seq[String],
     pojo: B,

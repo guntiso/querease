@@ -22,7 +22,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
     rowLikeToDto(row, mf)
   override def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
     dto.asInstanceOf[B{type QE = self.type}].toSaveableMap(this)
-  @deprecated("Results of this method are not used and this method will be removed", "6.1")
+  @deprecated("Results of this method are not used and this method will be removed", "6.1.0")
   override def keyMap[B <: DTO](dto: B) = dto match {
     case o: DtoWithId => Map("id" -> o.id)
     case _ => sys.error(

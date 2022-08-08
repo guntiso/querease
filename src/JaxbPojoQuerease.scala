@@ -203,7 +203,7 @@ trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
     else s
 
   override def toSaveableMap[B <: DTO](instance: B) = pojoToSaveableMap(instance)
-  @deprecated("Results of this method are not used and this method will be removed", "6.1")
+  @deprecated("Results of this method are not used and this method will be removed", "6.1.0")
   override def keyMap[B <: DTO](instance: B) =
     Map("id" -> getId(instance))
   def pojoToSaveableMap[B <: DTO](pojo: B) = {
