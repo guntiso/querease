@@ -280,6 +280,10 @@ class filter_with_resolver_test_3_b extends Dto {
 class filter_with_resolver_test_4 extends Dto {
   var name: String = null
 }
+class generated_scala_traits_test_bank_1 extends Dto {
+  var id: java.lang.Integer = null
+  var code: String = null
+}
 class mother extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

@@ -13,7 +13,7 @@ import org.tresql.QueryParser
 import org.tresql.OrtMetadata
 import org.tresql.OrtMetadata._
 
-import scala.collection.immutable.{Map, Seq, TreeMap}
+import scala.collection.immutable.{Map, ListSet, Seq, TreeMap}
 import scala.util.matching.Regex
 
 case class ViewNotFoundException(message: String) extends Exception(message)
@@ -134,7 +134,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       } .map(_.cols.head)
         .orNull
 
-  val supportedIdTypeNames: Set[String] = Set("long", "int", "short")
+  val supportedIdTypeNames: Set[String] = ListSet("long", "int", "short")
   protected def idFieldName(view: ViewDef): String =
     tableMetadata.tableDefOption(view.table, view.db).flatMap { t =>
       t.pk

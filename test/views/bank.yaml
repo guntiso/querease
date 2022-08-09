@@ -116,3 +116,9 @@ fields:
 - country_c3_and_name = ^country_choice_3.c3_and_name
 filter:
 - ^country_choice_3.c3_and_name = :cc?
+
+name: generated_scala_traits_test_bank_1
+table: bank
+fields:
+- id    int
+- code
