@@ -85,6 +85,7 @@ class bank_list_row extends DtoWithId {
   var country_code: String = null
   var country_name: String = null
   var name: String = null
+  var president_id: java.lang.Long = null
 }
 class bank_list_row_with_filter extends DtoWithId {
   var id: java.lang.Long = null
@@ -214,6 +215,32 @@ class country_choice_2 extends Dto {
 }
 class country_choice_3 extends Dto {
   var c3_and_name: String = null
+}
+class country_row extends Dto {
+  var code: String = null
+  var code3: String = null
+  var code_n3: String = null
+  var name: String = null
+  var is_active: java.lang.Boolean = null
+  var is_eu: java.lang.Boolean = null
+  def resolve_is_active(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{true}"""(env.withParams(this.toMap))
+      .unique[java.lang.Boolean]
+  }
+  def resolve_is_eu(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{true}"""(env.withParams(this.toMap))
+      .unique[java.lang.Boolean]
+  }
+}
+object country_row {
+  def resolve_is_active(implicit env: org.tresql.Resources) = {
+    tresql"""{true}"""(env.withParams(Map.empty))
+      .unique[java.lang.Boolean]
+  }
+  def resolve_is_eu(implicit env: org.tresql.Resources) = {
+    tresql"""{true}"""(env.withParams(Map.empty))
+      .unique[java.lang.Boolean]
+  }
 }
 class currency extends Dto {
   var code: String = null
@@ -1361,6 +1388,71 @@ class siblings extends Dto {
 class siblings_alt extends Dto {
   var sibling1: String = null
   var sibling2: String = null
+}
+class table_alias_test_bank_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var code: String = null
+  var bk_name: String = null
+  var cr_name: String = null
+  def `resolve_bank.code`(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:code}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+  def `resolve_bank.name`(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:bk_name}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+  def `resolve_country.name`(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:cr_name}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object table_alias_test_bank_1 {
+  def `resolve_bank.code`(code: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{:code}"""(env.withParams(Map("code" -> code)))
+      .unique[String]
+  }
+  def `resolve_bank.name`(bk_name: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{:bk_name}"""(env.withParams(Map("bk_name" -> bk_name)))
+      .unique[String]
+  }
+  def `resolve_country.name`(cr_name: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{:cr_name}"""(env.withParams(Map("cr_name" -> cr_name)))
+      .unique[String]
+  }
+}
+class table_alias_test_bank_2 extends DtoWithId {
+  var id: java.lang.Long = null
+  var president_id: java.lang.Long = null
+  var bk_name: String = null
+  var pr_name: String = null
+  var sex: String = null
+  def `resolve_bank.name`(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:bk_name}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+  def `resolve_person.name`(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{:pr_name}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QE) = {
+    tresql"""{'M'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object table_alias_test_bank_2 {
+  def `resolve_bank.name`(bk_name: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{:bk_name}"""(env.withParams(Map("bk_name" -> bk_name)))
+      .unique[String]
+  }
+  def `resolve_person.name`(pr_name: String)(implicit env: org.tresql.Resources) = {
+    tresql"""{:pr_name}"""(env.withParams(Map("pr_name" -> pr_name)))
+      .unique[String]
+  }
+  def resolve_sex(implicit env: org.tresql.Resources) = {
+    tresql"""{'M'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
 }
 class types_test extends DtoWithId {
   var id: java.lang.Long = null

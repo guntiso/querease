@@ -21,6 +21,7 @@ columns:
 - name                 ! 240           : Bankas pilnais nosaukums.
 - name_eng               240           : Bankas pilnais nosaukums, angliski.
 - name_rus               240           : Bankas pilnais nosaukums, transliterēts krieviski.
+- president.id           person.id     : Prezidents
 
 table:   country
 comment: Valstu klasifikators

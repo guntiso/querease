@@ -84,6 +84,59 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     banksHv.size should be(1)
     banksHv(0).total should be(2)
 
+    val c = new CountryRow
+    c.code    = "LV"
+    c.code3   = "LVA"
+    c.code_n3 = "428"
+    c.name    = "LV"
+    qe.save(c, forceInsert = true)
+    var cq = qe.get[CountryRow]("LV").get
+    cq.code       shouldBe c.code
+    cq.code3      shouldBe c.code3
+    cq.code_n3    shouldBe c.code_n3
+    cq.name       shouldBe c.name
+    cq.is_active  shouldBe true
+    cq.is_eu      shouldBe true
+
+    /* FIXME
+    val tat = qe.get[TableAliasTestBank1](10001).get
+    tat.code = "b2-upd"
+    tat.bk_name = "Bank 2"
+    tat.cr_name = "Latvia"
+    qe.save(tat)
+    cq = qe.get[CountryRow]("LV").get
+    cq.code       shouldBe c.code
+    cq.name       shouldBe tat.cr_name
+    val bu = qe.get[BankListRow](10001).get
+    bu.code shouldBe tat.code
+    bu.name shouldBe tat.bk_name
+    tat.code = "b2"
+    tat.bk_name = name2
+    qe.save(tat)
+    */
+
+    val pr = new Person
+    pr.name = "President"
+    pr.sex = "M"
+    pr.id = b2.id
+    val pr_id = qe.save(pr, forceInsert = true)
+    b2.president_id = pr_id
+    qe.save(b2)
+    var tat = qe.get[TableAliasTestBank2](10001).get
+    tat.bk_name shouldBe name2
+    tat.pr_name shouldBe pr.name
+    tat.bk_name = "Bank 2"
+    tat.pr_name = "Person"
+    qe.save(tat)
+    tat = qe.get[TableAliasTestBank2](10001).get
+    tat.bk_name shouldBe "Bank 2"
+    tat.pr_name shouldBe "Person"
+    tat.bk_name = name2
+    qe.save(tat)
+    b2.president_id = null
+    qe.save(b2)
+    qe.delete(pr)
+
     def personInfoString(p: PersonInfo) = {
       import p.{name, surname, sex, mother_name, father_name, children,
         maternal_grandmother, maternal_grandfather, paternal_grandmother, paternal_grandfather}

@@ -18,3 +18,14 @@ fields:
             fields:
             - currency.code
             - currency.name
+
+
+name:   country_row
+table:  country
+fields:
+- code
+- code3
+- code_n3
+- name
+- is_active  -> = true
+- is_eu      -> = true

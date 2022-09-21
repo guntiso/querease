@@ -6,6 +6,7 @@ fields:
  - country_code
  - country.name
  - name
+ - president_id
 order: ~id
 
 name:   bank_with_account_1
@@ -122,3 +123,31 @@ table: bank
 fields:
 - id    int
 - code
+
+name: table_alias_test_bank_1
+table: bank bk
+joins:
+- bk / country cr
+save-to:
+- bank
+- country
+fields:
+- id
+- code    -> bank.code    = _
+- bk.name -> bank.name    = _
+- cr.name -> country.name = _
+
+
+name: table_alias_test_bank_2
+table: bank bk
+joins:
+- bk / person pr
+save-to:
+- bank
+- person
+fields:
+- id
+- president_id
+- bk.name       -> bank.name    = _
+- pr.name       -> person.name  = _
+- sex = pr.sex  -> = 'M'

@@ -317,6 +317,23 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null,
     )
+    qe.persistenceMetadata("table_alias_test_bank_1") shouldBe View(
+      List(
+        SaveTo("bank",Set(),List()),
+        SaveTo("country",Set("code"),List()),
+      ),
+      Some(Filters(None,None,None)),
+      "bk",
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("bank.code",TresqlValue("(:code)",true,true)),
+        Property("bank.name",TresqlValue("(:bk_name)",true,true)),
+        Property("country.name",TresqlValue("(:cr_name)",true,true)),
+      ),
+      null,
+    )
   }
 
   "querease" should "build correct query" in {

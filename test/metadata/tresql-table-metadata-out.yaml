@@ -24,9 +24,11 @@ columns:
 - name ! string
 - name_eng string
 - name_rus string
+- president_id long
 pk: id
 refs:
 - country_code -> country(code)
+- president_id -> person(id)
 
 table: car_schema.person_car
 columns:

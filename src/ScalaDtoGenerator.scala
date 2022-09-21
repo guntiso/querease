@@ -253,9 +253,10 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     val argsString =
       if (notFoundInChild) s"$NotFoundParamName($argsStringKnown)" else argsStringKnown
     val override_ = if (isOverride) "override " else ""
+    val methodName = scalaNameString("resolve_" + resolverTargetColName(fieldDef))
     ResolverScala(
       parameterTypes,
-      s"  ${override_}def resolve_${resolverTargetColName(fieldDef)}$paramsString = $resolverDefBodyPrefix{" + nl +
+      s"  ${override_}def $methodName$paramsString = $resolverDefBodyPrefix{" + nl +
             resolverBody(resolverExpression, argsString, resolverTargetTypeName(fieldDef, viewDef.db)) +
       s"  }"
     )
