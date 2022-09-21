@@ -25,7 +25,7 @@ libraryDependencies ++= Seq(
   "org.hsqldb"     % "hsqldb"     % "2.3.1"  % "test", // TODO upgrade hsqldb when supported by tresql
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.13" % "test",
-  "org.postgresql" % "postgresql" % "42.4.0" % "test",
+  "org.postgresql" % "postgresql" % "42.5.0" % "test",
 )
 
 Compile / scalaSource := baseDirectory(_ / "src").value
