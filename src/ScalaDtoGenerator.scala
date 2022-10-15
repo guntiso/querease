@@ -206,7 +206,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
                  nameParts(0)
             else null
           }
-        }.zipWithIndex.reverse.toMap.toList.sortBy(_._2).map(_._1) // distinct (with null) for scala 2.10
+        }.distinct
     val hasKnownParams = paramNamesReduced.filter(_ != null).nonEmpty
     val notFoundInChild = paramNamesReduced.exists(_ == null)
     val hasOptionalParams = paramNamesReduced.exists(optionalParamsSet.contains)

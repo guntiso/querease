@@ -111,12 +111,10 @@ Test / sourceGenerators += Def.task {
         "package dto",
         "",
         "import org.tresql._",
-        if  (scalaVersion.value.startsWith("2.10."))
-            "import org.tresql.CoreTypes._"
-        else null,
         "import test.{ Dto, DtoWithId }",
         "import test.QuereaseDbTests.Env",
-        "").filter(_ != null),
+        "",
+      ),
       plainViewDefs,
       Nil)
     IO.write(file, contents)
