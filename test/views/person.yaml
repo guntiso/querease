@@ -616,3 +616,25 @@ fields:
 - id
 - person [!] person
 - person_id
+
+
+name:    person_recursive_test_1
+table:   person
+fields:
+- id
+- name
+- surname
+- sex
+# TODO support save and get with implied join to parent, add clean test
+- mother [(person[:1(id) = id]{mother_id}) = id] person_recursive_test_1
+
+
+name:    person_recursive_test_2
+table:   person
+save-to: person:mother_id[id]  # TODO extract this info from join to parent, add clean test
+fields:
+- id
+- name
+- surname
+- sex
+- children * [:1(id) = mother_id] person_recursive_test_2

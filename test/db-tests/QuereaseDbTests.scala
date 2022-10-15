@@ -621,6 +621,52 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     saveExtra.id = saveExtraId
     qe.save(saveExtra, extraPropsToSave = Map("password" -> "demo3"))
     tresql"sys_user[id = $saveExtraId] {password}".unique[String] shouldBe "demo3"
+
+    // recursive structure save test - lookup
+    var childRt1  = new PersonRecursiveTest1
+    childRt1.name     = "Some"
+    childRt1.surname  = "Child-Rt1"
+    childRt1.sex      = "M"
+    var motherRt1 = new PersonRecursiveTest1
+    motherRt1.name    = "Some"
+    motherRt1.surname = "Mother-Rt1"
+    motherRt1.sex     = "F"
+    childRt1.mother   = motherRt1
+    val childRt1Id = qe.save(childRt1)
+    childRt1 = qe.get[PersonRecursiveTest1](childRt1Id).get
+    childRt1.name     shouldBe "Some"
+    childRt1.surname  shouldBe "Child-Rt1"
+    childRt1.sex      shouldBe "M"
+    childRt1.mother.name    shouldBe "Some"
+    childRt1.mother.surname shouldBe "Mother-Rt1"
+    childRt1.mother.sex     shouldBe "F"
+
+    // recursive structure save test - children
+    var childRt2a = new PersonRecursiveTest2
+    childRt2a.name    = "Some"
+    childRt2a.surname = "Child-Rt2a"
+    childRt2a.sex     = "M"
+    var childRt2b = new PersonRecursiveTest2
+    childRt2b.name    = "Some"
+    childRt2b.surname = "Child-Rt2b"
+    childRt2b.sex     = "F"
+    var motherRt2 = new PersonRecursiveTest2
+    motherRt2.name    = "Some"
+    motherRt2.surname = "Mother-Rt2"
+    motherRt2.sex     = "F"
+    motherRt2.children = List(childRt2a, childRt2b)
+    val motherRt2Id = qe.save(motherRt2)
+    motherRt2 = qe.get[PersonRecursiveTest2](motherRt2Id).get
+    motherRt2.name     shouldBe "Some"
+    motherRt2.surname  shouldBe "Mother-Rt2"
+    motherRt2.sex      shouldBe "F"
+    motherRt2.children.size shouldBe 2
+    motherRt2.children(0).name    shouldBe "Some"
+    motherRt2.children(0).surname shouldBe "Child-Rt2a"
+    motherRt2.children(0).sex     shouldBe "M"
+    motherRt2.children(1).name    shouldBe "Some"
+    motherRt2.children(1).surname shouldBe "Child-Rt2b"
+    motherRt2.children(1).sex     shouldBe "F"
   }
 
   if (isDbAvailable) it should s"validate in $dbName properly" in {

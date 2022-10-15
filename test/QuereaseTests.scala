@@ -9,6 +9,7 @@ import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
 import org.mojoz.querease._
+import org.tresql.OrtMetadata
 import org.tresql.macro_.TresqlMacroInterpolator
 import org.tresql.parsing
 
@@ -334,6 +335,182 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null,
     )
+
+    qe.persistenceMetadata("person_recursive_test_1") shouldBe View(
+      List(
+        SaveTo("person",Set(),List()),
+      ),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("surname",TresqlValue(":surname",true,true)),
+        Property("sex",TresqlValue(":sex",true,true)),
+        Property("mother_id",LookupViewValue("mother",View(
+          List(
+            SaveTo("person",Set(),List()),
+          ),
+          Some(Filters(None,None,None)),
+          null,
+          true,
+          true,
+          List(
+            Property("id",TresqlValue(":id",true,true)),
+            Property("name",TresqlValue(":name",true,true)),
+            Property("surname",TresqlValue(":surname",true,true)),
+            Property("sex",TresqlValue(":sex",true,true)),
+          ),
+          null,
+        )))
+      ),
+      null,
+    )
+
+    qe.persistenceMetadata("person_recursive_test_1", Map("mother" -> Map("name" -> "x"))) shouldBe View(
+      List(
+        SaveTo("person",Set(),List()),
+      ),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("surname",TresqlValue(":surname",true,true)),
+        Property("sex",TresqlValue(":sex",true,true)),
+        Property("mother_id",LookupViewValue("mother",View(
+          List(
+            SaveTo("person",Set(),List()),
+          ),
+          Some(Filters(None,None,None)),
+          null,
+          true,
+          true,
+          List(
+            Property("id",TresqlValue(":id",true,true)),
+            Property("name",TresqlValue(":name",true,true)),
+            Property("surname",TresqlValue(":surname",true,true)),
+            Property("sex",TresqlValue(":sex",true,true)),
+            Property("mother_id",LookupViewValue("mother",View(
+              List(
+                SaveTo("person",Set(),List()),
+              ),
+              Some(Filters(None,None,None)),
+              null,
+              true,
+              true,
+              List(
+                Property("id",TresqlValue(":id",true,true)),
+                Property("name",TresqlValue(":name",true,true)),
+                Property("surname",TresqlValue(":surname",true,true)),
+                Property("sex",TresqlValue(":sex",true,true)),
+              ),
+              null,
+            )))
+          ),
+          null,
+        )))
+      ),
+      null,
+    )
+
+    qe.persistenceMetadata("person_recursive_test_2") shouldBe View(
+      List(
+        SaveTo("person",Set("mother_id"),List("id")),
+      ),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("surname",TresqlValue(":surname",true,true)),
+        Property("sex",TresqlValue(":sex",true,true)),
+        Property("children",ViewValue(
+          View(
+            List(
+              SaveTo("person",Set("mother_id"),List("id")),
+            ),
+            Some(Filters(None,None,None)),
+            null,
+            true,
+            true,
+            List(
+              Property("id",TresqlValue(":id",true,true)),
+              Property("name",TresqlValue(":name",true,true)),
+              Property("surname",TresqlValue(":surname",true,true)),
+              Property("sex",TresqlValue(":sex",true,true)),
+            ),
+            null,
+          ),
+          SaveOptions(true,false,true),
+        ))
+      ),
+      null,
+    )
+
+    qe.persistenceMetadata("person_recursive_test_2", Map("children" -> Seq(Map("name" -> "x")))) shouldBe View(
+      List(
+        SaveTo("person",Set("mother_id"),List("id")),
+      ),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      List(
+        Property("id",TresqlValue(":id",true,true)),
+        Property("name",TresqlValue(":name",true,true)),
+        Property("surname",TresqlValue(":surname",true,true)),
+        Property("sex",TresqlValue(":sex",true,true)),
+        Property("children",ViewValue(
+          View(
+            List(
+              SaveTo("person",Set("mother_id"),List("id")),
+            ),
+            Some(Filters(None,None,None)),
+            null,
+            true,
+            true,
+            List(
+              Property("id",TresqlValue(":id",true,true)),
+              Property("name",TresqlValue(":name",true,true)),
+              Property("surname",TresqlValue(":surname",true,true)),
+              Property("sex",TresqlValue(":sex",true,true)),
+              Property("children",ViewValue(
+                View(
+                  List(
+                    SaveTo("person",Set("mother_id"),List("id")),
+                  ),
+                  Some(Filters(None,None,None)),
+                  null,
+                  true,
+                  true,
+                  List(
+                    Property("id",TresqlValue(":id",true,true)),
+                    Property("name",TresqlValue(":name",true,true)),
+                    Property("surname",TresqlValue(":surname",true,true)),
+                    Property("sex",TresqlValue(":sex",true,true)),
+                  ),
+                  null,
+                ),
+                SaveOptions(true,false,true),
+              ))
+            ),
+            null,
+          ),
+          SaveOptions(true,false,true),
+        ))
+      ),
+      null,
+    )
+
+    // TODO test hierarchial recursive save with non-ambiguous child ref
+    //      for single (implied lookup) and multiple children
   }
 
   "querease" should "build correct query" in {
@@ -617,7 +794,8 @@ object QuereaseTests {
        ))
      override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
        Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
-     def persistenceMetadata(viewName: String) = nameToPersistenceMetadata(viewName)
+     def persistenceMetadata(viewName: String, data: Map[String, Any] = Map.empty): OrtMetadata.View =
+       persistenceMetadata(nameToViewDef(viewName), data)
    }
   implicit val qe = TestQuerease
   val nl = System.getProperty("line.separator")

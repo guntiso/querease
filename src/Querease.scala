@@ -221,8 +221,7 @@ abstract class Querease extends QueryStringBuilder
     filter: String,
     extraPropsToSave: Map[String, Any],
   )(implicit resources: Resources): Long = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+    val metadata = persistenceMetadata(view, data) match {
         case md if filter == null => md
         case md => md.copy(
           filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
@@ -237,8 +236,7 @@ abstract class Querease extends QueryStringBuilder
     view: ViewDef,
     data: Map[String, Any],
   )(implicit resources: Resources): Long = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    val metadata = persistenceMetadata(view, data)
     insert(view, metadata, data)
   }
 
@@ -264,8 +262,7 @@ abstract class Querease extends QueryStringBuilder
     filter: String,
     extraPropsToSave: Map[String, Any],
   )(implicit resources: Resources): Unit = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+    val metadata = persistenceMetadata(view, data) match {
         case md if filter == null => md
         case md => md.copy(
           filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
@@ -280,8 +277,7 @@ abstract class Querease extends QueryStringBuilder
     view: ViewDef,
     data: Map[String, Any],
   )(implicit resources: Resources): Unit = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    val metadata = persistenceMetadata(view, data)
     update(view, metadata, data)
   }
 
@@ -304,8 +300,7 @@ abstract class Querease extends QueryStringBuilder
     filter: String,
     extraPropsToSave: Map[String, Any],
   )(implicit resources: Resources): (SaveMethod, Long) = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+    val metadata = persistenceMetadata(view, data) match {
         case md if filter == null => md
         case md => md.copy(
           filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
@@ -323,8 +318,7 @@ abstract class Querease extends QueryStringBuilder
     view: ViewDef,
     data: Map[String, Any],
   )(implicit resources: Resources): (SaveMethod, Long) = {
-    val metadata = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get)
+    val metadata = persistenceMetadata(view, data)
     upsert(view, metadata, data)
   }
 
@@ -691,8 +685,7 @@ abstract class Querease extends QueryStringBuilder
     filter: String,
     params: Map[String, Any],
   )(implicit resources: Resources): Int = {
-    val mergedFilter = nameToPersistenceMetadata.getOrElse(
-      view.name, toPersistenceMetadata(view, nameToViewDef, throwErrors = true).get) match {
+    val mergedFilter = persistenceMetadata(view, data) match {
         case md if filter == null => md.filters.flatMap(_.delete).orNull
         case md => mergeFilters(md.filters.flatMap(_.delete), filter).orNull
       }

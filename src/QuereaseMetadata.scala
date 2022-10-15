@@ -56,9 +56,12 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   }
   // TODO merge all extra metadata, attach to view: ordering, persistence metadata, key fields, ...
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
+  protected lazy val persistenceMetadataMaxDepth: Int = -1
   protected lazy val nameToPersistenceMetadata: Map[String, OrtMetadata.View] =
     nameToViewDef.flatMap { case (name, viewDef) =>
-      toPersistenceMetadata(viewDef, nameToViewDef, throwErrors = false).toSeq.map(name -> _)
+      (try toPersistenceMetadata(viewDef, nameToViewDef) catch {
+        case util.control.NonFatal(ex) => None
+      }).toSeq.map(name -> _)
     }
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
@@ -256,12 +259,14 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     nameToViewDef:  Map[String, ViewDef],
     parentNames:    List[String]  = Nil,
     refsToParent:   Set[String]   = Set.empty,
-    throwErrors:    Boolean       = true,
+    maxDepth:       Int           = persistenceMetadataMaxDepth,
   ): Option[OrtMetadata.View] = try {
-    if (parentNames contains view.name)
-      if (throwErrors)
-        sys.error("Saving recursive views not supported by tresql: " + (view.name :: parentNames).reverse.mkString(" -> "))
-      else return None // provide Ref(view_name) instead - when supported by tresql
+    if (maxDepth == 0)
+      return None
+    if (maxDepth  < 0 && parentNames.contains(view.name))
+      // provide Ref(view_name) instead - when supported by tresql
+      sys.error("Persistence metadata of unlimited depth for recursive structure not supported: " +
+        (view.name :: parentNames).reverse.mkString(" -> "))
     val keyFields = if (parentNames == Nil) viewNameToKeyFields(view.name) else Nil
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     def saveToNames(view: ViewDef) =
@@ -450,7 +455,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             nameToViewDef = nameToViewDef,
             parentNames   = view.name :: parentNames,
             refsToParent  = Set.empty,
-            throwErrors   = throwErrors,
+            maxDepth      = maxDepth - 1,
           )
           .map(md => if (childSaveTo != null) md.copy(saveTo = childSaveTo) else md)
           .filter(_.saveTo.nonEmpty)
@@ -498,6 +503,30 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   } catch {
     case util.control.NonFatal(ex) =>
       throw new RuntimeException(s"Failed to build persistenceMetadata for view ${view.name}", ex)
+  }
+
+  def persistenceMetadata(view: ViewDef, data: Map[String, Any]): OrtMetadata.View = {
+    def maxDataDepth(data: Map[String, Any]): Int = data.values.foldLeft(1) {
+      case (mx1, child: Map[String@unchecked, _]) =>
+        math.max(mx1, maxDataDepth(child) + 1)
+      case (mx1, children: Iterable[_]) =>
+        math.max(
+          mx1,
+          children.foldLeft(mx1) {
+            case (mx2, child: Map[String@unchecked, _]) =>
+              math.max(mx2, maxDataDepth(child) + 1)
+            case (mx2, _) => mx2
+          }
+        )
+      case (mx1, _) => mx1
+    }
+    def dynamicPersistenceMetadata =
+      toPersistenceMetadata(
+        view,
+        nameToViewDef,
+        maxDepth = maxDataDepth(data) + 1 // +1 for potential cleanup of lookup and/or children
+      ).get
+    nameToPersistenceMetadata.getOrElse(view.name, dynamicPersistenceMetadata)
   }
 }
 
