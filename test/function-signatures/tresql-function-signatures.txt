@@ -1,0 +1,12 @@
+include /tresql-default-function-signatures.txt
+
+// custom
+checked_resolve(resolvable::string, resolved::any, error_message::string)::any
+
+// hsqldb
+convert(value::any, typeName::string)::any
+
+// postgresql
+array(query::any)::any
+concat_ws(sep::string, str::'any*')::string
+nullif(a::integer, b::integer)::integer

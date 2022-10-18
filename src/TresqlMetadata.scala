@@ -2,11 +2,10 @@ package org.mojoz.querease
 
 import java.io.File
 
-import org.tresql.compiling.{CompilerFunctionMetadata, CompilerMetadata, CompilerMetadataFactory}
+import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
 import org.tresql.Metadata
 import org.tresql.metadata.Col
 import org.tresql.metadata.Key
-import org.tresql.metadata.Procedure
 import org.tresql.metadata.{Ref => TresqlRef}
 import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
@@ -25,7 +24,7 @@ import TresqlMetadata._
 class TresqlMetadata(
   val tableDefs: Seq[TableDef[ColumnDef[Type]]],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
-  val dbToFunctionSignaturesClass: Map[String, Class[_]] = Map.empty,
+  override val macrosClass: Class[_]  = null,
 ) extends Metadata with TypeMapper {
 
   val simpleTypeNameToXsdSimpleTypeName =
@@ -44,7 +43,7 @@ class TresqlMetadata(
       .transform { case (extraDb, tableDefs) =>
         if  (extraDb == db)
              this
-        else TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass) }
+        else TresqlMetadata(tableDefs, typeDefs, macrosClass) }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef[Type]) = {
       val typeName = c.type_.name
@@ -62,11 +61,16 @@ class TresqlMetadata(
   }.map(t => (t.name, t)).toMap
   private val tablesNormalized = tables.map { case (n, t) => (n.toLowerCase, t) }
 
+  private val dbAsSuffix = Option(db).filter(_ != "") getOrElse "main-db"
+  override val functionSignaturesResource: String =
+    s"/tresql-function-signatures-$dbAsSuffix.txt"
+  override val macroSignaturesResource: String =
+    s"/tresql-macros-$dbAsSuffix.txt"
+
   override def table(name: String): Table =
     tables.getOrElse(name, tablesNormalized(name.toLowerCase))
   override def tableOption(name: String): Option[Table] =
     tables.get(name).orElse(tablesNormalized.get(name.toLowerCase))
-  override def procedureOption(name: String): Option[Procedure[_]] = None
   def tableOption(name: String, db: String): Option[Table] =
     if  (db == this.db)
          tableOption(name)
@@ -102,41 +106,37 @@ class TresqlMetadata(
 
 
 class TresqlMetadataFactory extends CompilerMetadataFactory {
-  /** Creates tresql compiler metadata by loading table metadata (as produced by
-   *  [[querease.TresqlMetadata.tableMetadataString]]) and instantiating
-   *  function signatures class.
+  /** Creates tresql compiler metadata by loading table metadata
+   *  (as produced by [[querease.TresqlMetadata.tableMetadataString]]),
+   *  function signatures and macros.
    *
-   *  Inspects "tableMetadataFile" and "functions" and "functions[.dbName]" keys in conf parameter.
-   *  Defaults to "tresql-table-metadata.yaml" and "org.tresql.compiling.TresqlFunctionSignatures"
+   *  Inspects "table_metadata_resource" and "macros_class" keys in conf parameter.
+   *  Defaults to /tresql-table-metadata.yaml and no macros class.
+   *  Loads function signatures from first resource found in order:
+   *    /tresql-function-signatures-<db-name>.txt,
+   *    /tresql-function-signatures.txt,
+   *    /tresql-default-function-signatures.txt.
+   *  Loads macros from first resource found in order:
+   *    /tresql-macros-<db-name>.txt,
+   *    /tresql-macros.txt,
+   *    /tresql-default-macros.txt.
+   *  In resource names above, "main-db" is used for missing db-name.
    */
   override def create(conf: Map[String, String]): CompilerMetadata = {
-    val tableMetadataFileName = conf.getOrElse("tableMetadataFile", "tresql-table-metadata.yaml")
-    def functionSignaturesClass(parameterName: String): Class[_] = {
-      val functionSignaturesClassName =
-        conf.getOrElse(parameterName, "org.tresql.compiling.TresqlFunctionSignatures")
-      Option(functionSignaturesClassName).filter(_ != "").map(Class.forName).orNull
-    }
-    val macrosClassName = conf.get("macros")
-    val rawTableMetadata = YamlMd.fromFile(new File(tableMetadataFileName))
+    val tableMetadataResourceName =
+      conf.getOrElse("table_metadata_resource", "/tresql-table-metadata.yaml")
+    val macrosClassOpt = conf.get("macros_class").map(Class.forName)
+    val rawTableMetadata = YamlMd.fromResource(tableMetadataResourceName)
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
     val dbInfo = new TableMetadataDbInfo(tableDefs)
-    // dbToFunctionSignaturesClass initialization - strange code and type annotations
-    // to work around scala 2.12 compilation errors and warnings. Cleanup welcome.
-    val dbToFunctionSignaturesClassPart1: Map[String, Class[_]] =
-        dbInfo.dbSet.toSeq.filter(_ != null).filter(_ != "")
-          .map(db => (db, functionSignaturesClass(s"functions.$db")))
-          .toMap
-    val dbToFunctionSignaturesClassFallback = Map[String, Class[_]](("", functionSignaturesClass("functions")))
-    val dbToFunctionSignaturesClass: Map[String, Class[_]] =
-      dbToFunctionSignaturesClassPart1 ++ dbToFunctionSignaturesClassFallback
-    val tresqlMetadata = TresqlMetadata(tableDefs, typeDefs = Nil, dbToFunctionSignaturesClass)
+    val tresqlMetadata = TresqlMetadata(tableDefs, typeDefs = Nil, macrosClassOpt.orNull)
     new CompilerMetadata {
       override def metadata: Metadata = tresqlMetadata
       override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
-      override def macros: Option[Any] =
-        macrosClassName.map(cn => Class.forName(cn).getDeclaredConstructor().newInstance())
+      override def macros: Any =
+        macrosClassOpt.map(_.getDeclaredConstructor().newInstance()).orNull
     }
   }
 }
@@ -147,24 +147,14 @@ object TresqlMetadata {
     val dbSet: Set[String] = dbToTableDefs.keySet
     val db = if (dbSet.contains(null)) null else tableDefs.headOption.map(_.db).orNull
   }
-  /** Creates tresql compiler metadata from table metadata, typedefs and function signatures class.
+  /** Creates tresql compiler metadata from table metadata, typedefs and macros class.
    */
   def apply(
       tableDefs: Seq[TableDef[ColumnDef[Type]]],
       typeDefs: collection.immutable.Seq[TypeDef],
-      dbToFunctionSignaturesClass: Map[String, Class[_]],
+      macrosClass: Class[_]  = null,
   ): TresqlMetadata = {
     val dbInfo = new TableMetadataDbInfo(tableDefs)
-    val functionSignaturesClass =
-      dbToFunctionSignaturesClass.getOrElse(dbInfo.db,
-        dbToFunctionSignaturesClass.getOrElse(null,
-          dbToFunctionSignaturesClass.getOrElse("", null)))
-    if (functionSignaturesClass == null)
-      new TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass)
-    else {
-      new TresqlMetadata(tableDefs, typeDefs, dbToFunctionSignaturesClass) with CompilerFunctionMetadata {
-        override def compilerFunctionSignatures = functionSignaturesClass
-      }
-    }
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass)
   }
 }

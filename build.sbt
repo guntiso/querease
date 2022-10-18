@@ -16,7 +16,7 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
-val tresqlV = "11.1.3"
+val tresqlV = "12.0.0-SNAPSHOT"
 val mojozV  = "4.1.0"
 libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
@@ -50,6 +50,7 @@ resolvers ++= Seq(
 Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
   b / "test" / "conf",
   b / "test" / "data",
+  b / "test" / "function-signatures",
   b / "test" / "tables",
   b / "test" / "views"
 )).value
@@ -61,14 +62,7 @@ Test / unmanagedClasspath +=
   // Needs [pre-compiled] function signatures to compile tresql in generated sources
   baseDirectory.value / "project" / "target" / "scala-2.12" / "sbt-1.0" / "classes"
 
-Test / scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8",
-  "-Xmacro-settings:" + List(
-    "metadataFactoryClass=org.mojoz.querease.TresqlMetadataFactory",
-    "tableMetadataFile=" + new File(((Test / resourceManaged).value / "tresql-table-metadata.yaml").getAbsolutePath).getCanonicalPath,
-    "functions=test.FunctionSignatures",
-    "macros=test.QuereaseTestMacros"
-  ).mkString(", ")
-)
+Test / scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
 Test / resourceGenerators += Def.task {
   import org.mojoz.querease._

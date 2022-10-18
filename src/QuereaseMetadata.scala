@@ -6,7 +6,6 @@ import org.mojoz.metadata.ColumnDef.ColumnDefBase
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
-import org.tresql.compiling.TresqlFunctionSignatures
 import org.tresql.parsing.{Ident, Variable}
 import org.tresql.MacroResourcesImpl
 import org.tresql.QueryParser
@@ -43,8 +42,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
-  lazy val dbToFunctionSignaturesClass: Map[String, Class[_]] = Map((null, classOf[TresqlFunctionSignatures]))
-  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, dbToFunctionSignaturesClass)
+  lazy val macrosClass: Class[_] = null
+  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass)
   protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefLoader: YamlViewDefLoader =
@@ -374,6 +373,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             tresql    = valueTresql,
             forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
             forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
+            optional  = false, // TODO [optional]?
           )
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
@@ -496,6 +496,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         alias       = view.tableAlias,
         forInsert   = true,
         forUpdate   = true,
+        optional    = false, // TODO [optional]?
         properties  = properties,
         db          = view.db,
       )
