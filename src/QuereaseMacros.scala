@@ -1,7 +1,8 @@
 package org.mojoz.querease
 
 import org.tresql.macro_._
-import org.tresql.parsing.{ Exp, QueryParsers }
+import org.tresql.parsing.QueryParsers
+import org.tresql.ast.Exp
 
 class QuereaseMacros extends org.tresql.Macros {
   def if_not(implicit p: QueryParsers, bool: Exp, exprThen: Exp) =

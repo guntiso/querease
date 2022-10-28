@@ -1,6 +1,6 @@
 package org.mojoz.querease
 
-import org.tresql.parsing.Ident
+import org.tresql.ast.Ident
 
 trait QuereaseResolvers { this: Querease =>
 

@@ -6,7 +6,7 @@ import org.mojoz.metadata.ColumnDef.ColumnDefBase
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
-import org.tresql.parsing.{Ident, Variable}
+import org.tresql.ast.{Ident, Variable}
 import org.tresql.MacroResourcesImpl
 import org.tresql.QueryParser
 import org.tresql.OrtMetadata
@@ -252,7 +252,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     }
   }
   def oldKeyParamName = "old key"
-  private lazy val oldKeyRef = org.tresql.parsing.Variable(oldKeyParamName, Nil, opt = false).tresql
+  private lazy val oldKeyRef = Variable(oldKeyParamName, Nil, opt = false).tresql
   protected def toPersistenceMetadata(
     view: ViewDef,
     nameToViewDef:  Map[String, ViewDef],

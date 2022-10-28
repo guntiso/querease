@@ -2,9 +2,10 @@ package org.mojoz.querease
 
 import org.tresql.compiling.Compiler
 import org.tresql.{ CacheBase, SimpleCacheBase }
-import org.tresql.parsing.Braces
-import org.tresql.parsing.Exp
-import org.tresql.parsing.Obj
+import org.tresql.ast.Braces
+import org.tresql.ast.Exp
+import org.tresql.ast.Obj
+import org.tresql.ast.CompilerAst
 
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
@@ -37,7 +38,7 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
     val (joinsParserCompiler, cache) = dbToCompilerAndCache(db)
     import TresqlJoinsParser._
     import joinsParserCompiler.{ declaredTable, metadata }
-    import joinsParserCompiler.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
+    import CompilerAst.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
     val (firstNonCteJoinIdx, joinsStr) =
       firstNonCteJoinIdxAndJoinsString(baseTable, joins)
     val compileStr =
@@ -71,8 +72,8 @@ class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
       case x => exprNotSupportedException(x)
     }
     val (s, scopes, tables) = selectDefBase(compiledExpr) match {
-      case s: SelectDef => (s, List(s), s.tables)
-      case w: WithSelectDef => (w, w.exp :: w.withTables.reverse, w.tables)
+      case s: SelectDef => (s, List(joinsParserCompiler.ExpToScope.expToScope(s)), s.tables)
+      case w: WithSelectDef => (w, joinsParserCompiler.ExpToScope.expListToScopeList(w.exp :: w.withTables.reverse), w.tables)
       case x => exprNotSupportedException(x)
     }
     tables

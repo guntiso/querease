@@ -5,7 +5,8 @@ import org.mojoz.metadata.ViewDef.ViewDefBase
 import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.Type
 import org.tresql.{CacheBase, SimpleCacheBase}
-import org.tresql.parsing.{Exp, ExpTransformer, Ident, QueryParsers, Variable}
+import org.tresql.parsing.{ExpTransformer, QueryParsers}
+import org.tresql.ast.{Exp, Ident, Variable}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
@@ -261,7 +262,7 @@ trait QuereaseExpressions { this: Querease =>
   }
 
   /** Used by expression transformer */
-  protected def isResolverToBeTransformed(ctx: Context, q: org.tresql.parsing.Query): Boolean = {
+  protected def isResolverToBeTransformed(ctx: Context, q: org.tresql.ast.Query): Boolean = {
     ctx.mdContext == Resolver && ctx.transformerContext == RootCtx ||
     // OR
     ctx.transformerContext == EqOpCtx &&
@@ -273,6 +274,7 @@ trait QuereaseExpressions { this: Querease =>
   protected def expressionTransformer: parser.TransformerWithState[Context] = parser.transformerWithState { ctx =>
     import parser._
     import org.tresql.parsing._
+    import org.tresql.ast._
     val viewName = Option(ctx.viewDef).map(_.name).orNull
     def fullContextName =
       s"${ctx.mdContext.name} of $viewName${Option(ctx.fieldName).map("." + _).getOrElse("")}"

@@ -5,8 +5,8 @@ import org.mojoz.metadata.MojozFieldDefBase
 import org.mojoz.metadata.MojozViewDefBase
 import org.mojoz.metadata.Type
 
-import org.tresql.parsing.Ident
-import org.tresql.parsing.Variable
+import org.tresql.ast.Ident
+import org.tresql.ast.Variable
 
 import scala.annotation.tailrec
 import scala.collection.immutable.Seq
