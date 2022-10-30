@@ -392,7 +392,7 @@ trait QuereaseExpressions { this: Querease =>
       case q @ Query(tables, filter, cols, group, order, offset, limit) =>
         val isViewRef = tables.size == 1 && tables.head.tresql.startsWith("^")
         def withLimitQ(q: Query) =
-          (if (q.limit == null) q.copy(limit = Const(2)) else q)
+          (if (q.limit == null) q.copy(limit = Const(IntVal(2))) else q)
         // TODO transform all fieldrefs of this query
         val resolvedQuery = if (!isViewRef) {
           val nctx = if (ctx.transformerContext == OtherOpCtx) ctx else ctx.copy(transformerContext = OtherOpCtx)
