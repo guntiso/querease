@@ -16,6 +16,14 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
+initialize := {
+  val _ = initialize.value
+  val javaVersion = sys.props("java.specification.version")
+  if (javaVersion != "1.8")
+    sys.error("Java 1.8 is required for this project. Found " + javaVersion + " instead")
+}
+
 val tresqlV = "11.1.3"
 val mojozV  = "4.1.0"
 libraryDependencies ++= Seq(
