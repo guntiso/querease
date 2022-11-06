@@ -24,11 +24,11 @@ initialize := {
     sys.error("Java 1.8 is required for this project. Found " + javaVersion + " instead")
 }
 
-val tresqlV = "11.1.3"
 val mojozV  = "4.2.0"
+val tresqlV = "11.2.0"
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz"  %% "mojoz"  % mojozV,
+  "org.tresql" %% "tresql" % tresqlV,
   // test
   "org.hsqldb"     % "hsqldb"     % "2.3.1"  % "test", // TODO upgrade hsqldb when supported by tresql
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
