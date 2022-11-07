@@ -90,6 +90,10 @@ trait QuereaseExpressions { this: Querease =>
   /** Returns missing var expression for inclusion in resolver error message expression */
   protected def resolvablesMessageMissingVarExpression(bindVar: String) = "'[missing]'"
 
+  /** Returns tresql cast expression (some databases enforce more casts than other) */
+  protected def resolvableCastToText(typeOpt: Option[Type]) =
+    if (typeOpt.isDefined && typeOpt.get.name == "string") "" else "::text"
+
   /** Returns resolvables expression for inclusion in resolver error message expression
     *
     * @param viewName    view name this expression is from
@@ -100,7 +104,7 @@ trait QuereaseExpressions { this: Querease =>
   protected def resolvablesMessageExpression(
       viewName: String, fieldName: String, contextName: String, bindVars: List[(String, Option[Type])]): String = {
     def expr(v: String, typeOpt: Option[Type]) = {
-      val cast = if (typeOpt.isDefined && typeOpt.get.name == "string") "" else "::text"
+      val cast = resolvableCastToText(typeOpt)
       if (v.startsWith(":") && v.endsWith("?"))
          s"if_defined_or_else($v, coalesce($v$cast, 'null'), ${resolvablesMessageMissingVarExpression(v)})"
       else s"coalesce($v$cast, 'null')"
@@ -150,7 +154,7 @@ trait QuereaseExpressions { this: Querease =>
       viewName: String, fieldName: String, contextName: String, bindVars: List[(String, Option[Type])]): String = {
     val hasPlaceholder = bindVars.find(_._1 == "_").isDefined
     def expr(v: String, typeOpt: Option[Type]) = {
-      val cast = if (typeOpt.isDefined && typeOpt.get.name == "string") "" else "::text"
+      val cast = resolvableCastToText(typeOpt)
       if (v.startsWith(":") && v.endsWith("?"))
          s"if_defined_or_else($v, $v$cast, null)"
       else s"$v$cast"
