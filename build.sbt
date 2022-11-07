@@ -32,7 +32,7 @@ libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
   // test
-  "org.hsqldb"     % "hsqldb"     % "2.3.3"  % "test",
+ ("org.hsqldb"     % "hsqldb"     % "2.7.0"  % "test").classifier("jdk8"),
   "com.typesafe" % "config" % "1.2.0" % "test",
   "org.scalatest" %% "scalatest" % "3.1.1" % "test",
   "org.postgresql" % "postgresql" % "42.2.5" % "test",
@@ -103,6 +103,8 @@ Test / sourceGenerators += Def.task {
     val qe = new Querease with ScalaDtoQuereaseIo {
       override lazy val tableMetadata = tableMd
       override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
+      override protected def resolvableCastToText(typeOpt: Option[Type]) =
+        "::text" // always cast - for hsqldb since v2.3.4
     }
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) =

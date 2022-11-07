@@ -21,6 +21,7 @@ object QuereaseHsqldbTests {
   private val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
     case c: QueryBuilder#CastExpr => c.typ match {
       case "bigint" => s"convert(${c.exp.sql}, BIGINT)"
+      case "text" => s"convert(${c.exp.sql}, VARCHAR(2000))"
       case _ => c.exp.sql
     }
   }
