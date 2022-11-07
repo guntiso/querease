@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
   "org.mojoz"  %% "mojoz"  % mojozV,
   "org.tresql" %% "tresql" % tresqlV,
   // test
-  "org.hsqldb"     % "hsqldb"     % "2.3.1"  % "test", // TODO upgrade hsqldb when supported by tresql
+  "org.hsqldb"     % "hsqldb"     % "2.3.3"  % "test",
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.14" % "test",
   "org.postgresql" % "postgresql" % "42.5.0" % "test",
