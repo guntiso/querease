@@ -32,7 +32,7 @@ libraryDependencies ++= Seq(
   "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz" %% "mojoz" % mojozV,
   // test
-  "org.hsqldb" % "hsqldb" % "2.3.1" % "test",
+  "org.hsqldb"     % "hsqldb"     % "2.3.3"  % "test",
   "com.typesafe" % "config" % "1.2.0" % "test",
   "org.scalatest" %% "scalatest" % "3.1.1" % "test",
   "org.postgresql" % "postgresql" % "42.2.5" % "test",

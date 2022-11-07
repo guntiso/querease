@@ -137,7 +137,7 @@ fields:
 - forefathers * [] :
     table:
     joins:
-    - t(*) {
+    - t(level, name, surname, father_id) {
         person f [f.id = :1(father_id)]   {1   level, name, surname, father_id}
         +
         t [t.father_id = ff.id] person ff {1 + level, ff.name, ff.surname, ff.father_id}
