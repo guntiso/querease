@@ -16,15 +16,23 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
+javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
+initialize := {
+  val _ = initialize.value
+  val javaVersion = sys.props("java.specification.version")
+  if (javaVersion != "1.8")
+    sys.error("Java 1.8 is required for this project. Found " + javaVersion + " instead")
+}
+
+val mojozV  = "4.2.0"
 val tresqlV = "12.0.0-SNAPSHOT"
-val mojozV  = "4.1.0"
 libraryDependencies ++= Seq(
-  "org.tresql" %% "tresql" % tresqlV,
   "org.mojoz"  %% "mojoz"  % mojozV,
+  "org.tresql" %% "tresql" % tresqlV,
   // test
-  "org.hsqldb"     % "hsqldb"     % "2.3.1"  % "test", // TODO upgrade hsqldb when supported by tresql
+ ("org.hsqldb"     % "hsqldb"     % "2.7.1"  % "test").classifier("jdk8"),
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
-  "org.scalatest" %% "scalatest"  % "3.2.13" % "test",
+  "org.scalatest" %% "scalatest"  % "3.2.14" % "test",
   "org.postgresql" % "postgresql" % "42.5.0" % "test",
 )
 
@@ -94,6 +102,8 @@ Test / sourceGenerators += Def.task {
     val qe = new Querease with ScalaDtoQuereaseIo {
       override lazy val tableMetadata = tableMd
       override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
+      override protected def resolvableCastToText(typeOpt: Option[Type]) =
+        "::text" // always cast - for hsqldb since v2.3.4
     }
     val ScalaBuilder = new ScalaDtoGenerator(qe) {
       override def scalaClassName(name: String) =

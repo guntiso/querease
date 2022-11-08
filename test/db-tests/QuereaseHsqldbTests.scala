@@ -17,9 +17,14 @@ class QuereaseHsqldbTests extends QuereaseDbTests {
 
 object QuereaseHsqldbTests {
   QuereaseDbTests.loadJdbcDrivers // fix "sbt +test" - No suitable driver found
+  System.setProperty(
+    "hsqldb.method_class_names",
+    "test.HsqldbCustomFunctions.*"// allow access to our custom java functions
+  )
   val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
     case c: QueryBuilder#CastExpr => c.typ match {
       case "bigint" | "long" | "int" => s"convert(${c.exp.sql}, BIGINT)"
+      case "text" => s"convert(${c.exp.sql}, VARCHAR(2000))"
       case _ => c.exp.sql
     }
   }
