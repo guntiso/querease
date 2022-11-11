@@ -11,18 +11,19 @@ import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
 import org.mojoz.metadata.io._
 import org.mojoz.metadata.in._
+import org.mojoz.metadata.MojozTableDef
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.TypeDef
 import org.mojoz.metadata.TypeMetadata
-import org.mojoz.metadata.TableDef.{TableDefBase => TableDef}
-import org.mojoz.metadata.ColumnDef.{ColumnDefBase => ColumnDef}
+import org.mojoz.metadata.TableDef
+import org.mojoz.metadata.ColumnDef
 
 import scala.collection.immutable.{Map, Seq, Set}
 
 import TresqlMetadata._
 
 class TresqlMetadata(
-  val tableDefs: Seq[TableDef[ColumnDef[Type]]],
+  val tableDefs: Seq[MojozTableDef],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
 ) extends Metadata with TypeMapper {
@@ -84,7 +85,7 @@ class TresqlMetadata(
       cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions
     implicit def stringToSeq(s: String): Seq[String] = Seq(s)
-    def tableToString(table: Table, mojozTable: TableDef[ColumnDef[Type]]) =
+    def tableToString(table: Table, mojozTable: MojozTableDef) =
       Seq[collection.Seq[String]](
         Option(mojozTable.db).map("db: " + _).toSeq,
         "table: " + table.name,
@@ -142,15 +143,15 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
 }
 
 object TresqlMetadata {
-  class TableMetadataDbInfo(tableDefs: Seq[TableDef[ColumnDef[Type]]]) {
-    val dbToTableDefs: Map[String, Seq[TableDef[ColumnDef[Type]]]] = tableDefs.groupBy(_.db)
+  class TableMetadataDbInfo(tableDefs: Seq[MojozTableDef]) {
+    val dbToTableDefs: Map[String, Seq[MojozTableDef]] = tableDefs.groupBy(_.db)
     val dbSet: Set[String] = dbToTableDefs.keySet
     val db = if (dbSet.contains(null)) null else tableDefs.headOption.map(_.db).orNull
   }
   /** Creates tresql compiler metadata from table metadata, typedefs and macros class.
    */
   def apply(
-      tableDefs: Seq[TableDef[ColumnDef[Type]]],
+      tableDefs: Seq[MojozTableDef],
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
   ): TresqlMetadata = {

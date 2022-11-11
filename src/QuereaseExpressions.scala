@@ -1,7 +1,9 @@
 package org.mojoz.querease
 
-import org.mojoz.metadata.FieldDef.FieldDefBase
-import org.mojoz.metadata.ViewDef.ViewDefBase
+import org.mojoz.metadata.MojozViewDef
+import org.mojoz.metadata.MojozFieldDef
+import org.mojoz.metadata.FieldDef
+import org.mojoz.metadata.ViewDef
 import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.Type
 import org.tresql.{CacheBase, SimpleCacheBase}
@@ -225,7 +227,7 @@ trait QuereaseExpressions { this: Querease =>
       }
     }.getOrElse(bindVars.map(_ -> None))
 
-  def findField(viewDef: ViewDefBase[FieldDefBase[Type]], path: String): Option[FieldDefBase[Type]] = {
+  def findField(viewDef: MojozViewDef, path: String): Option[MojozFieldDef] = {
     if (SimpleIdentR.pattern.matcher(path).matches)
       Option(viewDef).flatMap(_.fieldOpt(path))
     else {

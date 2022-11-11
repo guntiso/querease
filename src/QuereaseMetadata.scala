@@ -1,8 +1,7 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata._
-import org.mojoz.metadata.TableDef.{Ref, TableDefBase}
-import org.mojoz.metadata.ColumnDef.ColumnDefBase
+import org.mojoz.metadata.TableDef.Ref
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
@@ -20,7 +19,7 @@ case class FieldOrderingNotFoundException(message: String) extends Exception(mes
 
 trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder =>
 
-  type FieldDef = org.mojoz.metadata.FieldDef[Type]
+  type FieldDef = org.mojoz.metadata.MojozFieldDef
   type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
@@ -40,7 +39,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
-  lazy val tableMetadata: TableMetadata[TableDefBase[ColumnDefBase[Type]]] =
+  lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
   lazy val macrosClass: Class[_] = null
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass)
@@ -245,7 +244,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       .isDefined
   }
   // FIXME remove isKeyValueSupported_ - waiting for https://github.com/mrumkovskis/tresql/issues/42
-  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDefBase[_]]) = {
+  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDef[_]]) = {
     hasExplicitKey(view) ||
     !keyFields.exists { f =>
       saveToTables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
@@ -353,7 +352,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           if  (f.isCollection) Nil
           else tables
             .sorted( // sort is stable
-              Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
+              Ordering.by((table: org.mojoz.metadata.TableDef[_]) =>
                 if (table.name == f.table) 0 else 1))
             .find { table => table.refs.exists(_.refTable == childTableName) }
             .map { table => table -> table.refs.count(_.refTable == childTableName) }

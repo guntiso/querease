@@ -306,7 +306,7 @@ trait Dto { self =>
                 .getOrElse {
                   tables
                     .sorted( // sort is stable
-                      Ordering.by((table: org.mojoz.metadata.TableDef.TableDefBase[_]) =>
+                      Ordering.by((table: org.mojoz.metadata.TableDef[_]) =>
                         if (table.name == f.table) 0 else 1))
                     .find { table => table.refs.exists(_.refTable == childTableName) }
                     .map { table => table -> table.refs.count(_.refTable == childTableName) }
