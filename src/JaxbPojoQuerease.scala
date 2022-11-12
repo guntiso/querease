@@ -5,6 +5,7 @@ import java.lang.reflect.ParameterizedType
 import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 
+import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.tresql.RowLike
 
 import javax.xml.datatype.DatatypeFactory

@@ -21,8 +21,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
   def resolveBlahA(f: String, b: String = null) = transformer.transformFilter(f, viewBlahA, b)
   def resolveBlahExpr(f: String, b: String = null) = transformer.transformFilter(f, viewBlahExpr, b)
   private val b = "base"
-  private val f: MojozFieldDef = new FieldDef(null, null)
-  private val v: MojozViewDef  =
+  private val f: FieldDef = new FieldDef(null, null)
+  private val v: ViewDef  =
     ViewDef(
       name = null,
       db = null,

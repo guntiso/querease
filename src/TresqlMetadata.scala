@@ -11,7 +11,7 @@ import org.tresql.metadata.Table
 import org.tresql.metadata.TypeMapper
 import org.mojoz.metadata.io._
 import org.mojoz.metadata.in._
-import org.mojoz.metadata.MojozTableDef
+import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.TypeDef
 import org.mojoz.metadata.TypeMetadata
@@ -23,7 +23,7 @@ import scala.collection.immutable.{Map, Seq, Set}
 import TresqlMetadata._
 
 class TresqlMetadata(
-  val tableDefs: Seq[MojozTableDef],
+  val tableDefs: Seq[TableDef],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
 ) extends Metadata with TypeMapper {
@@ -46,7 +46,7 @@ class TresqlMetadata(
              this
         else TresqlMetadata(tableDefs, typeDefs, macrosClass) }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
-    def toTresqlCol(c: ColumnDef[Type]) = {
+    def toTresqlCol(c: ColumnDef) = {
       val typeName = c.type_.name
       val scalaType = xsd_scala_type_map(
         simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName))
@@ -77,7 +77,7 @@ class TresqlMetadata(
          tableOption(name)
     else extraDbToMetadata(db).tableOption(name)
   lazy val tableMetadataString = {
-    def colToString(col: ColumnDef[Type]) =
+    def colToString(col: ColumnDef) =
       col.name +
         (if (!col.nullable) " !" else "") +
         " " + simpleTypeNameToXsdSimpleTypeName.getOrElse(col.type_.name, col.type_.name) // XXX
@@ -85,7 +85,7 @@ class TresqlMetadata(
       cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions
     implicit def stringToSeq(s: String): Seq[String] = Seq(s)
-    def tableToString(table: Table, mojozTable: MojozTableDef) =
+    def tableToString(table: Table, mojozTable: TableDef) =
       Seq[collection.Seq[String]](
         Option(mojozTable.db).map("db: " + _).toSeq,
         "table: " + table.name,
@@ -143,15 +143,15 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
 }
 
 object TresqlMetadata {
-  class TableMetadataDbInfo(tableDefs: Seq[MojozTableDef]) {
-    val dbToTableDefs: Map[String, Seq[MojozTableDef]] = tableDefs.groupBy(_.db)
+  class TableMetadataDbInfo(tableDefs: Seq[TableDef]) {
+    val dbToTableDefs: Map[String, Seq[TableDef]] = tableDefs.groupBy(_.db)
     val dbSet: Set[String] = dbToTableDefs.keySet
     val db = if (dbSet.contains(null)) null else tableDefs.headOption.map(_.db).orNull
   }
   /** Creates tresql compiler metadata from table metadata, typedefs and macros class.
    */
   def apply(
-      tableDefs: Seq[MojozTableDef],
+      tableDefs: Seq[TableDef],
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
   ): TresqlMetadata = {

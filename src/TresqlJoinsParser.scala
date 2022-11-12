@@ -9,7 +9,7 @@ import org.tresql.ast.CompilerAst
 
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
-import org.mojoz.metadata.MojozTableDef
+import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.ColumnDef
 import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.Type
@@ -133,7 +133,7 @@ object TresqlJoinsParser {
   private[querease] def joinsString(baseTable: String, joins: Seq[String]): String =
     firstNonCteJoinIdxAndJoinsString(baseTable, joins)._2
   def apply(
-    tableDefs: Seq[MojozTableDef],
+    tableDefs: Seq[TableDef],
     typeDefs: collection.immutable.Seq[TypeDef],
     macrosClass: Class[_] = null,
   ): TresqlJoinsParser = {

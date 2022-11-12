@@ -1,6 +1,7 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata.Type
+import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}

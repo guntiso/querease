@@ -1,5 +1,6 @@
 package org.mojoz.querease
 
+import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.tresql.{Query, Resources, SingleValueResult}
 import scala.collection.mutable.{Map => MM, ArrayBuffer => AB}
 

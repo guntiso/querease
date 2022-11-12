@@ -1,5 +1,7 @@
 package org.mojoz.querease
 
+import org.mojoz.metadata.ViewDef
+
 import scala.collection.immutable.Seq
 
 trait FilterType

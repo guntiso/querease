@@ -1,8 +1,8 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata.out.ScalaGenerator
-import org.mojoz.metadata.MojozFieldDef
-import org.mojoz.metadata.MojozViewDef
+import org.mojoz.metadata.FieldDef
+import org.mojoz.metadata.ViewDef
 import org.mojoz.metadata.Type
 
 import org.tresql.ast.Ident
@@ -25,13 +25,13 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val SimpleIdentR = ("^" + ident + "$").r
   private val q3 = "\"\"\"" // https://github.com/scala/bug/issues/6476
-  override def scalaClassTraits(viewDef: MojozViewDef): Seq[String] =
+  override def scalaClassTraits(viewDef: ViewDef): Seq[String] =
     if (qe.viewDefOption(viewDef.name).getOrElse(viewDef)
           .fieldOpt("id").exists(f => qe.supportedIdTypeNames.headOption.contains(f.type_.name)))
       List("DtoWithId")
     else List("Dto")
   def useTresqlInterpolator = true
-  def transformResolverExpression(expression: String, field: MojozFieldDef): String = {
+  def transformResolverExpression(expression: String, field: FieldDef): String = {
     import qe.parser._
     transformer {
       case Ident(List("_")) if field != null =>
@@ -39,22 +39,21 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     } (parseExp(expression)).tresql
   }
   private def resolverDefs(
-      viewDef: MojozViewDef,
+      viewDef: ViewDef,
       qe: Querease with QuereaseResolvers,
       manageOverrides: Boolean,
-      shouldGenerateResolverDef: (MojozViewDef, MojozFieldDef, String) => Boolean,
-      generateResolver: (MojozViewDef, MojozFieldDef, Boolean, String) => ResolverScala
+      shouldGenerateResolverDef: (ViewDef, FieldDef, String) => Boolean,
+      generateResolver: (ViewDef, FieldDef, Boolean, String) => ResolverScala
   ): Seq[String] = {
-    def resolverExp(viewDef: MojozViewDef, f: MojozFieldDef) =
+    def resolverExp(viewDef: ViewDef, f: FieldDef) =
       qe.allResolvers(
-        viewDef.asInstanceOf[this.qe.ViewDef],
-        f.asInstanceOf[this.qe.FieldDef]
+        viewDef, f
       ).map { exp =>
         transformResolverExpression(exp, f)
       }.collect {
         case exp if shouldGenerateResolverDef(viewDef, f, exp) => exp
       }
-    def resolvers(viewDef: MojozViewDef, fields: Seq[MojozFieldDef], manageOverrides: Boolean): Seq[ResolverScala] =
+    def resolvers(viewDef: ViewDef, fields: Seq[FieldDef], manageOverrides: Boolean): Seq[ResolverScala] =
       fields.flatMap { f => resolverExp(viewDef, f).map { resolverExpression =>
         val isOverride =
           if (manageOverrides && f.isOverride) {
@@ -66,7 +65,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
                 .map(_.parameterTypes)
                 .orNull
             @tailrec
-            def hasMatchingSuperResolver(viewDef: MojozViewDef): Boolean = {
+            def hasMatchingSuperResolver(viewDef: ViewDef): Boolean = {
               val fSuperOpt = viewDef.fieldOpt(fieldName)
               if (fSuperOpt.nonEmpty &&
                   resolvers(viewDef, fSuperOpt.toList, manageOverrides = false)
@@ -89,29 +88,29 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   }
   def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
-      viewDef: MojozViewDef,
+      viewDef: ViewDef,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = true, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
   def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
-      viewDef: MojozViewDef,
+      viewDef: ViewDef,
       qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = false, shouldGenerateCompanionResolverDef, companionResolverDef)
   }
   def resolverDefBodyPrefix: String = ""
   def shouldGenerateInstanceResolverDef(
-      viewDef: MojozViewDef,
-      fieldDef: MojozFieldDef,
+      viewDef: ViewDef,
+      fieldDef: FieldDef,
       resolverExpression: String
   ): Boolean = {
     resolverExpression != null && resolverExpression != ""
   }
   def shouldGenerateCompanionResolverDef(
-      viewDef: MojozViewDef,
-      fieldDef: MojozFieldDef,
+      viewDef: ViewDef,
+      fieldDef: FieldDef,
       resolverExpression: String
   ): Boolean = {
     resolverExpression != null && resolverExpression != ""
@@ -139,7 +138,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     s"(implicit env: org.tresql.Resources)"
   def resourcesWithParams(params: String): String =
     s"env.withParams($params)"
-  private def isFieldDefined(viewDef: MojozViewDef, path: String): Boolean =
+  private def isFieldDefined(viewDef: ViewDef, path: String): Boolean =
     qe.findField(viewDef, path).nonEmpty
   private def getParamNames(expression: String): Seq[String] = {
     val variables = qe.parser.extractVariables(expression)
@@ -150,8 +149,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       .map { case v if optionalVarsSet.contains(v) => v + "?" case v => v }
   }
   def instanceResolverDef(
-      viewDef: MojozViewDef,
-      fieldDef: MojozFieldDef,
+      viewDef: ViewDef,
+      fieldDef: FieldDef,
       isOverride: Boolean,
       resolverExpression: String
   ): ResolverScala = {
@@ -165,8 +164,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       defaultArgsString, instanceResolverDefExtraParams, resolverExpression)
   }
   def companionResolverDef(
-      viewDef: MojozViewDef,
-      fieldDef: MojozFieldDef,
+      viewDef: ViewDef,
+      fieldDef: FieldDef,
       isOverride: Boolean,
       resolverExpression: String
   ): ResolverScala = {
@@ -176,8 +175,8 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       defaultArgsString, companionResolverDefExtraParams, resolverExpression)
   }
   def resolverDef(
-      viewDef: MojozViewDef,
-      fieldDef: MojozFieldDef,
+      viewDef: ViewDef,
+      fieldDef: FieldDef,
       isOverride: Boolean,
       paramNames: Seq[String],
       defaultArgsString: String,
@@ -261,7 +260,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       s"  }"
     )
   }
-  override def scalaObjectString(viewDef: MojozViewDef, allViewDefs: Map[String, MojozViewDef]): String = {
+  override def scalaObjectString(viewDef: ViewDef, allViewDefs: Map[String, ViewDef]): String = {
     val className = scalaClassName(viewDef.name)
     val resolverDefs = (qe match {
       case resolvers: QuereaseResolvers if shouldGenerateCompanionResolverDefs =>
@@ -275,9 +274,9 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     } else null
   }
 
-  def resolverTargetColName(f: MojozFieldDef): String =
+  def resolverTargetColName(f: FieldDef): String =
     Option(f.saveTo) getOrElse f.name
-  def resolverTargetType(f: MojozFieldDef, db: String): Type = {
+  def resolverTargetType(f: FieldDef, db: String): Type = {
     val colName = resolverTargetColName(f)
     Option(f.table)
       .flatMap(qe.tableMetadata.tableDefOption(_, db))
@@ -287,18 +286,18 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       .filterNot(_.name == null)
       .getOrElse(new Type("string"))
   }
-  def resolverTargetTypeName(f: MojozFieldDef, db: String): String =
+  def resolverTargetTypeName(f: FieldDef, db: String): String =
     scalaSimpleTypeName(resolverTargetType(f, db))
-  def resolverParamType(viewDef: MojozViewDef, paramName: String): Type =
+  def resolverParamType(viewDef: ViewDef, paramName: String): Type =
     qe.findField(viewDef, paramName)
       .map(_.type_)
       .orElse(Option(qe.metadataConventions.typeFromExternal(paramName, None)))
       .filterNot(_.name == null)
       .getOrElse(new Type("string"))
-  def resolverParamTypeName(viewDef: MojozViewDef, paramName: String): String =
+  def resolverParamTypeName(viewDef: ViewDef, paramName: String): String =
     scalaTypeName(resolverParamType(viewDef, paramName))
 
-  override def scalaBodyExtra(viewDef: MojozViewDef, allViewDefs: Map[String, MojozViewDef]): String = qe match {
+  override def scalaBodyExtra(viewDef: ViewDef, allViewDefs: Map[String, ViewDef]): String = qe match {
     case resolvers: QuereaseResolvers if shouldGenerateInstanceResolverDefs =>
       instanceResolverDefs(viewDef, resolvers).mkString
     case _ => ""

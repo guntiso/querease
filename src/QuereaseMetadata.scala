@@ -1,7 +1,7 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata._
-import org.mojoz.metadata.TableDef.Ref
+import org.mojoz.metadata.TableMetadata.Ref
 import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
@@ -18,9 +18,6 @@ case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
 
 trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder =>
-
-  type FieldDef = org.mojoz.metadata.MojozFieldDef
-  type ViewDef = org.mojoz.metadata.ViewDef[FieldDef]
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
@@ -244,7 +241,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       .isDefined
   }
   // FIXME remove isKeyValueSupported_ - waiting for https://github.com/mrumkovskis/tresql/issues/42
-  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDef[_]]) = {
+  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDef]) = {
     hasExplicitKey(view) ||
     !keyFields.exists { f =>
       saveToTables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
@@ -352,7 +349,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           if  (f.isCollection) Nil
           else tables
             .sorted( // sort is stable
-              Ordering.by((table: org.mojoz.metadata.TableDef[_]) =>
+              Ordering.by((table: org.mojoz.metadata.TableDef) =>
                 if (table.name == f.table) 0 else 1))
             .find { table => table.refs.exists(_.refTable == childTableName) }
             .map { table => table -> table.refs.count(_.refTable == childTableName) }
@@ -567,37 +564,37 @@ object QuereaseMetadata {
       updateExtrasMap(extrasMapOrEmpty + (key -> updater(extras(key, default)))).asInstanceOf[T]
     protected def extras[E](key: String, default: E): E = extrasMapOrEmpty.getOrElse(key, default).asInstanceOf[E]
   }
-  implicit class AugmentedQuereaseViewDef(viewDef: QuereaseMetadata#ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
+  implicit class AugmentedQuereaseViewDef(viewDef: ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
     val keyFieldNames        = quereaseExtras.keyFieldNames
     override val validations = quereaseExtras.validations
-    def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): QuereaseMetadata#ViewDef =
+    def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): ViewDef =
       updateExtras(QuereaseViewExtrasKey, updater, defaultExtras)
 
     override protected def updateExtrasMap(extras: Map[String, Any]) = viewDef.copy(extras = extras)
     override protected def extrasMap = viewDef.extras
   }
-  implicit class AugmentedQuereaseFieldDef(fieldDef: QuereaseMetadata#FieldDef) extends QuereaseFieldDefExtras with ExtrasMap {
+  implicit class AugmentedQuereaseFieldDef(fieldDef: FieldDef) extends QuereaseFieldDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseFieldDef()
     private val quereaseExtras = extras(QuereaseFieldExtrasKey, defaultExtras)
     override val initial = quereaseExtras.initial
-    def updateExtras(updater: QuereaseFieldDef => QuereaseFieldDef): QuereaseMetadata#FieldDef =
+    def updateExtras(updater: QuereaseFieldDef => QuereaseFieldDef): FieldDef =
       updateExtras(QuereaseFieldExtrasKey, updater, defaultExtras)
 
     override protected def updateExtrasMap(extras: Map[String, Any]): Any = fieldDef.copy(extras = extras)
     override protected def extrasMap = fieldDef.extras
   }
 
-  def toQuereaseViewDefs(mojozViewDefs: Map[String, MojozViewDef]): Map[String, MojozViewDef] =
+  def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
     mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
 
-  def toQuereaseViewDef(viewDef: MojozViewDef): MojozViewDef = {
+  def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
     import scala.jdk.CollectionConverters._
     val Initial = "initial"
     val Key     = "key"
     val Validations = "validations"
-    def getExtraOpt(f: MojozFieldDef, key: String) =
+    def getExtraOpt(f: FieldDef, key: String) =
       Option(f.extras).flatMap(_ get key).map {
         case s: String => s
         case i: Int => i.toString

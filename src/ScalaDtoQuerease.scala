@@ -9,6 +9,7 @@ import scala.util.Try
 
 import java.util.concurrent.ConcurrentHashMap
 
+import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.tresql.Column
 import org.tresql.RowLike
 
@@ -173,8 +174,8 @@ trait Dto { self =>
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
     case _ => ""
   }
-  protected def isSavableField(field: QuereaseMetadata#FieldDef,
-                               view: QuereaseMetadata#ViewDef,
+  protected def isSavableField(field: FieldDef,
+                               view: ViewDef,
                                saveToMulti: Boolean,
                                saveToTableNames: Seq[String]) =
     (!field.isExpression &&
@@ -190,11 +191,11 @@ trait Dto { self =>
       ||
       field.saveTo != null
       )
-  protected def isSavableChildField(field: QuereaseMetadata#FieldDef,
-                                    view: QuereaseMetadata#ViewDef,
+  protected def isSavableChildField(field: FieldDef,
+                                    view: ViewDef,
                                     saveToMulti: Boolean,
                                     saveToTableNames: Seq[String],
-                                    childView: QuereaseMetadata#ViewDef): Boolean =
+                                    childView: ViewDef): Boolean =
     true
   protected lazy val saveableValue: QE => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
@@ -210,15 +211,15 @@ trait Dto { self =>
       case o: DtoWithId => o.id != null
       case _ => sys.error(s"isForUpdate() for ${getClass.getName} not supported yet") // TODO isForUpdate
     }
-    def isSaveableField(field: QuereaseMetadata#FieldDef) =
+    def isSaveableField(field: FieldDef) =
       isSavableField(field, view, saveToMulti, saveToTableNames)
-    def isSaveableChildField(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =
+    def isSaveableChildField(field: FieldDef, childView: ViewDef) =
       isSavableChildField(field, view, saveToMulti, saveToTableNames, childView)
     def ortDbPrefix(db: String): String =
       Option(db).map(db => s"@$db:") getOrElse ""
     def withOrtDbPrefix(db: String)(t: String): String =
       if (t startsWith "@") t else ortDbPrefix(db) + t
-    def tablesTo(v: QuereaseMetadata#ViewDef) =
+    def tablesTo(v: ViewDef) =
       if (v.saveTo != null && v.saveTo.nonEmpty)
         v.saveTo.map(withOrtDbPrefix(v.db)).mkString("#")
       else if (v.saveTo == Nil)
@@ -227,20 +228,20 @@ trait Dto { self =>
         withOrtDbPrefix(v.db)(v.table)
       else
         null
-    def childSaveTo(field: QuereaseMetadata#FieldDef, childView: QuereaseMetadata#ViewDef) =
+    def childSaveTo(field: FieldDef, childView: ViewDef) =
       Option(field).map(_.saveTo).filter(_ != null) getOrElse tablesTo(childView)
-    def isChildTableField(field: QuereaseMetadata#FieldDef) =
+    def isChildTableField(field: FieldDef) =
       !field.isExpression &&
         field.type_.isComplexType &&
         qe.viewDefOption(field.type_.name).map(tablesTo).orNull != null
-    def fieldOptionsRef(field: QuereaseMetadata#FieldDef) =
+    def fieldOptionsRef(field: FieldDef) =
       Option(field.options)
         .map(_.replace("[", "").replace("]", ""))
         .map(_.split("/", 2))
         .map { arr => if (arr.length == 0) null else arr(arr.length - 1) }
         .filter(_ != "")
         .orNull
-    def saveableEntries(f: QuereaseMetadata#FieldDef, v: Any): Seq[(String, Any)] = {
+    def saveableEntries(f: FieldDef, v: Any): Seq[(String, Any)] = {
       // TODO various mixes of options and params etc?
       val name = f.name
       def alias = f.fieldName
@@ -306,7 +307,7 @@ trait Dto { self =>
                 .getOrElse {
                   tables
                     .sorted( // sort is stable
-                      Ordering.by((table: org.mojoz.metadata.TableDef[_]) =>
+                      Ordering.by((table: org.mojoz.metadata.TableDef) =>
                         if (table.name == f.table) 0 else 1))
                     .find { table => table.refs.exists(_.refTable == childTableName) }
                     .map { table => table -> table.refs.count(_.refTable == childTableName) }
