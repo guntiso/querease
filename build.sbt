@@ -25,7 +25,7 @@ initialize := {
 }
 
 val mojozV  = "4.2.0"
-val tresqlV = "11.2.1"
+val tresqlV = "11.2.2"
 libraryDependencies ++= Seq(
   "org.mojoz"  %% "mojoz"  % mojozV,
   "org.tresql" %% "tresql" % tresqlV,
