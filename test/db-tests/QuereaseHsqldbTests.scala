@@ -21,6 +21,8 @@ object QuereaseHsqldbTests {
     "hsqldb.method_class_names",
     "test.HsqldbCustomFunctions.*"// allow access to our custom java functions
   )
+  Thread.sleep(50) // allow property to be set for sure (fix unstable hsqldb tests)
+
   // TODO clean up when tresql fixed
   private val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
     case c: QueryBuilder#CastExpr => c.typ match {
