@@ -13,6 +13,7 @@ import org.tresql.ast.{Exp, Ident, Variable}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
+import scala.collection.immutable.{Seq, Set}
 
 object QuereaseExpressions {
   sealed trait MdContext { val name: String }

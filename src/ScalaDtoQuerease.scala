@@ -1,6 +1,6 @@
 package org.mojoz.querease
 
-import scala.collection.immutable.TreeMap
+import scala.collection.immutable.{TreeMap, Seq}
 import scala.language.existentials
 import scala.language.implicitConversions
 import scala.language.postfixOps

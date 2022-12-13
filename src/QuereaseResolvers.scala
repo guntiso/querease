@@ -1,6 +1,7 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata.{FieldDef, ViewDef}
+import scala.collection.immutable.Seq
 import org.tresql.ast.Ident
 
 trait QuereaseResolvers { this: Querease =>

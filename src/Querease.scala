@@ -8,7 +8,7 @@ import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import scala.annotation.tailrec
-import scala.collection.immutable.Set
+import scala.collection.immutable.{Seq, Set}
 import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
@@ -727,7 +727,7 @@ trait QueryStringBuilder { this: Querease =>
   }
   */
   /** All queries and dml-s from viewDef for compilation - to test viewDef. Used by sbt-mojoz plugin */
-  def allQueryStrings(viewDef: ViewDef): collection.immutable.Seq[String] = {
+  def allQueryStrings(viewDef: ViewDef): Seq[String] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
          (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
       List(
