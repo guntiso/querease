@@ -33,7 +33,7 @@ libraryDependencies ++= Seq(
  ("org.hsqldb"     % "hsqldb"     % "2.7.1"  % "test").classifier("jdk8"),
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.15" % "test",
-  "org.postgresql" % "postgresql" % "42.5.0" % "test",
+  "org.postgresql" % "postgresql" % "42.5.3" % "test",
 )
 
 Compile / scalaSource := baseDirectory(_ / "src").value
