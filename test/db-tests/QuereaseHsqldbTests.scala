@@ -1,7 +1,7 @@
 package test
 
 import java.sql.DriverManager
-import org.mojoz.metadata.out.SqlGenerator
+import org.mojoz.metadata.out.DdlGenerator
 import org.tresql.CoreTypes
 import org.tresql.QueryBuilder
 import org.tresql.dialects.HSQLDialect
@@ -70,7 +70,7 @@ object QuereaseHsqldbTests {
       "set database collation \"Latvian\"",
     ) ++
     hsqldb_custom_functions_statements ++
-    SqlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "")
+    DdlGenerator.hsqldb().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "")
       // TODO fk accross schemas - upgrade hsqldb? Provide explicit schema?
       .filterNot(_ startsWith "alter table car_schema.person_car add constraint fk_person_car_person_id")
   def createHsqldbObjects(db: String) = executeStatements(db, createHsqldbObjectsStatements(db): _*)

@@ -1,7 +1,7 @@
 package test
 
 import java.sql.DriverManager
-import org.mojoz.metadata.out.SqlGenerator
+import org.mojoz.metadata.out.DdlGenerator
 import org.tresql.dialects.PostgresqlDialect
 import QuereaseDbTests.{executeStatements, setEnv, MainDb, ExtraDb}
 import QuereaseTests.qe
@@ -75,7 +75,7 @@ object QuereasePostgresTests {
       "create schema car_schema",
     ) ++
     postgres_custom_functions_statements ++
-    SqlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "") ++
+    DdlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "") ++
     Seq(
       "CREATE SEQUENCE seq START WITH 10000",
       "commit",

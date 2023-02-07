@@ -62,6 +62,16 @@ class TresqlMetadata(
   }.map(t => (t.name, t)).toMap
   private val tablesNormalized = tables.map { case (n, t) => (n.toLowerCase, t) }
 
+  private val typeToVendorType: Map[String, Map[String, String]] =
+    typeDefs.map { t =>
+      t.name -> t.ddlWrite.map { case (vendor, seqWi) =>
+        vendor.replace(" sql", "") ->
+          seqWi.head.targetNamePattern.replace("(size char)", "").replace("(size)", "")
+      }
+    }.filter(_._2.nonEmpty).toMap
+  override def to_sql_type(vendor: String, typeName: String): String =
+    typeToVendorType.get(typeName).flatMap(vt => vt.get(vendor).orElse(vt.get("sql"))) getOrElse typeName
+
   private val dbAsSuffix = Option(db).filter(_ != "") getOrElse "main-db"
   override val functionSignaturesResource: String =
     s"/tresql-function-signatures-$dbAsSuffix.txt"
