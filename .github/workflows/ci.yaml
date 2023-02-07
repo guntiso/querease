@@ -23,9 +23,11 @@ jobs:
       run: |
         sudo systemctl start postgresql.service
         pg_isready
-    - name: Create user and database
+    - name: Create user and databases
       run: |
-        sudo -u postgres psql -f $GITHUB_WORKSPACE/test/conf/querease-postgresql-setup.sql
+        sudo -u postgres psql --command="CREATE ROLE querease LOGIN PASSWORD 'querease';"
+        sudo -u postgres psql --command="CREATE DATABASE querease  with TEMPLATE template0 OWNER=querease LC_COLLATE='lv_LV.UTF-8' LC_CTYPE='lv_LV.UTF-8'"
+        sudo -u postgres psql --command="CREATE DATABASE querease2 with TEMPLATE template0 OWNER=querease LC_COLLATE='lv_LV.UTF-8' LC_CTYPE='lv_LV.UTF-8'"
     - name: Configure tests
       run:  cp test/conf/application.conf.ci test/conf/application.conf
     - name: Compile and test and check version policy
