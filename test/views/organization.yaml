@@ -81,6 +81,17 @@ fields:
 - balance
 
 
+name:   organization_account_key_test_3
+table:  organization_account
+fields:
+- number
+- balance
+- organization :
+    table: organization
+    fields:
+    - name
+
+
 name:     organization_readonly_children_test
 extends:  organization_key_test
 fields:

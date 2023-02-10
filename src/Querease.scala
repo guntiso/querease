@@ -879,7 +879,9 @@ trait QueryStringBuilder { this: Querease =>
           val t1 = Option(view.tableAlias).getOrElse(view.table)
           val t2 = Option(childViewDef.tableAlias).getOrElse(childViewDef.table)
           tableMetadata.tableDef(view).refs
-            .find(r => r.defaultRefTableAlias == f.name && r.refTable == childViewDef.table)
+            .find(r =>
+              Option(r.defaultRefTableAlias).getOrElse(r.refTable) == f.name &&
+              r.refTable == childViewDef.table)
             .map { r =>
               r.cols.zip(r.refCols).map {
                 case (col, refCol) => s"$t1.$col = $t2.$refCol"
