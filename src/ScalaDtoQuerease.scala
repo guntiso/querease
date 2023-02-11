@@ -37,31 +37,88 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
     m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B{type QE = self.type}].fill(r)(this)
 }
 
+case class DtoSetter(
+  name: String,
+  method: java.lang.reflect.Method,
+  mfOpt: Manifest[_ <: Option[_]],
+  mfSeq: Manifest[_ <: Seq[_]],
+  mfDto: Manifest[_ <: Dto],
+  mfOth: Manifest[_],
+)
+
 private[querease] object DtoReflection {
   private val cache =
-    new ConcurrentHashMap[Class[_ <: Dto], Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))]]
-  def manifest(name: String, dto: Dto, clazz: Class[_]): (Manifest[_], Manifest[_ <: Dto]) =
-    if (!clazz.isPrimitive)
-      ManifestFactory.classType(clazz) ->
-        (if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]])) { //get child type
-          childManifest(dto.getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
-        } else null)
-    else (clazz match {
-      case java.lang.Integer.TYPE => ManifestFactory.Int
-      case java.lang.Long.TYPE => ManifestFactory.Long
-      case java.lang.Double.TYPE => ManifestFactory.Double
-      case java.lang.Boolean.TYPE => ManifestFactory.Boolean
-    }) -> null
-  def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
-    val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
-    val clazz = parametrisedType.getActualTypeArguments()(0) match {
-      case c: Class[_] => c
-      case v: java.lang.reflect.TypeVariable[_] =>
-        v.getGenericDeclaration.asInstanceOf[Class[_]]
+    new ConcurrentHashMap[Class[_ <: Dto], Map[String, DtoSetter]]
+  def manifest(name: String, dto: Dto, clazz: Class[_]): DtoSetter = {
+    def mOpt(clazz: Class[_]): Manifest[_ <: Option[_]] = {
+      if (classOf[Option[_]].isAssignableFrom(clazz))
+        ManifestFactory.classType(clazz)
+      else null
     }
-    ManifestFactory.classType(clazz)
+    def mSeq(clazz: Class[_]): Manifest[_ <: Seq[_]] = {
+      if (classOf[Seq[_]].isAssignableFrom(clazz) && clazz.isAssignableFrom(classOf[List[_]]))
+        ManifestFactory.classType(clazz)
+      else null
+    }
+    def mDto(clazz: Class[_]): Manifest[_ <: Dto] = {
+      if (classOf[Dto].isAssignableFrom(clazz))
+        ManifestFactory.classType(clazz)
+      else null
+    }
+    def mOth(clazz: Class[_]): Manifest[_] = {
+      if (clazz.isPrimitive) clazz match {
+        case java.lang.Integer.TYPE => ManifestFactory.Int
+        case java.lang.Long.TYPE    => ManifestFactory.Long
+        case java.lang.Double.TYPE  => ManifestFactory.Double
+        case java.lang.Boolean.TYPE => ManifestFactory.Boolean
+      } else ManifestFactory.classType(clazz)
+    }
+    lazy val childMf =
+      childManifest(dto.getClass.getMethods.filter(_.getName == name).head.getGenericReturnType)
+    lazy val grandChildMf =
+      childManifest(dto.getClass.getMethods.filter(_.getName == name).head.getGenericReturnType, 2)
+    val mfOpt = mOpt(clazz)
+    val mfSeq = mfOpt match {
+      case null => mSeq(clazz)
+      case mOpt => mSeq(childMf.runtimeClass)
+    }
+    val mfDto = (mfOpt, mfSeq) match {
+      case (null, null) => mDto(clazz)
+      case (_ ,   null) => mDto(childMf.runtimeClass)
+      case (null,    _) => mDto(childMf.runtimeClass)
+      case _            => mDto(grandChildMf.runtimeClass)
+    }
+    val mfOth = (mfOpt, mfSeq, mfDto) match {
+      case (null, null, null) => mOth(clazz)
+      case (_,    null, null) => mOth(childMf.runtimeClass)
+      case (null,    _, null) => mOth(childMf.runtimeClass)
+      case (_,       _, null) => mOth(grandChildMf.runtimeClass)
+      case _ => null
+    }
+    DtoSetter(name, null, mfOpt, mfSeq, mfDto, mfOth)
   }
-  def setters(dto: Dto): Map[String, (java.lang.reflect.Method, (Manifest[_], Manifest[_ <: Dto]))] = {
+  def childManifest(t: java.lang.reflect.Type, depth: Int = 1): Manifest[_] = {
+    val parametrisedType = t.asInstanceOf[java.lang.reflect.ParameterizedType]
+    depth match {
+      case 1 =>
+        val clazz = parametrisedType.getActualTypeArguments()(0) match {
+          case c: Class[_] => c
+          case p: java.lang.reflect.ParameterizedType =>
+            p.getRawType.asInstanceOf[Class[_]]
+          case v: java.lang.reflect.TypeVariable[_] =>
+            v.getGenericDeclaration.asInstanceOf[Class[_]]
+        }
+        ManifestFactory.classType(clazz)
+      case 2 =>
+        parametrisedType.getActualTypeArguments()(0) match {
+          case p: java.lang.reflect.ParameterizedType =>
+            p.getActualTypeArguments()(0) match {
+              case cc: Class[_] => ManifestFactory.classType(cc)
+            }
+        }
+    }
+  }
+  def setters(dto: Dto): Map[String, DtoSetter] = {
     val dtoClass = dto.getClass
     cache.getOrDefault(dtoClass, {
       val setters =
@@ -72,7 +129,7 @@ private[querease] object DtoReflection {
             m.getParameterTypes.length == 1
         ) yield {
           val name = m.getName.dropRight(4)
-          name -> (m -> manifest(name, dto, m.getParameterTypes()(0)))
+          name -> manifest(name, dto, m.getParameterTypes()(0)).copy(method = m)
         }).toMap
       cache.putIfAbsent(dtoClass, setters)
       setters
@@ -100,15 +157,22 @@ trait Dto { self =>
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
       def conv[A <: QDto](r: RowLike, m: Manifest[A]): A = m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
-      if (s._2._2 != null) { //child result
-        val m: Manifest[_ <: Dto] = s._2._2
-        val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[QDto](conv, m.asInstanceOf[Manifest[QDto]]).asInstanceOf[Object])
-      } else if (classOf[Dto].isAssignableFrom(s._2._1.runtimeClass)) { // single child result
-        val m: Manifest[_ <: Dto] = s._2._1.asInstanceOf[Manifest[_ <: Dto]]
-        val childResult = r.result(dbName)
-        s._1.invoke(this, childResult.list[QDto](conv, m.asInstanceOf[Manifest[QDto]]).headOption.orNull.asInstanceOf[Object])
-      } else s._1.invoke(this, r.typed(dbName)(s._2._1).asInstanceOf[Object])
+      val value =
+        (s.mfSeq, s.mfDto) match {
+          case (null, null) =>
+            r.typed(dbName)(s.mfOth).asInstanceOf[Object]
+          case (null, mDto) =>
+            val childResult = r.result(dbName)
+            childResult.list[QDto](conv, mDto.asInstanceOf[Manifest[QDto]]).headOption.orNull.asInstanceOf[Object]
+          case (mSeq, null) =>
+            r.typed(dbName)(mSeq).asInstanceOf[Object]
+          case (mSeq, mDto) =>
+            val childrenResult = r.result(dbName)
+            childrenResult.list[QDto](conv, mDto.asInstanceOf[Manifest[QDto]]).asInstanceOf[Object]
+        }
+      if  (s.mfOpt == null)
+           s.method.invoke(this, value)
+      else s.method invoke(this, Some(value))
       s /*return setter used*/
     }) getOrElse {
       setExtras(dbName, r)
@@ -122,8 +186,8 @@ trait Dto { self =>
   protected def propToDbName(name: String) = name
   protected def manifest(name: String, clazz: Class[_]) =
     DtoReflection.manifest(name, this, clazz)
-  protected def childManifest(t: java.lang.reflect.Type): Manifest[_ <: Dto] = {
-    DtoReflection.childManifest(t)
+  protected def childManifest(t: java.lang.reflect.Type, depth: Int = 1): Manifest[_] = {
+    DtoReflection.childManifest(t, depth)
   }
 
   def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.map { m =>
@@ -134,10 +198,18 @@ trait Dto { self =>
         case x => x
       }
       case c: Dto => c.asInstanceOf[QDto].toMap
+      case Some(x) => x match {
+        case s: Seq[_] => s.map {
+          case dto: Dto => dto.asInstanceOf[QDto].toMap
+          case x => x
+        }
+        case c: Dto => c.asInstanceOf[QDto].toMap
+        case x => x
+      }
       case x => x
     }
     propName -> propValue
-  }
+  }.filter(_._2 != None)
   def toMap(implicit qe: QE): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
     .map(toMapWithOrdering).getOrElse(toUnorderedMap)
   def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QE): Map[String, Any] =

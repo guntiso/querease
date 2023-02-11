@@ -61,7 +61,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
       (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
-        viewDef.fields.map(f => (f.fieldName, if (f.isCollection) Nil else null)))
+        viewDef.fields
+          .filterNot(isOptionalField)
+          .map(f => (f.fieldName, if (f.isCollection) Nil else null)))
     }
   lazy val viewNameToKeyFields: Map[String, Seq[FieldDef]] =
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
@@ -183,7 +185,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   }
   protected def fieldOptionsSelf(field: FieldDef) =
     Option(field.options)
-      .map(_.replace("[", "").replace("]", ""))
+      .map(_.replace("[", "").replace("]", "").replace("?", ""))
       .map(_.split("/", 2))
       .map { arr =>
         if  (arr.length == 0 ||
@@ -195,7 +197,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
       .orNull
   protected def fieldOptionsRef(field: FieldDef) =
     Option(field.options)
-      .map(_.replace("[", "").replace("]", ""))
+      .map(_.replace("[", "").replace("]", "").replace("?", ""))
       .map(_.split("/", 2))
       .map { arr => if (arr.length == 0) null else arr(arr.length - 1) }
       .filter(_ != "")
@@ -225,6 +227,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
     val opt = fieldOptionsSelf(field)
     opt == null || opt.contains('=') && !opt.contains('!')
   }
+  protected def isOptionalField(f: FieldDef): Boolean =
+    f.options != null && f.options.contains('?')
   protected def persistenceFilters(
     view: ViewDef,
   ): Filters = {
@@ -369,7 +373,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             tresql    = valueTresql,
             forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
             forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
-            optional  = false, // TODO [optional]?
+            optional  = isOptionalField(f),
           )
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
@@ -390,7 +394,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
             if (f.saveTo == null && f.resolver == null)
-              ":" + fieldName
+              s":$fieldName${if (isOptionalField(f)) "?" else ""}"
             else {
               val resolvers = allResolvers(view, f)
               if (resolvers.nonEmpty) {
@@ -458,6 +462,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           .map(_.copy(
             forInsert = isFieldForInsert(f),
             forUpdate = isFieldForUpdate(f),
+            optional  = isOptionalField(f),
           ))
           .map { childPersistenceMetadata =>
             bestLookupRefs match {
@@ -492,7 +497,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         alias       = view.tableAlias,
         forInsert   = true,
         forUpdate   = true,
-        optional    = false, // TODO [optional]?
+        optional    = false,
         properties  = properties,
         db          = view.db,
       )

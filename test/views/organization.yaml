@@ -45,6 +45,20 @@ fields:
     - number
 
 
+name:   organization_optional_fields_test
+table:  organization
+key:    name
+fields:
+- name
+- accounts      [?] * :
+    table: organization_account
+    fields:
+    - number
+    - balance
+    order:
+    - number
+
+
 name:   organization_ref_only_update_test
 table:  organization
 fields:
@@ -87,6 +101,18 @@ fields:
 - number
 - balance
 - organization :
+    table: organization
+    fields:
+    - name
+
+
+name:   organization_account_optional_fields_test
+table:  organization_account
+fields:
+- id
+- number        [?]
+- balance       [?]
+- organization  [?]:
     table: organization
     fields:
     - name

@@ -201,9 +201,13 @@ abstract class Querease extends QueryStringBuilder
 
   /** Provides missing fields, override to convert types to compatible with your jdbc driver */
   protected def toSaveableMap(map: Map[String, Any], view: ViewDef): Map[String, Any] = {
-    (if (view.fields.forall(map contains _.fieldName)) map else viewNameToMapZero(view.name) ++ map) ++
+    (if  (view.fields.forall(f => map.contains(f.fieldName) || isOptionalField(f)))
+          map
+     else viewNameToMapZero(view.name) ++ map
+    ) ++
       view.fields
         .filter(_.type_.isComplexType)
+        .filter(f => map.contains(f.fieldName) || !isOptionalField(f))
         .map(f => f.fieldName -> (map.getOrElse(f.fieldName, null) match {
           case null if f.isCollection => Nil
           case null => null

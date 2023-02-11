@@ -402,6 +402,15 @@ class organization_account_key_test_3 extends Dto {
 class organization_account_key_test_3_organization extends Dto {
   var name: String = null
 }
+class organization_account_optional_fields_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var number: Option[String] = None
+  var balance: Option[scala.math.BigDecimal] = None
+  var organization: Option[organization_account_optional_fields_test_organization] = None
+}
+class organization_account_optional_fields_test_organization extends Dto {
+  var name: String = null
+}
 class organization_key_test extends Dto {
   var name: String = null
   var main_account: organization_key_test_main_account = null
@@ -412,6 +421,14 @@ class organization_key_test_accounts extends Dto {
   var balance: scala.math.BigDecimal = null
 }
 class organization_key_test_main_account extends Dto {
+  var number: String = null
+  var balance: scala.math.BigDecimal = null
+}
+class organization_optional_fields_test extends Dto {
+  var name: String = null
+  var accounts: Option[List[organization_optional_fields_test_accounts]] = None
+}
+class organization_optional_fields_test_accounts extends Dto {
   var number: String = null
   var balance: scala.math.BigDecimal = null
 }

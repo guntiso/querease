@@ -354,6 +354,37 @@ class QuereaseTests extends FlatSpec with Matchers {
       null,
     )
 
+    qe.persistenceMetadata("organization_account_optional_fields_test") shouldBe View(
+      List(
+        SaveTo("organization_account",Set(),List()),
+      ),
+      Some(Filters(None,None,None)),
+      null,
+      true,
+      true,
+      false,
+      List(
+        Property("id",TresqlValue(":id",true,true,false)),
+        Property("number",TresqlValue(":number?",true,true,true)),
+        Property("balance",TresqlValue(":balance?",true,true,true)),
+        Property("organization_id",LookupViewValue("organization",View(
+          List(
+            SaveTo("organization",Set(),List("name")),
+          ),
+          Some(Filters(None,None,None)),
+          null,
+          true,
+          true,
+          true,
+          List(
+            Property("name",TresqlValue(":name",true,true,false)),
+          ),
+          null,
+        ))),
+      ),
+      null,
+    )
+
     qe.persistenceMetadata("person_recursive_test_1") shouldBe View(
       List(
         SaveTo("person",Set(),List()),
