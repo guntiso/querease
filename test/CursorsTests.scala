@@ -17,6 +17,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     conn = DriverManager.getConnection("jdbc:hsqldb:mem:mymemdb", "SA", "")
     resources = new Resources {}
       .withConn(conn)
+      .withMacros(null)
       .withDialect(QuereaseHsqldbTests.hsqlDialect)
       .withLogger(QuereaseDbTests.TresqlLogger)
   }

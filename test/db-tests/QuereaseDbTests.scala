@@ -1133,20 +1133,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     oa.organization = None
     oa.toMap        shouldBe Map("id" -> id, "number" -> "123", "balance" -> 124)
 
-
     oa.number       = None
     oa.balance      = None
-    /*
     oa.organization = Some(org)
     oa.toMap        shouldBe Map("id" -> id, "organization" -> Map("name" -> "org-opt"))
-    */
     qe.save(oa)
     oa              = qe.get[dto.OrganizationAccountOptionalFieldsTest](id).get
     oa.number       shouldBe Some("123")
     oa.balance      shouldBe Some(124)
-    /*
     oa.organization.get.toMap shouldBe Map("name" -> "org-opt")
-    */
 
     oa.number       = Some("234")
     oa.balance      = Some(235)
@@ -1155,43 +1150,36 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     oa              = qe.get[dto.OrganizationAccountOptionalFieldsTest](id).get
     oa.number       shouldBe Some("234")
     oa.balance      shouldBe Some(235)
-    oa.organization = None
-    /*
     oa.organization.get.toMap shouldBe Map("name" -> "org-opt")
 
     oa.organization = Some(null)
-    */
     qe.save(oa)
     oa              = qe.get[dto.OrganizationAccountOptionalFieldsTest](id).get
     oa.number       shouldBe Some("234")
     oa.balance      shouldBe Some(235)
     oa.organization shouldBe Some(null)
 
-    /*
     oa.organization = Some(org)
     qe.save(oa)
     oa.organization.get.toMap shouldBe Map("name" -> "org-opt")
-    */
 
     var oo          = new dto.OrganizationOptionalFieldsTest
     oo.name         = "org-opt"
     oo.toMap        shouldBe Map("name" -> "org-opt")
-    qe.save(oo, forceInsert = true)
 
     val oId         = Query("organization[name = :name] {id}", Map("name" -> "org-opt")).unique[Long]
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
-    oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List())
+    oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List(Map("number" -> "234", "balance" -> 235.00)))
 
     val a1          = new dto.OrganizationOptionalFieldsTestAccounts
     a1.number       = "333"
     a1.balance      = 444
 
     val a2          = new dto.OrganizationOptionalFieldsTestAccounts
-    a1.number       = "555"
-    a1.balance      = 747
+    a2.number       = "555"
+    a2.balance      = 747
 
     oo.accounts     = Some(List(a1))
-    /*
     qe.save(oo)
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
     oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List(Map("number" -> "333", "balance" -> 444)))
@@ -1201,6 +1189,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
     oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List(Map("number" -> "333", "balance" -> 444)))
 
+    oo.accounts     = Some(List(a2))
+    qe.save(oo)
+    oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
+    oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List(Map("number" -> "555", "balance" -> 747)))
 
     oo.accounts     = Some(List(a1, a2))
     qe.save(oo)
@@ -1210,7 +1202,16 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         Map("number" -> "333", "balance" -> 444),
         Map("number" -> "555", "balance" -> 747),
       ))
-    */
+
+    oo.accounts     = Some(null)
+    qe.save(oo)
+    oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
+    oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List())
+
+    oo.accounts     = Some(Nil)
+    qe.save(oo)
+    oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
+    oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List())
   }
 
   if (isDbAvailable) it should s"return id on insert and save to $dbName" in {
