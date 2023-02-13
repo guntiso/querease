@@ -149,8 +149,8 @@ abstract class Querease extends QueryStringBuilder
                 tresql    = s":$col",
                 forInsert = true,
                 forUpdate = true,
-                optional  = false,
               ),
+              optional  = false,
             )
           }
         )

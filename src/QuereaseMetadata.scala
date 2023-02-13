@@ -373,7 +373,6 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             tresql    = valueTresql,
             forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
             forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
-            optional  = isOptionalField(f),
           )
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
@@ -409,6 +408,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           Property(
             col   = saveTo,
             value = persistencePropertyValue(valueTresql),
+            optional = isOptionalField(f),
           )
         } else if (isSaveableRefToReadonlyChildField(f)) {
           bestLookupRefs match {
@@ -435,6 +435,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               Property(
                 col   = refColName,
                 value = persistencePropertyValue(s"($resolverExpr)"),
+                optional = isOptionalField(f),
               )
             case refs =>
               sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
@@ -459,24 +460,26 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
           )
           .map(md => if (childSaveTo != null) md.copy(saveTo = childSaveTo) else md)
           .filter(_.saveTo.nonEmpty)
-          .map(_.copy(
-            forInsert = isFieldForInsert(f),
-            forUpdate = isFieldForUpdate(f),
-            optional  = isOptionalField(f),
-          ))
           .map { childPersistenceMetadata =>
             bestLookupRefs match {
               case Nil =>
                 Property(
                   col   = f.name,
-                  value = ViewValue(childPersistenceMetadata, childSaveOptions)
+                  value = ViewValue(childPersistenceMetadata, childSaveOptions),
+                  optional = isOptionalField(f),
                 )
               case Seq(ref) =>
                 // TODO prefer single-col ref, throw for multi-col
                 val refColName = ref.cols.head
                 Property(
                   col   = refColName,
-                  value = LookupViewValue(fieldName, childPersistenceMetadata)
+                  value = LookupViewValue(
+                    fieldName,
+                    childPersistenceMetadata,
+                    forInsert = isFieldForInsert(f),
+                    forUpdate = isFieldForUpdate(f),
+                  ),
+                  optional = isOptionalField(f),
                 )
               case refs =>
                 sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
@@ -495,9 +498,6 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
         saveTo      = saveTo,
         filters     = filtersOpt,
         alias       = view.tableAlias,
-        forInsert   = true,
-        forUpdate   = true,
-        optional    = false,
         properties  = properties,
         db          = view.db,
       )

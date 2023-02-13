@@ -110,33 +110,27 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("organization",Set(),List())),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
           """'Failed to identify value of "main_account" (from organization_with_accounts) - ' || coalesce(:main_account::text, 'null')))""",
-          true,true,false)),
+          true,true),false),
         Property("accounts",ViewValue(
           View(
             List(SaveTo("organization_account",Set(),List())),
             Some(Filters(None,None,None)),
             null,
-            true,
-            true,
-            false,
             List(
-              Property("id",TresqlValue(":id",true,true,false)),
-              Property("number",TresqlValue(":number",true,true,false)),
-              Property("balance",TresqlValue(":balance",true,true,false))
+              Property("id",TresqlValue(":id",true,true),false),
+              Property("number",TresqlValue(":number",true,true),false),
+              Property("balance",TresqlValue(":balance",true,true),false)
             ),
             null
           ),
           SaveOptions(true,false,true),
-        ))
+        ), false)
       ),
       null
     )
@@ -144,33 +138,27 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("organization",Set(),List("id"))),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)",TresqlValue(":id",true,true,false))),
-        Property("name",TresqlValue(":name",true,true,false)),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)",TresqlValue(":id",true,true)),false),
+        Property("name",TresqlValue(":name",true,true),false),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
           """'Failed to identify value of "main_account" (from organization_with_accounts_and_key) - ' || coalesce(:main_account::text, 'null')))""",
-          true,true,false)),
+          true,true),false),
         Property("accounts",ViewValue(
           View(
             List(SaveTo("organization_account",Set(),List())),
             Some(Filters(None,None,None)),
             null,
-            true,
-            true,
-            false,
             List(
-              Property("id",TresqlValue(":id",true,true,false)),
-              Property("number",TresqlValue(":number",true,true,false)),
-              Property("balance",TresqlValue(":balance",true,true,false))
+              Property("id",TresqlValue(":id",true,true),false),
+              Property("number",TresqlValue(":number",true,true),false),
+              Property("balance",TresqlValue(":balance",true,true),false)
             ),
             null
           ),
           SaveOptions(true,false,true),
-        ))
+        ), false)
       ),
       null
     )
@@ -181,14 +169,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       "u",
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("sex",TresqlValue("('M')",true,true,false)),
-        Property("password",TresqlValue(":password",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("sex",TresqlValue("('M')",true,true),false),
+        Property("password",TresqlValue(":password",true,true),false),
       ),
       null
     )
@@ -196,9 +181,6 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("person",Set(),List())),
       Some(Filters(None,None,None)),
       "p7",
-      true,
-      true,
-      false,
       List(
         Property("mother_id",TresqlValue(
           """(checked_resolve(:mother, array(person;person[person.father_id]person? father""" +
@@ -207,8 +189,8 @@ class QuereaseTests extends FlatSpec with Matchers {
             """ coalesce(:mother::text, 'null')))""",
           true,
           true,
-          false,
-        )
+        ),
+        false,
       )),
       null
     )
@@ -217,40 +199,31 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("organization",Set(),List("name"))),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true,false))),
+        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true)),false),
         Property("main_account_id",LookupViewValue("main_account",View(
           List(SaveTo("organization_account",Set(),List("number"))),
           Some(Filters(None,None,None)),
           null,
-          true,
-          true,
-          false,
           List(
-            Property("number",TresqlValue(":number",true,true,false)),
-            Property("balance",TresqlValue(":balance",true,true,false)),
+            Property("number",TresqlValue(":number",true,true),false),
+            Property("balance",TresqlValue(":balance",true,true),false),
           ),
           null,
-        ))),
+        ), true, true), false),
         Property("accounts",ViewValue(
           View(
             List(SaveTo("organization_account",Set(),List("number"))),
             Some(Filters(None,None,None)),
             null,
-            true,
-            true,
-            false,
             List(
-              Property("number",TresqlValue(":number",true,true,false)),
-              Property("balance",TresqlValue(":balance",true,true,false)),
+              Property("number",TresqlValue(":number",true,true),false),
+              Property("balance",TresqlValue(":balance",true,true),false),
             ),
             null
           ),
           SaveOptions(true,false,true),
-        )),
+        ), false),
       ),
       null,
     )
@@ -259,29 +232,23 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("person",Set(),List())),
       Some(Filters(None,None,None)),
       "m",
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("sex",TresqlValue("('F')",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("sex",TresqlValue("('F')",true,true),false),
         Property("daughters",ViewValue(
           View(
             List(SaveTo("person",Set("mother_id"),List())),
             Some(Filters(None,None,None)),
             "d",
-            true,
-            true,
-            false,
             List(
-              Property("name",TresqlValue(":name",true,true,false)),
-              Property("sex",TresqlValue("('F')",true,true,false)),
+              Property("name",TresqlValue(":name",true,true),false),
+              Property("sex",TresqlValue("('F')",true,true),false),
             ),
             null,
           ),
           SaveOptions(true,false,true),
-        )),
+        ), false),
       ),
       null,
     )
@@ -290,26 +257,20 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("person",Set(),List())),
       Some(Filters(None,None,None)),
       "p",
-      true,
-      true,
-      false,
       List(
-        Property("name",TresqlValue(":name",true,true,false)),
+        Property("name",TresqlValue(":name",true,true),false),
         Property("sponsor",ViewValue(
           View(
             List(SaveTo("person",Set("father_id"),List())),
             Some(Filters(None,None,None)),
             "f",
-            true,
-            true,
-            false,
             List(
-              Property("name",TresqlValue(":name",true,true,false)),
+              Property("name",TresqlValue(":name",true,true),false),
             ),
             null,
           ),
           SaveOptions(true,false,true),
-        )),
+        ), false),
       ),
       null,
     )
@@ -318,11 +279,8 @@ class QuereaseTests extends FlatSpec with Matchers {
       List(SaveTo("organization",Set(),List("name"))),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true,false))),
+        Property("name",KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)",TresqlValue(":name",true,true)),false),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account.number::text,""" +
             """ array(organization_account[number = :main_account.number] {organization_account.id}),""" +
@@ -330,8 +288,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             """ (from organization_ref_only_update_test) - ' || coalesce(:main_account.number::text, 'null')))""",
           true,
           true,
-          false,
-        )),
+        ), false),
       ),
       null,
     )
@@ -342,14 +299,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       "bk",
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("bank.code",TresqlValue("(:code)",true,true,false)),
-        Property("bank.name",TresqlValue("(:bk_name)",true,true,false)),
-        Property("country.name",TresqlValue("(:cr_name)",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("bank.code",TresqlValue("(:code)",true,true),false),
+        Property("bank.name",TresqlValue("(:bk_name)",true,true),false),
+        Property("country.name",TresqlValue("(:cr_name)",true,true),false),
       ),
       null,
     )
@@ -360,27 +314,21 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("number",TresqlValue(":number?",true,true,true)),
-        Property("balance",TresqlValue(":balance?",true,true,true)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("number",TresqlValue(":number?",true,true),true),
+        Property("balance",TresqlValue(":balance?",true,true),true),
         Property("organization_id",LookupViewValue("organization",View(
           List(
             SaveTo("organization",Set(),List("name")),
           ),
           Some(Filters(None,None,None)),
           null,
-          true,
-          true,
-          true,
           List(
-            Property("name",TresqlValue(":name",true,true,false)),
+            Property("name",TresqlValue(":name",true,true),false),
           ),
           null,
-        ))),
+        ), true, true), true),
       ),
       null,
     )
@@ -391,31 +339,25 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("surname",TresqlValue(":surname",true,true,false)),
-        Property("sex",TresqlValue(":sex",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("surname",TresqlValue(":surname",true,true),false),
+        Property("sex",TresqlValue(":sex",true,true),false),
         Property("mother_id",LookupViewValue("mother",View(
           List(
             SaveTo("person",Set(),List()),
           ),
           Some(Filters(None,None,None)),
           null,
-          true,
-          true,
-          false,
           List(
-            Property("id",TresqlValue(":id",true,true,false)),
-            Property("name",TresqlValue(":name",true,true,false)),
-            Property("surname",TresqlValue(":surname",true,true,false)),
-            Property("sex",TresqlValue(":sex",true,true,false)),
+            Property("id",TresqlValue(":id",true,true),false),
+            Property("name",TresqlValue(":name",true,true),false),
+            Property("surname",TresqlValue(":surname",true,true),false),
+            Property("sex",TresqlValue(":sex",true,true),false),
           ),
           null,
-        )))
+        ), true, true), false)
       ),
       null,
     )
@@ -426,48 +368,39 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("surname",TresqlValue(":surname",true,true,false)),
-        Property("sex",TresqlValue(":sex",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("surname",TresqlValue(":surname",true,true),false),
+        Property("sex",TresqlValue(":sex",true,true),false),
         Property("mother_id",LookupViewValue("mother",View(
           List(
             SaveTo("person",Set(),List()),
           ),
           Some(Filters(None,None,None)),
           null,
-          true,
-          true,
-          false,
           List(
-            Property("id",TresqlValue(":id",true,true,false)),
-            Property("name",TresqlValue(":name",true,true,false)),
-            Property("surname",TresqlValue(":surname",true,true,false)),
-            Property("sex",TresqlValue(":sex",true,true,false)),
+            Property("id",TresqlValue(":id",true,true),false),
+            Property("name",TresqlValue(":name",true,true),false),
+            Property("surname",TresqlValue(":surname",true,true),false),
+            Property("sex",TresqlValue(":sex",true,true),false),
             Property("mother_id",LookupViewValue("mother",View(
               List(
                 SaveTo("person",Set(),List()),
               ),
               Some(Filters(None,None,None)),
               null,
-              true,
-              true,
-              false,
               List(
-                Property("id",TresqlValue(":id",true,true,false)),
-                Property("name",TresqlValue(":name",true,true,false)),
-                Property("surname",TresqlValue(":surname",true,true,false)),
-                Property("sex",TresqlValue(":sex",true,true,false)),
+                Property("id",TresqlValue(":id",true,true),false),
+                Property("name",TresqlValue(":name",true,true),false),
+                Property("surname",TresqlValue(":surname",true,true),false),
+                Property("sex",TresqlValue(":sex",true,true),false),
               ),
               null,
-            )))
+            ), true, true), false)
           ),
           null,
-        )))
+        ), true, true), false)
       ),
       null,
     )
@@ -478,14 +411,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("surname",TresqlValue(":surname",true,true,false)),
-        Property("sex",TresqlValue(":sex",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("surname",TresqlValue(":surname",true,true),false),
+        Property("sex",TresqlValue(":sex",true,true),false),
         Property("children",ViewValue(
           View(
             List(
@@ -493,19 +423,16 @@ class QuereaseTests extends FlatSpec with Matchers {
             ),
             Some(Filters(None,None,None)),
             null,
-            true,
-            true,
-            false,
             List(
-              Property("id",TresqlValue(":id",true,true,false)),
-              Property("name",TresqlValue(":name",true,true,false)),
-              Property("surname",TresqlValue(":surname",true,true,false)),
-              Property("sex",TresqlValue(":sex",true,true,false)),
+              Property("id",TresqlValue(":id",true,true),false),
+              Property("name",TresqlValue(":name",true,true),false),
+              Property("surname",TresqlValue(":surname",true,true),false),
+              Property("sex",TresqlValue(":sex",true,true),false),
             ),
             null,
           ),
           SaveOptions(true,false,true),
-        ))
+        ), false)
       ),
       null,
     )
@@ -516,14 +443,11 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       Some(Filters(None,None,None)),
       null,
-      true,
-      true,
-      false,
       List(
-        Property("id",TresqlValue(":id",true,true,false)),
-        Property("name",TresqlValue(":name",true,true,false)),
-        Property("surname",TresqlValue(":surname",true,true,false)),
-        Property("sex",TresqlValue(":sex",true,true,false)),
+        Property("id",TresqlValue(":id",true,true),false),
+        Property("name",TresqlValue(":name",true,true),false),
+        Property("surname",TresqlValue(":surname",true,true),false),
+        Property("sex",TresqlValue(":sex",true,true),false),
         Property("children",ViewValue(
           View(
             List(
@@ -531,14 +455,11 @@ class QuereaseTests extends FlatSpec with Matchers {
             ),
             Some(Filters(None,None,None)),
             null,
-            true,
-            true,
-            false,
             List(
-              Property("id",TresqlValue(":id",true,true,false)),
-              Property("name",TresqlValue(":name",true,true,false)),
-              Property("surname",TresqlValue(":surname",true,true,false)),
-              Property("sex",TresqlValue(":sex",true,true,false)),
+              Property("id",TresqlValue(":id",true,true),false),
+              Property("name",TresqlValue(":name",true,true),false),
+              Property("surname",TresqlValue(":surname",true,true),false),
+              Property("sex",TresqlValue(":sex",true,true),false),
               Property("children",ViewValue(
                 View(
                   List(
@@ -546,24 +467,21 @@ class QuereaseTests extends FlatSpec with Matchers {
                   ),
                   Some(Filters(None,None,None)),
                   null,
-                  true,
-                  true,
-                  false,
                   List(
-                    Property("id",TresqlValue(":id",true,true,false)),
-                    Property("name",TresqlValue(":name",true,true,false)),
-                    Property("surname",TresqlValue(":surname",true,true,false)),
-                    Property("sex",TresqlValue(":sex",true,true,false)),
+                    Property("id",TresqlValue(":id",true,true),false),
+                    Property("name",TresqlValue(":name",true,true),false),
+                    Property("surname",TresqlValue(":surname",true,true),false),
+                    Property("sex",TresqlValue(":sex",true,true),false),
                   ),
                   null,
                 ),
                 SaveOptions(true,false,true),
-              ))
+              ), false)
             ),
             null,
           ),
           SaveOptions(true,false,true),
-        ))
+        ), false)
       ),
       null,
     )
