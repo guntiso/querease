@@ -417,6 +417,52 @@ trait Dto { self =>
       }
     case (_, kv) => kv
   }
+
+  protected def throwUnsupportedConversion(
+      value: Any, targetType: Manifest[_], fieldName: String, cause: Throwable = null): Unit = {
+    throw new RuntimeException(
+      s"Illegal value or unsupported type conversion from ${value.getClass.getName}" +
+      s" to ${targetType.toString} - failed to populate ${getClass.getName}.$fieldName", cause)
+  }
+
+  //creating dto from Map[String, Any]
+  def fill(values: Map[String, Any])(implicit qe: QE): this.type = fill(values, emptyStringsToNull = true)(qe)
+  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QE): this.type = {
+    values foreach { case (name, value) =>
+      setters.get(name).map { case DtoSetter(_, met, mOpt, mSeq, mDto, mOth) =>
+        val converted = value match {
+          case s: String if emptyStringsToNull && s.trim == "" => null
+          case m: Map[String@unchecked, _] =>
+            if (mSeq == null && mDto != null)
+              mDto.runtimeClass.getConstructor().newInstance().asInstanceOf[QDto].fill(m, emptyStringsToNull)
+            else
+              throwUnsupportedConversion(value, Option(mSeq).getOrElse(mOth), name)
+          case s: Seq[_] =>
+            if (mSeq != null) {
+              val c = mSeq.runtimeClass
+              val isList = c.isAssignableFrom(classOf[List[_]])
+              val isVector = c.isAssignableFrom(classOf[Vector[_]])
+              if (classOf[Seq[_]].isAssignableFrom(c) && (isList || isVector) && mDto != null) {
+                val chClass = mDto.runtimeClass
+                val res =
+                  s.map(o => chClass.getConstructor().newInstance().asInstanceOf[QDto]
+                    .fill(o.asInstanceOf[Map[String, Any]], emptyStringsToNull))
+                if (isList) res.toList else res
+              } else s
+            } else
+              throwUnsupportedConversion(value, Option(mDto).getOrElse(mOth), name)
+          case x => x
+        }
+        val convertedObj =
+          if  (mOpt == null) converted else Some(converted)
+        try met.invoke(this, convertedObj.asInstanceOf[Object]) catch {
+          case util.control.NonFatal(ex) =>
+            throwUnsupportedConversion(value, Seq(mSeq, mDto, mOth).filter(_ != null).head, name)
+        }
+      }
+    }
+    this
+  }
 }
 
 trait DtoWithId extends Dto {

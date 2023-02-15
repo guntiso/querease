@@ -1130,13 +1130,16 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     oa.balance      shouldBe Some(124)
     oa.organization shouldBe Some(null)
     oa.toMap        shouldBe Map("id" -> id, "number" -> "123", "balance" -> 124, "organization" -> null)
+    (new dto.OrganizationAccountOptionalFieldsTest).fill(oa.toMap).toMap shouldBe oa.toMap
     oa.organization = None
     oa.toMap        shouldBe Map("id" -> id, "number" -> "123", "balance" -> 124)
+    (new dto.OrganizationAccountOptionalFieldsTest).fill(oa.toMap).toMap shouldBe oa.toMap
 
     oa.number       = None
     oa.balance      = None
     oa.organization = Some(org)
     oa.toMap        shouldBe Map("id" -> id, "organization" -> Map("name" -> "org-opt"))
+    (new dto.OrganizationAccountOptionalFieldsTest).fill(oa.toMap).toMap shouldBe oa.toMap
     qe.save(oa)
     oa              = qe.get[dto.OrganizationAccountOptionalFieldsTest](id).get
     oa.number       shouldBe Some("123")
@@ -1170,6 +1173,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val oId         = Query("organization[name = :name] {id}", Map("name" -> "org-opt")).unique[Long]
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
     oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List(Map("number" -> "234", "balance" -> 235.00)))
+    (new dto.OrganizationOptionalFieldsTest).fill(oo.toMap).toMap shouldBe oo.toMap
 
     val a1          = new dto.OrganizationOptionalFieldsTestAccounts
     a1.number       = "333"
@@ -1202,16 +1206,19 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         Map("number" -> "333", "balance" -> 444),
         Map("number" -> "555", "balance" -> 747),
       ))
+    (new dto.OrganizationOptionalFieldsTest).fill(oo.toMap).toMap shouldBe oo.toMap
 
     oo.accounts     = Some(null)
     qe.save(oo)
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
     oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List())
+    (new dto.OrganizationOptionalFieldsTest).fill(oo.toMap).toMap shouldBe oo.toMap
 
     oo.accounts     = Some(Nil)
     qe.save(oo)
     oo              = qe.get[dto.OrganizationOptionalFieldsTest](oId).get
     oo.toMap        shouldBe Map("name" -> "org-opt", "accounts" -> List())
+    (new dto.OrganizationOptionalFieldsTest).fill(oo.toMap).toMap shouldBe oo.toMap
   }
 
   if (isDbAvailable) it should s"return id on insert and save to $dbName" in {
