@@ -367,12 +367,12 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             }
             .getOrElse(Nil)
         }
-        def persistencePropertyValue(valueTresql: String) = {
+        def persistencePropertyValue(valueTresql: String, isPk: Boolean) = {
           val opt = fieldOptionsSelf(f)
           val tresqlValue = TresqlValue(
             tresql    = valueTresql,
             forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
-            forUpdate = opt == null || opt.contains('=') && !opt.contains('!'),
+            forUpdate = (opt == null || opt.contains('=') && !opt.contains('!')) && !isPk,
           )
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
@@ -389,6 +389,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             )
             childView
           } else null
+        def isPk(saveTo: String) = view.table != null &&
+          tableMetadata.tableDefOption(view).flatMap(_.pk).map(_.cols).contains(Seq(f.name))
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
@@ -407,7 +409,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             }
           Property(
             col   = saveTo,
-            value = persistencePropertyValue(valueTresql),
+            value = persistencePropertyValue(valueTresql, isPk(saveTo)),
             optional = isOptionalField(f),
           )
         } else if (isSaveableRefToReadonlyChildField(f)) {
@@ -434,7 +436,7 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               val resolverExpr = resolverExpression(resolvablesExpr, refQuery, errorMessage)
               Property(
                 col   = refColName,
-                value = persistencePropertyValue(s"($resolverExpr)"),
+                value = persistencePropertyValue(s"($resolverExpr)", isPk(refColName)),
                 optional = isOptionalField(f),
               )
             case refs =>
