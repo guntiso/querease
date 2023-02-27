@@ -367,12 +367,9 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             }
             .getOrElse(Nil)
         }
-        def persistencePropertyValue(valueTresql: String, isPk: Boolean) = {
-          val opt = fieldOptionsSelf(f)
+        def persistencePropertyValue(valueTresql: String) = {
           val tresqlValue = TresqlValue(
             tresql    = valueTresql,
-            forInsert = opt == null || opt.contains('+') && !opt.contains('!'),
-            forUpdate = (opt == null || opt.contains('=') && !opt.contains('!')) && !isPk,
           )
           if (keyFields.contains(f) && isKeyValueSupported)
             KeyValue(
@@ -389,8 +386,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             )
             childView
           } else null
-        def isPk(saveTo: String) = view.table != null &&
+        lazy val isPk = view.table != null &&
           tableMetadata.tableDefOption(view).flatMap(_.pk).map(_.cols).contains(Seq(f.name))
+        lazy val forInsert = isFieldForInsert(f)
+        lazy val forUpdate = isFieldForUpdate(f) && !isPk
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           val valueTresql =
@@ -409,8 +408,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
             }
           Property(
             col   = saveTo,
-            value = persistencePropertyValue(valueTresql, isPk(saveTo)),
+            value = persistencePropertyValue(valueTresql),
             optional = isOptionalField(f),
+            forInsert = forInsert,
+            forUpdate = forUpdate,
           )
         } else if (isSaveableRefToReadonlyChildField(f)) {
           bestLookupRefs match {
@@ -436,8 +437,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
               val resolverExpr = resolverExpression(resolvablesExpr, refQuery, errorMessage)
               Property(
                 col   = refColName,
-                value = persistencePropertyValue(s"($resolverExpr)", isPk(refColName)),
+                value = persistencePropertyValue(s"($resolverExpr)"),
                 optional = isOptionalField(f),
+                forInsert = forInsert,
+                forUpdate = forUpdate,
               )
             case refs =>
               sys.error(s"Ambiguous references for field ${view.name}.${f.name}")
@@ -469,6 +472,8 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
                   col   = f.name,
                   value = ViewValue(childPersistenceMetadata, childSaveOptions),
                   optional = isOptionalField(f),
+                  forInsert = forInsert,
+                  forUpdate = forUpdate,
                 )
               case Seq(ref) =>
                 // TODO prefer single-col ref, throw for multi-col
@@ -478,10 +483,10 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
                   value = LookupViewValue(
                     fieldName,
                     childPersistenceMetadata,
-                    forInsert = isFieldForInsert(f),
-                    forUpdate = isFieldForUpdate(f),
                   ),
                   optional = isOptionalField(f),
+                  forInsert = forInsert,
+                  forUpdate = forUpdate,
                 )
               case refs =>
                 sys.error(s"Ambiguous references for field ${view.name}.${f.name}")

@@ -147,10 +147,10 @@ abstract class Querease extends QueryStringBuilder
               col   = col,
               value = OrtMetadata.TresqlValue(
                 tresql    = s":$col",
-                forInsert = true,
-                forUpdate = true,
               ),
               optional  = false,
+              forInsert = true,
+              forUpdate = true,
             )
           }
         )
