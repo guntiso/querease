@@ -30,7 +30,7 @@ libraryDependencies ++= Seq(
   "org.mojoz"  %% "mojoz"  % mojozV,
   "org.tresql" %% "tresql" % tresqlV,
   // test
- ("org.hsqldb"     % "hsqldb"     % "2.7.1"  % "test").classifier("jdk8"),
+  "org.hsqldb"     % "hsqldb"     % "2.7.1"  % "test" classifier "jdk8",
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.15" % "test",
   "org.postgresql" % "postgresql" % "42.5.4" % "test",
