@@ -4,7 +4,9 @@ import org.mojoz.metadata.{FieldDef, ViewDef}
 import scala.collection.immutable.Seq
 import org.tresql.ast.Ident
 
-trait QuereaseResolvers { this: Querease[_] =>
+trait QuereaseResolvers {
+  this: QuereaseMetadata with QueryStringBuilder with QuereaseExpressions
+  with BindVarsOps with FilterTransformer =>
 
         import parser._
         def allResolvers(view: ViewDef, f: FieldDef): Seq[String] =

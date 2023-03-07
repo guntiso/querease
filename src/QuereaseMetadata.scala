@@ -17,7 +17,9 @@ import scala.util.matching.Regex
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
 
-trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder =>
+trait QuereaseMetadata {
+  this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder
+  with BindVarsOps with QuereaseResolvers with FilterTransformer =>
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =

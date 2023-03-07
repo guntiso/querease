@@ -26,7 +26,9 @@ object FilterType {
   case class OtherFilter(filter: String) extends FilterType
 }
 
-trait FilterTransformer { this: Querease[_] =>
+trait FilterTransformer {
+  this: QuereaseExpressions with QueryStringBuilder with FilterTransformer
+  with QuereaseMetadata with BindVarsOps with QuereaseResolvers =>
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val ident2 = s"$ident\\.$ident"

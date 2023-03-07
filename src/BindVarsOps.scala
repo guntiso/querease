@@ -6,7 +6,9 @@ import scala.collection.mutable.{Map => MM, ArrayBuffer => AB}
 
 import scala.util.Try
 
-trait BindVarsOps { this: Querease[_] =>
+trait BindVarsOps {
+  this: QuereaseMetadata with QuereaseExpressions with QuereaseResolvers
+  with QueryStringBuilder with FilterTransformer =>
 
   protected val BindVarsCursorRowNrColName = "__row_nr"
   protected val BindVarsCursorRowNrRefColName = "__row_nr_ref"

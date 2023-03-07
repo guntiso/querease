@@ -28,10 +28,6 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
   with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps {
   this: QuereaseIo[DTO] with QuereaseResolvers =>
 
-  private def regex(pattern: String) = ("^" + pattern + "$").r
-  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
-  protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
-
   private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
   private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
   private def tablesToSaveTo(viewDef: ViewDef) =
@@ -345,104 +341,6 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
         s"Record not upserted in table(s): ${tables.mkString(",")}")
     } else (method, idToLong(id))
   }
-
-  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
-    import QuereaseMetadata.AugmentedQuereaseViewDef
-    validationsQueryString(viewDef, env, viewDef.validations)
-  }
-
-  def validationsQueryString(viewDef: ViewDef,
-                             env: Map[String, Any],
-                             validations: Seq[String]): Option[String] = {
-    val result =
-      if (validations != null && validations.nonEmpty) {
-        def tresql(vs: Seq[String]): String = {
-          def error(exp: Exp) = {
-            val msg =
-              s"Validation expression must consist of" +
-                s" two or three comma separated expressions. One before last is boolean expression" +
-                s" which evaluated to false returns last string expression as error message." +
-                s" In the case of three expressions first of them should be cursor definitions which can" +
-                s" be used later in boolean and error message expressions." +
-                s" Instead got: ${exp.tresql}"
-            sys.error(msg)
-          }
-
-          var cursorList = List[String]()
-          val valTresql =
-            "messages(# idx, msg) {" +
-              vs.zipWithIndex.map {
-                case (v, i) =>
-                  val valExp =
-                    parser.parseExp(v) match {
-                      case Arr(valExps) if valExps.size == 3 =>
-                        valExps.head match {
-                          case With(cursors, _) =>
-                            cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
-                          case x => error(x)
-                        }
-                        valExps.tail.map(_.tresql).mkString(", ")
-                      case Arr(valExps) if valExps.size == 2 => v
-                      case x => error(x)
-                    }
-                  s"{ $i idx, if_not($valExp) msg }"
-              }.mkString(" + ") +
-              "} messages[msg != null] { msg } #(idx)"
-          if (cursorList.isEmpty) valTresql
-          else cursorList.reverse.mkString(", ") + ", " + valTresql
-        }
-
-
-        val validations_head = validations.head.trim
-        def createEnv(bindVars: List[String]) =
-          bindVars.foldLeft(Map[String, Any]()) { (res, bv) =>
-            env(bv) match {
-              case m: Map[String, _]@unchecked => res ++ m
-              case x => res + (bv -> x)
-            }
-          }
-        def bindVarsFromRegex(vars: String) =
-          vars.split("\\s+")
-            .filter(_.nonEmpty)
-            .map(_.substring(1)) // remove colon
-            .toList
-        if (validations_head.startsWith(BindVarCursorsForViewCmd) &&
-          BindVarCursorsForViewCmdRegex.pattern.matcher(validations_head).matches) {
-          val m = BindVarCursorsForViewCmdRegex.findAllMatchIn(validations_head).toList.head
-          val view_name = m.subgroups.head
-          val bind_vars =
-            if (m.subgroups.tail.nonEmpty) bindVarsFromRegex(m.subgroups.tail.head) else Nil
-          val vd = this.viewDef(if (view_name.startsWith(":"))
-            String.valueOf(env(view_name.drop(1))) else view_name)
-          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(values, vd) + ", " + tresql(validations.tail)
-        } else if (validations_head.startsWith(BindVarCursorsCmd) &&
-          BindVarCursorsCmdRegex.pattern.matcher(validations_head).matches) {
-          val m = BindVarCursorsCmdRegex.findAllMatchIn(validations_head).toList.head
-          val bind_vars = bindVarsFromRegex(m.subgroups.head)
-          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(values, viewDef) + ", " + tresql(validations.tail)
-        } else tresql(validations)
-      } else null
-
-    Option(result)
-  }
-  def validationsQueryStrings(viewDef: ViewDef, env: Map[String, Any]): Seq[String] = {
-    val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
-    def vqsRecursively(viewDef: ViewDef): Seq[String] = {
-      if (visited contains viewDef.name) Nil
-      else {
-        visited += viewDef.name
-        validationsQueryString(viewDef, env).toList ++
-          viewDef.fields.flatMap { f =>
-            if (f.type_.isComplexType)
-              vqsRecursively(this.viewDef(f.type_.name))
-            else Nil
-          }
-      }
-    }
-    vqsRecursively(viewDef)
-  }
   def validationResults[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): List[ValidationResult] = {
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
     validationResults(view, toMap(pojo), params)
@@ -505,8 +403,7 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
       implicit resources: Resources): Int = {
     val (tresqlQueryString, paramsMap) =
       queryStringAndParams(viewDef, params, 0, 0, "", extraFilter, extraParams, true)
-    import org.tresql.CoreTypes._
-    Query.unique[Int](tresqlQueryString, paramsMap)
+    Query(tresqlQueryString, paramsMap).unique.int(0)
   }
 
   def list[B <: DTO: Manifest](params: Map[String, Any],
@@ -713,7 +610,8 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
   }
 }
 
-trait QueryStringBuilder { this: Querease[_] =>
+trait QueryStringBuilder {
+  this: QuereaseMetadata with QuereaseExpressions with BindVarsOps with FilterTransformer with QuereaseResolvers =>
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -731,6 +629,107 @@ trait QueryStringBuilder { this: Querease[_] =>
     lSuff.tail.foldLeft(qName + lSuff(0))((expr, suff) => "nvl(" + expr + ", " + qName + suff + ")")
   }
   */
+  private def regex(pattern: String) = ("^" + pattern + "$").r
+  private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
+
+  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    validationsQueryString(viewDef, env, viewDef.validations)
+  }
+
+  def validationsQueryString(viewDef: ViewDef,
+                             env: Map[String, Any],
+                             validations: Seq[String]): Option[String] = {
+    val result =
+      if (validations != null && validations.nonEmpty) {
+        def tresql(vs: Seq[String]): String = {
+          def error(exp: Exp) = {
+            val msg =
+              s"Validation expression must consist of" +
+                s" two or three comma separated expressions. One before last is boolean expression" +
+                s" which evaluated to false returns last string expression as error message." +
+                s" In the case of three expressions first of them should be cursor definitions which can" +
+                s" be used later in boolean and error message expressions." +
+                s" Instead got: ${exp.tresql}"
+            sys.error(msg)
+          }
+
+          var cursorList = List[String]()
+          val valTresql =
+            "messages(# idx, msg) {" +
+              vs.zipWithIndex.map {
+                case (v, i) =>
+                  val valExp =
+                    parser.parseExp(v) match {
+                      case Arr(valExps) if valExps.size == 3 =>
+                        valExps.head match {
+                          case With(cursors, _) =>
+                            cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
+                          case x => error(x)
+                        }
+                        valExps.tail.map(_.tresql).mkString(", ")
+                      case Arr(valExps) if valExps.size == 2 => v
+                      case x => error(x)
+                    }
+                  s"{ $i idx, if_not($valExp) msg }"
+              }.mkString(" + ") +
+              "} messages[msg != null] { msg } #(idx)"
+          if (cursorList.isEmpty) valTresql
+          else cursorList.reverse.mkString(", ") + ", " + valTresql
+        }
+
+
+        val validations_head = validations.head.trim
+        def createEnv(bindVars: List[String]) =
+          bindVars.foldLeft(Map[String, Any]()) { (res, bv) =>
+            env(bv) match {
+              case m: Map[String, _]@unchecked => res ++ m
+              case x => res + (bv -> x)
+            }
+          }
+        def bindVarsFromRegex(vars: String) =
+          vars.split("\\s+")
+            .filter(_.nonEmpty)
+            .map(_.substring(1)) // remove colon
+            .toList
+        if (validations_head.startsWith(BindVarCursorsForViewCmd) &&
+          BindVarCursorsForViewCmdRegex.pattern.matcher(validations_head).matches) {
+          val m = BindVarCursorsForViewCmdRegex.findAllMatchIn(validations_head).toList.head
+          val view_name = m.subgroups.head
+          val bind_vars =
+            if (m.subgroups.tail.nonEmpty) bindVarsFromRegex(m.subgroups.tail.head) else Nil
+          val vd = this.viewDef(if (view_name.startsWith(":"))
+            String.valueOf(env(view_name.drop(1))) else view_name)
+          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
+          cursorsFromViewBindVars(values, vd) + ", " + tresql(validations.tail)
+        } else if (validations_head.startsWith(BindVarCursorsCmd) &&
+          BindVarCursorsCmdRegex.pattern.matcher(validations_head).matches) {
+          val m = BindVarCursorsCmdRegex.findAllMatchIn(validations_head).toList.head
+          val bind_vars = bindVarsFromRegex(m.subgroups.head)
+          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
+          cursorsFromViewBindVars(values, viewDef) + ", " + tresql(validations.tail)
+        } else tresql(validations)
+      } else null
+
+    Option(result)
+  }
+  def validationsQueryStrings(viewDef: ViewDef, env: Map[String, Any]): Seq[String] = {
+    val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
+    def vqsRecursively(viewDef: ViewDef): Seq[String] = {
+      if (visited contains viewDef.name) Nil
+      else {
+        visited += viewDef.name
+        validationsQueryString(viewDef, env).toList ++
+          viewDef.fields.flatMap { f =>
+            if (f.type_.isComplexType)
+              vqsRecursively(this.viewDef(f.type_.name))
+            else Nil
+          }
+      }
+    }
+    vqsRecursively(viewDef)
+  }
   /** All queries and dml-s from viewDef for compilation - to test viewDef. Used by sbt-mojoz plugin */
   def allQueryStrings(viewDef: ViewDef): Seq[String] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
@@ -1187,7 +1186,8 @@ trait QueryStringBuilder { this: Querease[_] =>
 */
 }
 
-trait OracleQueryStringBuilder extends QueryStringBuilder { this: Querease[_] =>
+trait OracleQueryStringBuilder extends QueryStringBuilder {
+  this: QuereaseMetadata with QuereaseExpressions with BindVarsOps with FilterTransformer with QuereaseResolvers =>
   override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
     if (countAll || limit == 0 || offset == 0)
       super.limitOffset(query, countAll, limit, offset)

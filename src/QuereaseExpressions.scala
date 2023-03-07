@@ -49,7 +49,7 @@ object QuereaseExpressions {
         case Ident(List("_")) => Placeholder :: vars
       }
     }
-    def parseWithParser[T](p: Parser[T])(expr:String): T = {
+    def parseWithParser[T](p: Parser.this.Parser[T])(expr:String): T = {
       phrase(p)(new CharSequenceReader(expr)) match {
         case Success(r, _) => r
         case x => sys.error(x.toString)
@@ -79,7 +79,9 @@ object QuereaseExpressions {
 }
 
 import QuereaseExpressions._
-trait QuereaseExpressions { this: Querease[_] =>
+trait QuereaseExpressions {
+  this: QuereaseMetadata with QueryStringBuilder with FilterTransformer
+  with BindVarsOps with QuereaseResolvers with QueryStringBuilder =>
   case class Context(
     viewDef: ViewDef,
     fieldDef: FieldDef,

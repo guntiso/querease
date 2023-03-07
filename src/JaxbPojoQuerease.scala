@@ -10,8 +10,11 @@ import org.tresql.RowLike
 
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
+import scala.reflect.ManifestFactory
 
-trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] { this: Querease[DTO] =>
+trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] {
+  this: QuereaseMetadata with QuereaseExpressions with QuereaseResolvers
+  with BindVarsOps with QueryStringBuilder with FilterTransformer =>
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
@@ -249,7 +252,7 @@ trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] { this: Querease
           else ("!" + key, value)
       }
     }
-    toSaveableDetails(propMap, viewDef)
+    toSaveableDetails(propMap, viewDef(ManifestFactory.classType(pojo.getClass)))
       .filter(e => !(e._1 startsWith "!"))
       .map(e => (e._1, trim(e._2)))
   }
