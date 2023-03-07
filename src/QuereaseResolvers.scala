@@ -13,7 +13,7 @@ trait QuereaseResolvers {
           allResolversRaw(view, f)
             .map(transformResolver(view, f, _))
 
-        def allResolversRaw(view: ViewDef, f: FieldDef): Seq[String] = {
+        protected def allResolversRaw(view: ViewDef, f: FieldDef): Seq[String] = {
 
           val name = f.name
           val alias = f.fieldName

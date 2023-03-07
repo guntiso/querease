@@ -20,7 +20,7 @@ object ScalaDtoGenerator {
 }
 
 /** Generates scala code and adds resolver methods for convenience */
-class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
+class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   import ScalaDtoGenerator.ResolverScala
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val SimpleIdentR = ("^" + ident + "$").r
@@ -40,7 +40,7 @@ class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
   }
   private def resolverDefs(
       viewDef: ViewDef,
-      qe: Querease[_] with QuereaseResolvers,
+      qe: Querease with QuereaseResolvers,
       manageOverrides: Boolean,
       shouldGenerateResolverDef: (ViewDef, FieldDef, String) => Boolean,
       generateResolver: (ViewDef, FieldDef, Boolean, String) => ResolverScala
@@ -89,14 +89,14 @@ class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
   def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
       viewDef: ViewDef,
-      qe: Querease[_] with QuereaseResolvers
+      qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = true, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
   def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
       viewDef: ViewDef,
-      qe: Querease[_] with QuereaseResolvers
+      qe: Querease with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = false, shouldGenerateCompanionResolverDef, companionResolverDef)
   }
@@ -133,9 +133,9 @@ class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
       s"      .unique[$resolverTargetType]" + nl
   }
   def instanceResolverDefExtraParams: String =
-    s"(implicit env: org.tresql.Resources, qe: QE)"
+    s"(implicit env: org.tresql.Resources, qe: QuereaseMetadata)"
   def companionResolverDefExtraParams: String =
-    s"(implicit env: org.tresql.Resources)"
+    s"(implicit env: org.tresql.Resources, qe: QuereaseMetadata)"
   def resourcesWithParams(params: String): String =
     s"env.withParams($params)"
   private def isFieldDefined(viewDef: ViewDef, path: String): Boolean =

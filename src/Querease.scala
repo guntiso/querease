@@ -24,9 +24,9 @@ object SaveMethod extends Enumeration {
 }
 import org.mojoz.querease.SaveMethod._
 
-abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
-  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps {
-  this: QuereaseIo[DTO] with QuereaseResolvers =>
+
+class Querease extends QueryStringBuilder
+  with BindVarsOps with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
 
   private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
   private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
@@ -37,6 +37,8 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
         .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
     else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
 
+  type CloseableResult[+B] = Iterator[B] with AutoCloseable
+
   protected def idToLong(id: Any): Long = id match {
     case id: Long   => id
     case id: Int    => id
@@ -46,12 +48,12 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
   @annotation.nowarn("cat=deprecation") // OK to call deprecated save here - same tables will be extracted again
-  def save[B <: DTO](
+  def save[B <: AnyRef](
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
     filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources): Long =
+    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long =
     saveToMultiple(
       tablesToSaveTo(viewDef(ManifestFactory.classType(pojo.getClass))),
       pojo,
@@ -61,12 +63,12 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
       params)
 
   @deprecated("Parameter 'tableName' is ignored, this method will not work as expected and will be removed", "6.1.0")
-  def saveTo[B <: DTO](
+  def saveTo[B <: AnyRef](
     tableName: String, pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
     filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources): Long =
+    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long =
     saveToMultiple(
       Seq(tableName),
       pojo,
@@ -76,27 +78,27 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
       params)
 
   @deprecated("Parameter 'tables' is ignored, this method will not work as expected and will be removed", "6.1.0")
-  def saveToMultiple[B <: DTO](
+  def saveToMultiple[B <: AnyRef](
     tables: Seq[String],
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,
     filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources): Long = {
-    val pojoPropMap = toMap(pojo)
+    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
+    val pojoPropMap = qio.toMap(pojo)
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
     val method = if (forceInsert) Insert else Save
     save(view, pojoPropMap, extraPropsToSave, method, filter, params)
   }
 
-  def save(
+  def save[B <: AnyRef](
     view:   ViewDef,
     data:   Map[String, Any],
     extraPropsToSave: Map[String, Any],
     method: SaveMethod,
     filter: String,
     params: Map[String, Any],
-  )(implicit resources: Resources): Long = {
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
     validate(view, data, Option(params).getOrElse(Map()))
     val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
       else Map()) ++ Option(params).getOrElse(Map())
@@ -259,12 +261,12 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     else idToLong(id)
   }
 
-  protected def update[B <: DTO](
+  protected def update[B <: AnyRef](
     view:   ViewDef,
     data:   Map[String, Any],
     filter: String,
     extraPropsToSave: Map[String, Any],
-  )(implicit resources: Resources): Unit = {
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
     val metadata = persistenceMetadata(view, data) match {
         case md if filter == null => md
         case md => md.copy(
@@ -276,19 +278,19 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     update(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
   }
 
-  def update[B <: DTO](
+  def update[B <: AnyRef](
     view: ViewDef,
     data: Map[String, Any],
-  )(implicit resources: Resources): Unit = {
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
     val metadata = persistenceMetadata(view, data)
     update(view, metadata, data)
   }
 
-  protected def update[B <: DTO](
+  protected def update[B <: AnyRef](
     view: ViewDef,
     metadata: OrtMetadata.View,
     data: Map[String, Any],
-  )(implicit resources: Resources): Unit = {
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
     val updatedRowCount = ORT.update(metadata, toSaveableMap(data, view)).count getOrElse -1
     if (updatedRowCount == 0) {
       val tables = metadata.saveTo.map(_.table)
@@ -341,9 +343,10 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
         s"Record not upserted in table(s): ${tables.mkString(",")}")
     } else (method, idToLong(id))
   }
-  def validationResults[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): List[ValidationResult] = {
+  def validationResults[B <: AnyRef](pojo: B, params: Map[String, Any]
+    )(implicit resources: Resources, qio: QuereaseIo[B]): List[ValidationResult] = {
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
-    validationResults(view, toMap(pojo), params)
+    validationResults(view, qio.toMap(pojo), params)
   }
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
@@ -381,9 +384,9 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     }
     validateViewAndSubviews(Nil, view, data, Nil).reverse
   }
-  def validate[B <: DTO](pojo: B, params: Map[String, Any])(implicit resources: Resources): Unit = {
+  def validate[B <: AnyRef](pojo: B, params: Map[String, Any])(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
     val view = viewDef(ManifestFactory.classType(pojo.getClass))
-    validate(view, toMap(pojo), params)
+    validate(view, qio.toMap(pojo), params)
   }
   def validate(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(implicit resources: Resources): Unit = {
     val results = validationResults(view, data, params)
@@ -393,9 +396,9 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     }
   }
 
-  def countAll[B <: DTO: Manifest](params: Map[String, Any],
+  def countAll[B <: AnyRef: Manifest](params: Map[String, Any],
     extraFilter: String = null, extraParams: Map[String, Any] = Map())(
-      implicit resources: Resources) = {
+      implicit resources: Resources, qio: QuereaseIo[B]) = {
       countAll_(viewDef[B], params, extraFilter, extraParams)
   }
   protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
@@ -406,16 +409,16 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     Query(tresqlQueryString, paramsMap).unique.int(0)
   }
 
-  def list[B <: DTO: Manifest](params: Map[String, Any],
+  def list[B <: AnyRef: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
       extraFilter: String = null, extraParams: Map[String, Any] = Map())(
-        implicit resources: Resources): List[B] = {
+        implicit resources: Resources, qio: QuereaseIo[B]): List[B] = {
     result(params, offset, limit, orderBy, extraFilter, extraParams).toList
   }
-  def result[B <: DTO: Manifest](params: Map[String, Any],
+  def result[B <: AnyRef: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
       extraFilter: String = null, extraParams: Map[String, Any] = Map())(
-        implicit resources: Resources): CloseableResult[B] = {
+        implicit resources: Resources, qio: QuereaseIo[B]): CloseableResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilter, extraParams)
     result(q, p)
@@ -428,34 +431,34 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     Query(q, p)
   }
 
-  def get[B <: DTO](id: Long)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), null, null)
-  def get[B <: DTO](id: Long, extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), extraFilter, null)
-  def get[B <: DTO](id: Long, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), null, extraParams)
-  def get[B <: DTO](id: Long, extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(id), extraFilter, extraParams)
+  def get[B <: AnyRef](id: Long)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, null)
+  def get[B <: AnyRef](id: Long, extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, null)
+  def get[B <: AnyRef](id: Long, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, extraParams)
+  def get[B <: AnyRef](id: Long, extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, extraParams)
 
-  def get[B <: DTO](code: String)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), null, null)
-  def get[B <: DTO](code: String, extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), extraFilter, null)
-  def get[B <: DTO](code: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), null, extraParams)
-  def get[B <: DTO](code: String, extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(Seq(code), extraFilter, extraParams)
+  def get[B <: AnyRef](code: String)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, null)
+  def get[B <: AnyRef](code: String, extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, null)
+  def get[B <: AnyRef](code: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, extraParams)
+  def get[B <: AnyRef](code: String, extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, extraParams)
 
-  def get[B <: DTO](keyValues: Seq[Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, null, null)
-  def get[B <: DTO](keyValues: Seq[Any], extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, extraFilter, null)
-  def get[B <: DTO](keyValues: Seq[Any], extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = get(keyValues, null, extraParams)
+  def get[B <: AnyRef](keyValues: Seq[Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, null)
+  def get[B <: AnyRef](keyValues: Seq[Any], extraFilter: String)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, extraFilter, null)
+  def get[B <: AnyRef](keyValues: Seq[Any], extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, extraParams)
 
   // TODO if view contains fields for columns - use field names, otherwise use column names?
-  def get[B <: DTO](keyValues: Seq[Any], extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = {
+  def get[B <: AnyRef](keyValues: Seq[Any], extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
     val view = viewDef[B]
     keyValues match {
       case Nil =>
@@ -477,10 +480,10 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
         get(keyValues, keyColNames, extraFilter, extraParams)
     }
   }
-  def get[B <: DTO](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources): Option[B] = {
+  def get[B <: AnyRef](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
     get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams).map { row =>
-      val converted = convertRow[B](row)
+      val converted = qio.convertRow[B](row)
       row.close()
       converted
     }
@@ -549,13 +552,13 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     }
   }
 
-  def create[B <: DTO](params: Map[String, Any] = Map.empty)(
-      implicit mf: Manifest[B], resources: Resources): B = {
+  def create[B <: AnyRef](params: Map[String, Any] = Map.empty)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): B = {
     import QuereaseMetadata.AugmentedQuereaseFieldDef
     val view = this.viewDef
     if (view.fields.exists(_.initial != null)) {
       Option(create(view, params)).map { row =>
-        val converted = convertRow[B](row)
+        val converted = qio.convertRow[B](row)
         row.close()
         converted
       }.get
@@ -564,22 +567,22 @@ abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
     }
   }
 
-  def list[B <: DTO: Manifest](query: String, params: Map[String, Any])(
-    implicit resources: Resources) =
+  def list[B: Manifest](query: String, params: Map[String, Any])(
+    implicit resources: Resources, qio: QuereaseIo[B]) =
     result(query, params).toList
-  def result[B <: DTO: Manifest](query: String, params: Map[String, Any])(
-      implicit resources: Resources): CloseableResult[B] =
+  def result[B: Manifest](query: String, params: Map[String, Any])(
+      implicit resources: Resources, qio: QuereaseIo[B]): CloseableResult[B] =
     new Iterator[B] with AutoCloseable {
       private val result = Query(query, params)
       override def hasNext = result.hasNext
-      override def next() = convertRow[B](result.next())
+      override def next() = qio.convertRow[B](result.next())
       override def close = result.close
     }
 
-  def delete[B <: DTO](instance: B, filter: String = null, params: Map[String, Any] = null)(
-    implicit resources: Resources): Int = {
+  def delete[B <: AnyRef](instance: B, filter: String = null, params: Map[String, Any] = null)(
+    implicit resources: Resources, qio: QuereaseIo[B]): Int = {
     val view = viewDef(ManifestFactory.classType(instance.getClass))
-    val propMap = toMap(instance)
+    val propMap = qio.toMap(instance)
     delete(view, propMap, filter, params)
   }
 

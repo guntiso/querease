@@ -14,7 +14,7 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d")//, "a<<")
 
-  val transformer = new Querease[Dto] with ScalaDtoQuereaseIo[Dto]
+  val transformer = new Querease
 
   def resolve(f: String, b: String = null) = transformer.transformFilter(f, null, b)
   def resolveBlah(f: String, b: String = null) = transformer.transformFilter(f, viewBlah, b)

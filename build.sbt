@@ -106,7 +106,7 @@ Test / sourceGenerators += Def.task {
       new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs)))
     val plainViewDefs = viewDefLoader.plainViewDefs
     val xViewDefs = viewDefLoader.nameToViewDef
-    val qe = new Querease[Dto] with ScalaDtoQuereaseIo[Dto] {
+    val qe = new Querease {
       override lazy val tableMetadata = tableMd
       override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
       override protected def resolvableCastToText(typeOpt: Option[Type]) =
@@ -121,6 +121,7 @@ Test / sourceGenerators += Def.task {
       List(
         "package dto",
         "",
+        "import org.mojoz.querease.QuereaseMetadata",
         "import org.tresql._",
         "import test.{ Dto, DtoWithId }",
         "import test.QuereaseDbTests.Env",

@@ -12,9 +12,8 @@ import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
 import scala.reflect.ManifestFactory
 
-trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] {
-  this: QuereaseMetadata with QuereaseExpressions with QuereaseResolvers
-  with BindVarsOps with QueryStringBuilder with FilterTransformer =>
+abstract class JaxbPojoQuereaseIo[-DTO <: AnyRef](
+  val qe: QuereaseMetadata with QuereaseResolvers) extends QuereaseIo[DTO] {
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 
@@ -206,10 +205,12 @@ trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] {
     else if (s endsWith "s") s.dropRight(1)
     else s
 
-  override def toSaveableMap[B <: DTO](instance: B) = pojoToSaveableMap(instance)
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
+  def toSaveableMap[B <: DTO](instance: B) = pojoToSaveableMap(instance)
   @deprecated("Results of this method are not used and this method will be removed", "6.1.0")
-  override def keyMap[B <: DTO](instance: B) =
+  def keyMap[B <: DTO](instance: B) =
     Map("id" -> getId(instance))
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   def pojoToSaveableMap[B <: DTO](pojo: B) = {
     def toDbFormat(m: Map[String, _]): Map[String, _] = m.map {
       case (k, vList: List[_]) =>
@@ -224,7 +225,7 @@ trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] {
 
     def toSaveableDetails(propMap: Map[String, Any], viewDef: ViewDef): Map[String, Any] = {
       def getChildViewDef(viewDef: ViewDef, fieldDef: FieldDef) =
-        viewDefOption(fieldDef.type_.name).getOrElse(
+        qe.viewDefOption(fieldDef.type_.name).getOrElse(
           sys.error("Child viewDef not found: " + fieldDef.type_.name +
             " (referenced from " + viewDef.name + "." + fieldDef.name + ")"))
       def isSaveable(f: FieldDef) = !f.isExpression
@@ -252,7 +253,7 @@ trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] {
           else ("!" + key, value)
       }
     }
-    toSaveableDetails(propMap, viewDef(ManifestFactory.classType(pojo.getClass)))
+    toSaveableDetails(propMap, qe.viewDef(ManifestFactory.classType(pojo.getClass)))
       .filter(e => !(e._1 startsWith "!"))
       .map(e => (e._1, trim(e._2)))
   }

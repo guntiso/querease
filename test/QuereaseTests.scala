@@ -19,8 +19,9 @@ class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
   // TODO convert or copy save-to maps tests to persistence metadata tests
   "objects" should "produce correct save-to maps" in {
+    @annotation.nowarn("cat=deprecation") // OK to test deprecated method
     def asKeys(instance: Dto) =
-      qe.toSaveableMap(instance).toList.sortBy(_._1).map {
+      qio.asInstanceOf[ScalaDtoQuereaseIo[Dto]].toSaveableMap(instance).toList.sortBy(_._1).map {
         case (k, v) if k endsWith "->" => k + v
         case (k, v) => k
       }
@@ -751,7 +752,7 @@ object QuereaseTests {
       .replace("_8", "8") // no underscore before 8 in our database names
       .replace("_9", "9") // no underscore before 9 in our database names
 
-   object TestQuerease extends Querease[Dto] with ScalaDtoQuereaseIo[Dto] {
+   object TestQuerease extends Querease {
      override lazy val tableMetadata =
        new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
      override lazy val yamlMetadata =
@@ -770,7 +771,8 @@ object QuereaseTests {
      override protected def resolvableCastToText(typeOpt: Option[Type]) =
        "::text" // always cast - for hsqldb since v2.3.4
    }
-  implicit val qe: QuereaseTests.TestQuerease.type = TestQuerease
+  implicit val qe: TestQuerease.type = TestQuerease
+  implicit val qio: QuereaseIo[Dto] = new ScalaDtoQuereaseIo[Dto](TestQuerease)
   val nl = System.getProperty("line.separator")
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)

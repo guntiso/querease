@@ -14,23 +14,24 @@ import org.tresql.Column
 import org.tresql.RowLike
 
 
-trait ScalaDtoQuereaseIo[DTO <: Dto] extends QuereaseIo[DTO] with QuereaseResolvers { self: Querease[DTO] =>
+class ScalaDtoQuereaseIo[-DTO <: Dto](qe: QuereaseMetadata with QuereaseResolvers) extends QuereaseIo[DTO] {
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
-  override def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
-    dto.asInstanceOf[B{type QE = self.type}].toSaveableMap(this)
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
+  def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
+    dto.toSaveableMap(qe)
   @deprecated("Results of this method are not used and this method will be removed", "6.1.0")
-  override def keyMap[B <: DTO](dto: B) = dto match {
+  def keyMap[B <: DTO](dto: B) = dto match {
     case o: DtoWithId => Map("id" -> o.id)
     case _ => sys.error(
       s"getting key map for ${dto.getClass.getName} not supported yet")
   }
   override def toMap[B <: DTO](dto: B): Map[String, Any] =
-    dto.asInstanceOf[B{type QE = Querease[DTO] with ScalaDtoQuereaseIo[DTO]} /*self.type somehow does not work*/].toMap(this)
+    dto.toMap(qe)
 
   //org.tresql.Converter[T]
   implicit def rowLikeToDto[B <: DTO](r: RowLike, m: Manifest[B]): B =
-    m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B{type QE = self.type}].fill(r)(this)
+    m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[B].fill(r)(qe)
 }
 
 case class DtoSetter(
@@ -135,12 +136,10 @@ private[querease] object DtoReflection {
 
 trait Dto { self =>
 
-  protected type QE <: QuereaseMetadata with QuereaseResolvers
-  //protected type QE <: Querease with ScalaDtoQuereaseIo { type DTO >: self.type }
-  protected type QDto >: Null <: Dto { type QE = self.QE }
+  protected type QDto >: Null <: Dto
 
   // populate from RowLike
-  def fill(r: RowLike)(implicit qe: QE): this.type = {
+  def fill(r: RowLike)(implicit qe: QuereaseMetadata): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
       case Column(_, name, _) if name != null => set(name, r)
       case _ =>
@@ -149,7 +148,7 @@ trait Dto { self =>
   }
 
   protected def setters = DtoReflection.setters(this)
-  protected def set(dbName: String, r: RowLike)(implicit qe: QE) =
+  protected def set(dbName: String, r: RowLike)(implicit qe: QuereaseMetadata) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
       def conv[A <: QDto](r: RowLike, m: Manifest[A]): A = m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
@@ -173,7 +172,7 @@ trait Dto { self =>
     }) getOrElse {
       setExtras(dbName, r)
     }
-  protected def setExtras(dbName: String, r: RowLike)(implicit qe: QE): AnyRef = {
+  protected def setExtras(dbName: String, r: RowLike)(implicit qe: QuereaseMetadata): AnyRef = {
     // Exception disabled because DynamicResult leaks synthetic helper columns - ignoring unknown columns
     // throw new RuntimeException(s"Setter for '$dbName' not found")
     null: AnyRef
@@ -186,7 +185,7 @@ trait Dto { self =>
     DtoReflection.childManifest(t, depth)
   }
 
-  def toUnorderedMap(implicit qe: QE): Map[String, Any] = setters.map { m =>
+  def toUnorderedMap(implicit qe: QuereaseMetadata): Map[String, Any] = setters.map { m =>
     val propName = m._1
     val propValue = getClass.getMethod(propName).invoke(this) match {
       case s: Seq[_] => s.map {
@@ -206,20 +205,20 @@ trait Dto { self =>
     }
     propName -> propValue
   }.filter(_._2 != None)
-  def toMap(implicit qe: QE): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
+  def toMap(implicit qe: QuereaseMetadata): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
     .map(toMapWithOrdering).getOrElse(toUnorderedMap)
-  def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QE): Map[String, Any] =
+  def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QuereaseMetadata): Map[String, Any] =
     TreeMap[String, Any]()(fieldOrdering) ++ toUnorderedMap
 
   def containsField(fieldName: String) = setters.contains(fieldName)
 
-  def toString(implicit qe: QE): String = {
+  def toString(implicit qe: QuereaseMetadata): String = {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
     val fieldNames = view.fields.map(_.fieldName)
     toString(fieldNames)
   }
 
-  protected def toString(fieldNames: Seq[String])(implicit qe: QE): String = {
+  protected def toString(fieldNames: Seq[String])(implicit qe: QuereaseMetadata): String = {
     def isMisleading(s: String) =
       s.contains(" ") || s == "null" || s == "" || s(0).isDigit
     val kv: Seq[(String, Object)] = fieldNames.map { name =>
@@ -238,10 +237,12 @@ trait Dto { self =>
     s"${getClass.getName}{${kv.map(kv => kv._1 + ": " + kv._2).mkString(", ")}}"
   }
 
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   protected def identifier(s: String) = s match {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
     case _ => ""
   }
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   protected def isSavableField(field: FieldDef,
                                view: ViewDef,
                                saveToMulti: Boolean,
@@ -259,13 +260,15 @@ trait Dto { self =>
       ||
       field.saveTo != null
       )
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   protected def isSavableChildField(field: FieldDef,
                                     view: ViewDef,
                                     saveToMulti: Boolean,
                                     saveToTableNames: Seq[String],
                                     childView: ViewDef): Boolean =
     true
-  protected lazy val saveableValue: QE => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
+  protected lazy val saveableValue: QuereaseMetadata with QuereaseResolvers => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
     val view = qe.viewDef(ManifestFactory.classType(getClass))
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
@@ -399,8 +402,8 @@ trait Dto { self =>
       saveableValueFunc
     }
   }
-  //creating map from object
-  def toSaveableMap(implicit qe: QE): Map[String, Any] = setters.toList.flatMap { m =>
+  @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
+  def toSaveableMap(implicit qe: QuereaseMetadata with QuereaseResolvers): Map[String, Any] = setters.toList.flatMap { m =>
     val propName = m._1
     Try(getClass.getMethod(propName).invoke(this)).toOption.map {
       saveableValue(qe)(propName)(_)
@@ -422,8 +425,8 @@ trait Dto { self =>
   }
 
   //creating dto from Map[String, Any]
-  def fill(values: Map[String, Any])(implicit qe: QE): this.type = fill(values, emptyStringsToNull = true)(qe)
-  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QE): this.type = {
+  def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata): this.type = fill(values, emptyStringsToNull = true)(qe)
+  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata): this.type = {
     values foreach { case (name, value) =>
       setters.get(name).map { case DtoSetter(_, met, mOpt, mSeq, mDto, mOth) =>
         val converted = value match {
