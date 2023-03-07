@@ -11,7 +11,7 @@ import org.tresql.RowLike
 import javax.xml.datatype.DatatypeFactory
 import javax.xml.datatype.XMLGregorianCalendar
 
-trait JaxbPojoQuereaseIo extends QuereaseIo { this: Querease =>
+trait JaxbPojoQuereaseIo[DTO <: AnyRef] extends QuereaseIo[DTO] { this: Querease[DTO] =>
 
   val XML_DATATYPE_FACTORY = DatatypeFactory.newInstance
 

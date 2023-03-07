@@ -14,11 +14,7 @@ import org.tresql.Column
 import org.tresql.RowLike
 
 
-trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Querease =>
-
-  override type DTO <: Dto
-  type DWI <: DTO with DtoWithId
-
+trait ScalaDtoQuereaseIo[DTO <: Dto] extends QuereaseIo[DTO] with QuereaseResolvers { self: Querease[DTO] =>
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
   override def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
@@ -30,7 +26,7 @@ trait ScalaDtoQuereaseIo extends QuereaseIo with QuereaseResolvers { self: Quere
       s"getting key map for ${dto.getClass.getName} not supported yet")
   }
   override def toMap[B <: DTO](dto: B): Map[String, Any] =
-    dto.asInstanceOf[B{type QE = Querease with ScalaDtoQuereaseIo} /*self.type somehow does not work*/].toMap(this)
+    dto.asInstanceOf[B{type QE = Querease[DTO] with ScalaDtoQuereaseIo[DTO]} /*self.type somehow does not work*/].toMap(this)
 
   //org.tresql.Converter[T]
   implicit def rowLikeToDto[B <: DTO](r: RowLike, m: Manifest[B]): B =

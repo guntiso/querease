@@ -20,7 +20,7 @@ object ScalaDtoGenerator {
 }
 
 /** Generates scala code and adds resolver methods for convenience */
-class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
+class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
   import ScalaDtoGenerator.ResolverScala
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val SimpleIdentR = ("^" + ident + "$").r
@@ -40,7 +40,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   }
   private def resolverDefs(
       viewDef: ViewDef,
-      qe: Querease with QuereaseResolvers,
+      qe: Querease[_] with QuereaseResolvers,
       manageOverrides: Boolean,
       shouldGenerateResolverDef: (ViewDef, FieldDef, String) => Boolean,
       generateResolver: (ViewDef, FieldDef, Boolean, String) => ResolverScala
@@ -89,14 +89,14 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   def shouldGenerateInstanceResolverDefs: Boolean = true
   def instanceResolverDefs(
       viewDef: ViewDef,
-      qe: Querease with QuereaseResolvers
+      qe: Querease[_] with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = true, shouldGenerateInstanceResolverDef, instanceResolverDef)
   }
   def shouldGenerateCompanionResolverDefs: Boolean = true
   def companionResolverDefs(
       viewDef: ViewDef,
-      qe: Querease with QuereaseResolvers
+      qe: Querease[_] with QuereaseResolvers
   ): Seq[String] = {
     resolverDefs(viewDef, qe, manageOverrides = false, shouldGenerateCompanionResolverDef, companionResolverDef)
   }

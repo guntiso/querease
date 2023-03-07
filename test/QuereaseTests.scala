@@ -749,10 +749,7 @@ object QuereaseTests {
       .replace("_8", "8") // no underscore before 8 in our database names
       .replace("_9", "9") // no underscore before 9 in our database names
 
-   object TestQuerease extends Querease with ScalaDtoQuereaseIo {
-
-     override type DTO = Dto
-
+   object TestQuerease extends Querease[Dto] with ScalaDtoQuereaseIo[Dto] {
      override lazy val tableMetadata =
        new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
      override lazy val yamlMetadata =

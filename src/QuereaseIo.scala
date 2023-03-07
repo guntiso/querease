@@ -2,9 +2,7 @@ package org.mojoz.querease
 
 import org.tresql.RowLike
 
-trait QuereaseIo { this: Querease =>
-
-  type DTO <: AnyRef
+trait QuereaseIo[DTO] {
 
   type CloseableResult[+B <: DTO] = Iterator[B] with AutoCloseable
 

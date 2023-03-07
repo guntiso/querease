@@ -79,7 +79,7 @@ object QuereaseExpressions {
 }
 
 import QuereaseExpressions._
-trait QuereaseExpressions { this: Querease =>
+trait QuereaseExpressions { this: Querease[_] =>
   case class Context(
     viewDef: ViewDef,
     fieldDef: FieldDef,

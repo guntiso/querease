@@ -24,8 +24,9 @@ object SaveMethod extends Enumeration {
 }
 import org.mojoz.querease.SaveMethod._
 
-abstract class Querease extends QueryStringBuilder
-  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps { this: QuereaseIo with QuereaseResolvers =>
+abstract class Querease[DTO <: AnyRef] extends QueryStringBuilder
+  with QuereaseMetadata with QuereaseExpressions with FilterTransformer with BindVarsOps {
+  this: QuereaseIo[DTO] with QuereaseResolvers =>
 
   private def regex(pattern: String) = ("^" + pattern + "$").r
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
@@ -712,7 +713,7 @@ abstract class Querease extends QueryStringBuilder
   }
 }
 
-trait QueryStringBuilder { this: Querease =>
+trait QueryStringBuilder { this: Querease[_] =>
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -1186,7 +1187,7 @@ trait QueryStringBuilder { this: Querease =>
 */
 }
 
-trait OracleQueryStringBuilder extends QueryStringBuilder { this: Querease =>
+trait OracleQueryStringBuilder extends QueryStringBuilder { this: Querease[_] =>
   override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
     if (countAll || limit == 0 || offset == 0)
       super.limitOffset(query, countAll, limit, offset)
