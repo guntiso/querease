@@ -30,7 +30,7 @@ class ScalaDtoGenerator(qe: Querease[_]) extends ScalaGenerator(qe.typeDefs) {
           .fieldOpt("id").exists(f => qe.supportedIdTypeNames.headOption.contains(f.type_.name)))
       List("DtoWithId")
     else List("Dto")
-  def useTresqlInterpolator = true
+  def useTresqlInterpolator = false
   def transformResolverExpression(expression: String, field: FieldDef): String = {
     import qe.parser._
     transformer {

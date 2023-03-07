@@ -493,7 +493,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // single child save test
     val bwa1 = qe.get[BankWithAccount1](accb.id).get
     val bwa1a = bwa1.account
-    tresql"-account_currency[account_id = ${bwa1a.id}]"
+    Query("-account_currency[account_id = ?]", bwa1a.id)
     bwa1a.billing_account shouldBe bacNr2
     bwa1a.billing_account = bacNr
     qe.save(bwa1)
@@ -616,11 +616,11 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // save extra props test - to be remvoed
     val saveExtra      = new SaveExtraPropsTest01
     val saveExtraId    = qe.save(saveExtra, extraPropsToSave = Map("person_id" -> multiTest.id))
-    tresql"sys_user[id = $saveExtraId] {person_id}".unique[Long] shouldBe multiTest.id
-    tresql"sys_user[id = $saveExtraId] {password}".unique[String] shouldBe null
+    Query("sys_user[id = ?] {person_id}", saveExtraId).unique[Long] shouldBe multiTest.id
+    Query("sys_user[id = ?] {password}", saveExtraId).unique[String] shouldBe null
     saveExtra.id = saveExtraId
     qe.save(saveExtra, extraPropsToSave = Map("password" -> "demo3"))
-    tresql"sys_user[id = $saveExtraId] {password}".unique[String] shouldBe "demo3"
+    Query("sys_user[id = ?] {password}", saveExtraId).unique[String] shouldBe "demo3"
 
     // recursive structure save test - lookup
     var childRt1  = new PersonRecursiveTest1
@@ -747,8 +747,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     )
   }
   if (isDbAvailable) it should s"support multiple schemas in $dbName" in {
-    val personCount = tresql"person{count(*)}".unique[Int]
-    val carCount    = tresql"car_schema.person_car{count(*)}".unique[Int]
+    val personCount = Query("person{count(*)}").unique[Int]
+    val carCount    = Query("car_schema.person_car{count(*)}").unique[Int]
     ((1 to 10).map(i => f"person_and_car_$i%02d") ++
      (1 to 10).map(i => f"car_and_person_$i%02d")
     ) foreach { viewName =>
@@ -766,7 +766,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   }
   if (isDbAvailable) it should s"support multi-db views in $dbName" in {
-    val personCount = tresql"person[id < 2000]{count(*)}".unique[Int]
+    val personCount = Query("person[id < 2000]{count(*)}").unique[Int]
     def isNameSurnameEqFullName(p1: Map[String, Any], p2: Map[String, Any]) =
       List(p1.getOrElse("name", "?"), p1.getOrElse("surname", "?")).mkString(" ") == p2.getOrElse("full_name", "??")
     def isSamePersonFromDifferentDatabases(p1: Map[String, Any], p2: Map[String, Any]) =
@@ -816,7 +816,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     //test list with macro
     qe.list[Person2](Map[String, Any](), orderBy = "id").head.notes shouldBe("no_args")
-    tresql"{ no_args_macro() x }".map(_.x).toList.head shouldBe("no_args")
+    Query("{ no_args_macro() x }").map(_.x).toList.head shouldBe("no_args")
   }
 
   if (isDbAvailable) it should s"crud by keys in $dbName" in {
@@ -1309,7 +1309,7 @@ object QuereaseDbTests {
     loadCurrencyData
   }
 
-  implicit val resources = Env
+  implicit val resources: org.tresql.Resources = Env
   def loadPersonData: Unit = {
     def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
       def toId(id: Long) = java.lang.Long.valueOf(id + 1000)
@@ -1344,8 +1344,8 @@ object QuereaseDbTests {
 
   def loadCarData: Unit = {
     // sample data
-    tresql"+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']"
-    tresql"+car_schema.person_car {id, person_id, car_name} [2, 1127, 'Tesla']"
+    Query("+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']")
+    Query("+car_schema.person_car {id, person_id, car_name} [2, 1127, 'Tesla']")
   }
 
   def loadCurrencyData: Unit = {

@@ -670,7 +670,9 @@ class QuereaseTests extends FlatSpec with Matchers {
   }
 
   "dto generator" should "generate correct dto code" in {
-    val generator = new ScalaDtoGenerator(qe)
+    val generator = new ScalaDtoGenerator(qe) {
+      override val useTresqlInterpolator = true
+    }
     val dtosPath = "test/dtos"
     val expectedDtos: String = fileToString(dtosPath + "/" + "dtos-out.scala")
     val producedDtos: String = generator.generateScalaSource(Nil, qe.nameToViewDef.values.toList.sortBy(_.name), Nil)
@@ -768,7 +770,7 @@ object QuereaseTests {
      override protected def resolvableCastToText(typeOpt: Option[Type]) =
        "::text" // always cast - for hsqldb since v2.3.4
    }
-  implicit val qe = TestQuerease
+  implicit val qe: QuereaseTests.TestQuerease.type = TestQuerease
   val nl = System.getProperty("line.separator")
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
