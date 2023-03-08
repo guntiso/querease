@@ -24,6 +24,9 @@ object SaveMethod extends Enumeration {
 }
 import org.mojoz.querease.SaveMethod._
 
+trait QuereaseIteratorResult[+B] extends Iterator[B] with AutoCloseable {
+  def view: ViewDef
+}
 
 class Querease extends QueryStringBuilder
   with BindVarsOps with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
@@ -36,8 +39,6 @@ class Querease extends QueryStringBuilder
         .map(t => Seq(ortDbPrefix(viewDef.db) + t + ortAliasSuffix(viewDef.tableAlias)))
         .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
     else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
-
-  type CloseableResult[+B] = Iterator[B] with AutoCloseable
 
   protected def idToLong(id: Any): Long = id match {
     case id: Long   => id
@@ -418,7 +419,7 @@ class Querease extends QueryStringBuilder
   def result[B <: AnyRef: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
       extraFilter: String = null, extraParams: Map[String, Any] = Map())(
-        implicit resources: Resources, qio: QuereaseIo[B]): CloseableResult[B] = {
+        implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
         offset, limit, orderBy, extraFilter, extraParams)
     result(q, p)
@@ -567,16 +568,17 @@ class Querease extends QueryStringBuilder
     }
   }
 
-  def list[B: Manifest](query: String, params: Map[String, Any])(
+  def list[B <: AnyRef: Manifest](query: String, params: Map[String, Any])(
     implicit resources: Resources, qio: QuereaseIo[B]) =
     result(query, params).toList
-  def result[B: Manifest](query: String, params: Map[String, Any])(
-      implicit resources: Resources, qio: QuereaseIo[B]): CloseableResult[B] =
-    new Iterator[B] with AutoCloseable {
+  def result[B <: AnyRef: Manifest](query: String, params: Map[String, Any])(
+      implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] =
+    new QuereaseIteratorResult[B] {
       private val result = Query(query, params)
       override def hasNext = result.hasNext
       override def next() = qio.convertRow[B](result.next())
       override def close = result.close
+      override def view: ViewDef = viewDef[B]
     }
 
   def delete[B <: AnyRef](instance: B, filter: String = null, params: Map[String, Any] = null)(
