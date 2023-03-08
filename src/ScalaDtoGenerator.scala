@@ -35,7 +35,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     import qe.parser._
     transformer {
       case Ident(List("_")) if field != null =>
-        Variable(Option(field.alias).getOrElse(field.name), Nil, false)
+        Variable(field.fieldName, Nil, false)
     } (parseExp(expression)).tresql
   }
   private def resolverDefs(
@@ -57,7 +57,6 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
       fields.flatMap { f => resolverExp(viewDef, f).map { resolverExpression =>
         val isOverride =
           if (manageOverrides && f.isOverride) {
-            val fieldName = Option(f.alias).getOrElse(f.name)
             val pSearch =
               Option(generateResolver(viewDef, f, false, resolverExpression))
                 .filterNot(_.resolver == null)
@@ -66,7 +65,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
                 .orNull
             @tailrec
             def hasMatchingSuperResolver(viewDef: ViewDef): Boolean = {
-              val fSuperOpt = viewDef.fieldOpt(fieldName)
+              val fSuperOpt = viewDef.fieldOpt(f.fieldName)
               if (fSuperOpt.nonEmpty &&
                   resolvers(viewDef, fSuperOpt.toList, manageOverrides = false)
                     .exists(_.parameterTypes == pSearch))
