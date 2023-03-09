@@ -9,11 +9,10 @@ import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
-import org.mojoz.querease.{QuereaseMacros, TresqlMetadata, ValidationException, ValidationResult}
+import org.mojoz.querease.{TresqlMetadata, ValidationException, ValidationResult}
 import org.mojoz.querease.SaveMethod._
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
-import org.tresql.macro_.TresqlMacroInterpolator
 
 
 trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {

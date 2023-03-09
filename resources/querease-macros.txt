@@ -1,0 +1,3 @@
+include /tresql-default-macros.txt
+
+if_not(bool, exprThen) = case($bool, null, $exprThen)

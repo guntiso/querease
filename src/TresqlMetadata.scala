@@ -1,26 +1,14 @@
 package org.mojoz.querease
 
-import java.io.File
-
-import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
-import org.tresql.Metadata
-import org.tresql.metadata.Col
-import org.tresql.metadata.Key
-import org.tresql.metadata.{Ref => TresqlRef}
-import org.tresql.metadata.Table
-import org.tresql.metadata.TypeMapper
-import org.mojoz.metadata.io._
+import org.mojoz.metadata.{ColumnDef, TableDef, TypeDef, TypeMetadata}
 import org.mojoz.metadata.in._
-import org.mojoz.metadata.TableDef
-import org.mojoz.metadata.Type
-import org.mojoz.metadata.TypeDef
-import org.mojoz.metadata.TypeMetadata
-import org.mojoz.metadata.TableDef
-import org.mojoz.metadata.ColumnDef
+import org.mojoz.metadata.io._
+import org.mojoz.querease.TresqlMetadata._
+import org.tresql.Metadata
+import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
+import org.tresql.metadata.{Col, Key, Table, TypeMapper, Ref => TresqlRef}
 
 import scala.collection.immutable.{Map, Seq, Set}
-
-import TresqlMetadata._
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef],

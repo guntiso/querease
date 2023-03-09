@@ -52,6 +52,8 @@ Compile / unmanagedSourceDirectories ++= {
   else Nil
 }
 
+Compile / unmanagedResourceDirectories := baseDirectory(b => Seq(b / "resources")).value
+
 Compile / doc / scalacOptions ++= (
  LocalProject("querease") / baseDirectory).map {
    bd => Seq("-sourcepath", bd.getAbsolutePath,
