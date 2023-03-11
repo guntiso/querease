@@ -1,0 +1,3 @@
+include /tresql-default-function-signatures.txt
+
+checked_resolve(resolvable::string, resolved::'any*', error_message::string)::'$resolved'
