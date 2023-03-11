@@ -8,12 +8,14 @@ import org.tresql.Metadata
 import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
 import org.tresql.metadata.{Col, Key, Table, TypeMapper, Ref => TresqlRef}
 
+import java.io.InputStream
 import scala.collection.immutable.{Map, Seq, Set}
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
+  val resourceLoader: String => InputStream = null,
 ) extends Metadata with TypeMapper {
 
   val simpleTypeNameToXsdSimpleTypeName =
@@ -65,6 +67,8 @@ class TresqlMetadata(
     s"/tresql-function-signatures-$dbAsSuffix.txt"
   override val macroSignaturesResource: String =
     s"/tresql-macros-$dbAsSuffix.txt"
+  override def getResourceAsStream(r: String): InputStream =
+    if (resourceLoader == null) getClass.getResourceAsStream(r) else resourceLoader(r)
 
   override def table(name: String): Table =
     tables.getOrElse(name, tablesNormalized(name.toLowerCase))
@@ -152,8 +156,9 @@ object TresqlMetadata {
       tableDefs: Seq[TableDef],
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
+      resourceLoader: String => InputStream = null,
   ): TresqlMetadata = {
     val dbInfo = new TableMetadataDbInfo(tableDefs)
-    new TresqlMetadata(tableDefs, typeDefs, macrosClass)
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader)
   }
 }
