@@ -9,7 +9,7 @@ import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
-import org.mojoz.querease.{TresqlMetadata, ValidationException, ValidationResult}
+import org.mojoz.querease.{FieldFilter, TresqlMetadata, ValidationException, ValidationResult}
 import org.mojoz.querease.SaveMethod._
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
@@ -1115,6 +1115,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   if (isDbAvailable) it should s"support optional fields when using $dbName" in {
     val v  = qe.viewDef("organization_account_optional_fields_test")
+    val noOptionalFields: FieldFilter = new FieldFilter {
+      override def shouldQuery(field: String) = false
+      override def childFilter(field: String) = this
+    }
 
     var oa          = new dto.OrganizationAccountOptionalFieldsTest
     oa.number       = Some("123")
@@ -1146,6 +1150,9 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     oa.number       shouldBe Some("123")
     oa.balance      shouldBe Some(124)
     oa.organization.get.toMap shouldBe Map("name" -> "org-opt")
+    qe.get[dto.OrganizationAccountOptionalFieldsTest](id, noOptionalFields).get.toMap shouldBe Map("id" -> id)
+    qe.list[dto.OrganizationAccountOptionalFieldsTest](Map[String, Any](), fieldFilter = noOptionalFields)
+      .find(_.id == id).get.toMap shouldBe Map("id" -> id)
 
     oa.number       = Some("234")
     oa.balance      = Some(235)
@@ -1208,6 +1215,9 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         Map("number" -> "555", "balance" -> 747),
       ))
     (new dto.OrganizationOptionalFieldsTest).fill(oo.toMap).toMap shouldBe oo.toMap
+    qe.get[dto.OrganizationOptionalFieldsTest](oId, noOptionalFields).get.toMap shouldBe Map("name" -> "org-opt")
+    qe.list[dto.OrganizationOptionalFieldsTest](Map[String, Any](), fieldFilter = noOptionalFields)
+      .find(_.name == "org-opt").map(_.toMap).get shouldBe Map("name" -> "org-opt")
 
     oo.accounts     = Some(null)
     qe.save(oo)

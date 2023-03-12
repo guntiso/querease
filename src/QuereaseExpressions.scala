@@ -517,7 +517,7 @@ trait QuereaseExpressions {
         lazy val pathToAlias = if (ctx.pathToAlias != null) ctx.pathToAlias else this.fromAndPathToAlias(ctx.viewDef)._2
         Option(ctx.viewDef)
           .flatMap(_.fieldOpt(name))
-          .map(f => parseExp(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias)).getOrElse(
+          .map(f => parseExp(Option(f.expression).map(_ => queryColExpression(ctx.viewDef, f, pathToAlias, null)).getOrElse(
              Option(f.tableAlias).orElse(Option(ctx.baseTableAlias)).map(_ + ".").getOrElse("") + f.name)))
           .getOrElse(iexpr)
       case iexpr @ Ident(identList: List[String]) if identList(0).startsWith("^") =>

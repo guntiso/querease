@@ -28,6 +28,11 @@ trait QuereaseIteratorResult[+B] extends Iterator[B] with AutoCloseable {
   def view: ViewDef
 }
 
+trait FieldFilter {
+  def shouldQuery(field: String): Boolean
+  def childFilter(field: String): FieldFilter
+}
+
 class Querease extends QueryStringBuilder
   with BindVarsOps with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
 
@@ -406,84 +411,99 @@ class Querease extends QueryStringBuilder
     extraFilter: String = null, extraParams: Map[String, Any] = Map())(
       implicit resources: Resources): Int = {
     val (tresqlQueryString, paramsMap) =
-      queryStringAndParams(viewDef, params, 0, 0, "", extraFilter, extraParams, true)
+      queryStringAndParams(viewDef, params, 0, 0, "", extraFilter, extraParams, null, true)
     Query(tresqlQueryString, paramsMap).unique.int(0)
   }
 
   def list[B <: AnyRef: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilter: String = null, extraParams: Map[String, Any] = Map())(
+      extraFilter: String = null, extraParams: Map[String, Any] = Map(),
+      fieldFilter: FieldFilter = null)(
         implicit resources: Resources, qio: QuereaseIo[B]): List[B] = {
-    result(params, offset, limit, orderBy, extraFilter, extraParams).toList
+    result(params, offset, limit, orderBy, extraFilter, extraParams, fieldFilter).toList
   }
   def result[B <: AnyRef: Manifest](params: Map[String, Any],
       offset: Int = 0, limit: Int = 0, orderBy: String = null,
-      extraFilter: String = null, extraParams: Map[String, Any] = Map())(
+      extraFilter: String = null, extraParams: Map[String, Any] = Map(),
+      fieldFilter: FieldFilter = null)(
         implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] = {
     val (q, p) = queryStringAndParams(viewDef[B], params,
-        offset, limit, orderBy, extraFilter, extraParams)
+        offset, limit, orderBy, extraFilter, extraParams, fieldFilter)
     result(q, p)
   }
   def rowsResult(viewDef: ViewDef, params: Map[String, Any],
-      offset: Int, limit: Int, orderBy: String, extraFilter: String)(
+      offset: Int, limit: Int, orderBy: String, extraFilter: String,
+      fieldFilter: FieldFilter)(
         implicit resources: Resources): Result[RowLike] = {
     val (q, p) = queryStringAndParams(viewDef, params,
-        offset, limit, orderBy, extraFilter, Map.empty)
+        offset, limit, orderBy, extraFilter, Map.empty, fieldFilter)
     Query(q, p)
   }
 
   def get[B <: AnyRef](id: Long)(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, null, null)
+  def get[B <: AnyRef](id: Long, fieldFilter: FieldFilter)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, null, fieldFilter)
   def get[B <: AnyRef](id: Long, extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, null, null)
   def get[B <: AnyRef](id: Long, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, extraParams)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), null, extraParams, null)
   def get[B <: AnyRef](id: Long, extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, extraParams)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, extraParams, null)
+  def get[B <: AnyRef](id: Long, extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(id), extraFilter, extraParams, fieldFilter)
 
   def get[B <: AnyRef](code: String)(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, null, null)
+  def get[B <: AnyRef](code: String, fieldFilter: FieldFilter)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, null, fieldFilter)
   def get[B <: AnyRef](code: String, extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, null, null)
   def get[B <: AnyRef](code: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, extraParams)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), null, extraParams, null)
   def get[B <: AnyRef](code: String, extraFilter: String, extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, extraParams)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, extraParams, null)
+  def get[B <: AnyRef](code: String, extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(Seq(code), extraFilter, extraParams, fieldFilter)
 
   def get[B <: AnyRef](keyValues: Seq[Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, null, null)
+  def get[B <: AnyRef](keyValues: Seq[Any], fieldFilter: FieldFilter)(
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, null, fieldFilter)
   def get[B <: AnyRef](keyValues: Seq[Any], extraFilter: String)(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, extraFilter, null)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, extraFilter, null, null)
   def get[B <: AnyRef](keyValues: Seq[Any], extraParams: Map[String, Any])(
-      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, extraParams)
+      implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = get(keyValues, null, extraParams, null)
 
   // TODO if view contains fields for columns - use field names, otherwise use column names?
-  def get[B <: AnyRef](keyValues: Seq[Any], extraFilter: String, extraParams: Map[String, Any])(
+  def get[B <: AnyRef](keyValues: Seq[Any],
+      extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
       implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
     val view = viewDef[B]
     keyValues match {
       case Nil =>
-        get(keyValues, Nil, extraFilter, extraParams)
+        get(keyValues, Nil, extraFilter, extraParams, fieldFilter)
       case Seq(id: Long) =>
         val keyColName = viewNameToKeyColNameForGetById(view.name)
         if (keyColName == null)
           sys.error(s"Key of long type not found for $mf, can not get")
-        get(keyValues, Seq(keyColName), extraFilter, extraParams)
+        get(keyValues, Seq(keyColName), extraFilter, extraParams, fieldFilter)
       case Seq(code: String) =>
         val keyColName = viewNameToKeyColNameForGetByCode(view.name)
         if (keyColName == null)
           sys.error(s"Key of string type not found for $mf, can not get")
-        get(keyValues, Seq(keyColName), extraFilter, extraParams)
+        get(keyValues, Seq(keyColName), extraFilter, extraParams, fieldFilter)
       case values =>
         val keyColNames = viewNameToKeyColNames(view.name)
         if (keyColNames.isEmpty)
           sys.error(s"Key not found for $mf, can not get")
-        get(keyValues, keyColNames, extraFilter, extraParams)
+        get(keyValues, keyColNames, extraFilter, extraParams, fieldFilter)
     }
   }
-  def get[B <: AnyRef](keyValues: Seq[Any], keyColNames: Seq[String], extraFilter: String, extraParams: Map[String, Any])(
+  def get[B <: AnyRef](keyValues: Seq[Any], keyColNames: Seq[String],
+      extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
       implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
-    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams).map { row =>
+    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams, fieldFilter).map { row =>
       val converted = qio.convertRow[B](row)
       row.close()
       converted
@@ -496,6 +516,7 @@ class Querease extends QueryStringBuilder
     keyColNames: Seq[String],
     extraFilter: String,
     extraParams: Map[String, Any],
+    fieldFilter: FieldFilter,
   )(implicit resources: Resources): Option[RowLike] = {
     import viewDef.name
     val qualifier = baseFieldsQualifier(viewDef)
@@ -517,7 +538,7 @@ class Querease extends QueryStringBuilder
       case m => m
     }
     val (q, p) = queryStringAndParams(viewDef,
-      params, 0, 2, "", extraQ, extraP)
+      params, 0, 2, "", extraQ, extraP, fieldFilter)
     try Query(q, p).uniqueOption catch {
       case ex: org.tresql.MissingBindVariableException  => throw ex
       case ex: org.tresql.TresqlException               => throw ex
@@ -774,6 +795,7 @@ trait QueryStringBuilder {
   def queryStringAndParams(view: ViewDef, params: Map[String, Any],
     offset: Int = 0, limit: Int = 0, orderBy: String = null,
     extraFilter: String = null, extraParams: Map[String, Any] = Map(),
+    fieldFilter: FieldFilter = null,
     countAll: Boolean = false, includeDbPrefix: Boolean = true,
   ): (String, Map[String, Any]) = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
@@ -781,7 +803,7 @@ trait QueryStringBuilder {
     val groupBy = this.groupBy(view)
     val having = this.having(view)
     val simpleCountAll = countAll && groupBy == "" && having == ""
-    val cols = this.cols(view, simpleCountAll, pathToAlias)
+    val cols = this.cols(view, simpleCountAll, pathToAlias, fieldFilter)
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
     val dbPrefix = if (includeDbPrefix) Option(view.db).map(db => s"|$db:").getOrElse("") else ""
@@ -802,7 +824,7 @@ trait QueryStringBuilder {
     val having = this.having(view)
     val cols = "{" +
       fields.map(field =>
-        queryColExpression(view, field, pathToAlias) +
+        queryColExpression(view, field, pathToAlias, null) +
           Option(queryColAlias(field)).map(" " + _).getOrElse("")
       ).mkString(", ") +
     "}"
@@ -871,7 +893,9 @@ trait QueryStringBuilder {
     })
   }
   def queryColExpression(view: ViewDef, f: FieldDef,
-      pathToAlias: Map[List[String], String]): String = {
+      pathToAlias: Map[List[String], String],
+      fieldFilter: FieldFilter,
+  ): String = {
     val qName = Option(queryColTableAlias(view, f))
       .map(_ + "." + f.name) getOrElse f.name // TODO use pathToAlias!
     if (f.expression != null)
@@ -883,6 +907,7 @@ trait QueryStringBuilder {
       )
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
+      val childFieldFilter = if (fieldFilter == null) null else fieldFilter.childFilter(f.fieldName)
       val joinToParent = Option(f.joinToParent).orElse {
         if (view.table != null && childViewDef.table != null) {
           val t1 = Option(view.tableAlias).getOrElse(view.table)
@@ -938,7 +963,8 @@ trait QueryStringBuilder {
         s"(|$joinToParent)"
       else {
         val (tresqlQueryString, _) =
-          queryStringAndParams(childViewDef, null, 0, 0, sortDetails, includeDbPrefix = false)
+          queryStringAndParams(childViewDef, null, 0, 0, sortDetails,
+            fieldFilter = childFieldFilter, includeDbPrefix = false)
         val childDbPrefix = Option(childViewDef.db).map(_ + ":").getOrElse("")
         "|" + childDbPrefix + joinToParent + tresqlQueryString
       }
@@ -959,13 +985,16 @@ trait QueryStringBuilder {
       if (isI18n(f)) f.name else queryColTableAlias(view, f) + "." + f.name)
 
   def cols(view: ViewDef, countAll: Boolean,
-    pathToAlias: Map[List[String], String]): String =
+    pathToAlias: Map[List[String], String],
+    fieldFilter: FieldFilter,
+  ): String =
     if (countAll) " {count(*)}"
     else view.fields
       .filter(f => !f.isExpression || f.expression != null)
       .filter(f => !f.isCollection ||
         (f.type_.isComplexType && !countAll && !f.isExpression))
-      .map(f => queryColExpression(view, f, pathToAlias)
+      .filter(f => fieldFilter == null || !isOptionalField(f) || fieldFilter.shouldQuery(f.fieldName))
+      .map(f => queryColExpression(view, f, pathToAlias, fieldFilter)
         + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
       .mkString(" {", ", ", "}")
   def groupBy(view: ViewDef): String = Option(view.groupBy)
