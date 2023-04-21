@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentHashMap
 
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.tresql.Column
+import org.tresql.CoreTypes
 import org.tresql.RowLike
 
 
@@ -151,19 +152,20 @@ trait Dto { self =>
   protected def set(dbName: String, r: RowLike)(implicit qe: QuereaseMetadata) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
-      def conv[A <: QDto](r: RowLike, m: Manifest[A]): A = m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
+      def conv[A <: QDto]: CoreTypes.Converter[A] =
+        (r, m) => m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
       val value =
         (s.mfSeq, s.mfDto) match {
           case (null, null) =>
             r.typed(dbName)(s.mfOth).asInstanceOf[Object]
           case (null, mDto) =>
             val childResult = r.result(dbName)
-            childResult.list[QDto](conv, mDto.asInstanceOf[Manifest[QDto]]).headOption.orNull.asInstanceOf[Object]
+            childResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).headOption.orNull.asInstanceOf[Object]
           case (mSeq, null) =>
             r.typed(dbName)(mSeq).asInstanceOf[Object]
           case (mSeq, mDto) =>
             val childrenResult = r.result(dbName)
-            childrenResult.list[QDto](conv, mDto.asInstanceOf[Manifest[QDto]]).asInstanceOf[Object]
+            childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]
         }
       if  (s.mfOpt == null)
            s.method.invoke(this, value)

@@ -4,6 +4,7 @@ import org.mojoz.metadata.{ColumnDef, TableDef, TypeDef, TypeMetadata}
 import org.mojoz.metadata.in._
 import org.mojoz.metadata.io._
 import org.mojoz.querease.TresqlMetadata._
+import org.tresql.ast.CompilerAst.ExprType
 import org.tresql.Metadata
 import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
 import org.tresql.metadata.{Col, Key, Table, TypeMapper, Ref => TresqlRef}
@@ -38,8 +39,8 @@ class TresqlMetadata(
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
       val typeName = c.type_.name
-      val scalaType = xsd_scala_type_map(
-        simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName))
+      val scalaType = ExprType(xsd_scala_type_map(
+        simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName)).toString)
       val jdbcTypeCode = 0 // unknown, not interested
       Col(c.name, c.nullable, jdbcTypeCode, scalaType)
     }
