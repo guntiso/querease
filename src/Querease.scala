@@ -5,7 +5,7 @@ import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
-import org.tresql.{Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
+import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Seq, Set}
@@ -756,7 +756,7 @@ trait QueryStringBuilder {
     }
     vqsRecursively(viewDef)
   }
-  /** All queries and dml-s from viewDef for compilation - to test viewDef. Used by sbt-mojoz plugin */
+  /** All queries and dml-s from viewDef for compilation - to test viewDef */
   def allQueryStrings(viewDef: ViewDef): Seq[String] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
          (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
@@ -771,7 +771,7 @@ trait QueryStringBuilder {
     previouslyCompiledQueries: Set[String],
     showFailedViewQuery: Boolean,
     log: => String => Unit,
-  ): Set[String] = {
+  ): (Set[String], Map[String, Array[Byte]]) = {
     val childViews =
       nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
     val startTime = System.currentTimeMillis
@@ -806,8 +806,10 @@ trait QueryStringBuilder {
       s"View compilation done in ${endTime - startTime} ms, " +
       s"queries compiled: $compiledCount" +
       (if (compiledCount != allQueries.size) s" of ${allQueries.size}" else ""))
-    allQueries // to cache
+    (allQueries, serializedCaches)
   }
+
+  protected def serializedCaches: Map[String, Array[Byte]] = Map.empty
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec

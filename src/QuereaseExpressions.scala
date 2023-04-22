@@ -7,7 +7,7 @@ import org.mojoz.metadata.ViewDef
 import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.Type
-import org.tresql.{CacheBase, SimpleCacheBase}
+import org.tresql.{Cache, SimpleCache}
 import org.tresql.parsing.{ExpTransformer, QueryParsers}
 import org.tresql.ast.{Exp, Ident, Variable}
 
@@ -32,6 +32,7 @@ object QuereaseExpressions {
 
   trait Parser extends QueryParsers with ExpTransformer {
     val Placeholder = Variable(null, null, false)
+    val cache: Option[Cache]
     def extractVariables(exp: String) =
       traverser(variableExtractor)(Nil)(parseExp(exp)).reverse
     def extractPlaceholdersAndVariables(exp: String) =
@@ -56,8 +57,7 @@ object QuereaseExpressions {
       }
     }
   }
-  abstract class DefaultParser extends Parser {
-    val cache: Option[CacheBase[Exp]]
+  class DefaultParser(val cache: Option[Cache]) extends Parser {
     override def ident: MemParser[String] = opt("^") ~ super.ident ^^ {
       case Some(s) ~ ident => s + ident
       case None ~ ident => ident
@@ -72,9 +72,6 @@ object QuereaseExpressions {
         e
       }
     }
-  }
-  object DefaultParser extends DefaultParser {
-    override val cache = Some(new SimpleCacheBase[Exp](4096))
   }
 }
 
@@ -92,7 +89,9 @@ trait QuereaseExpressions {
     transformerContext: TransformerContext,
     addParensToSubquery: Boolean
   )
-  val parser: Parser = DefaultParser
+
+  protected def createParserCache: Option[Cache] = Some(new SimpleCache(4096))
+  val parser: Parser = new DefaultParser(createParserCache)
 
   /** Returns missing var expression for inclusion in resolver error message expression */
   protected def resolvablesMessageMissingVarExpression(bindVar: String) = "'[missing]'"

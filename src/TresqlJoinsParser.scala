@@ -1,7 +1,7 @@
 package org.mojoz.querease
 
 import org.tresql.compiling.Compiler
-import org.tresql.{ CacheBase, SimpleCacheBase }
+import org.tresql.{ Cache, SimpleCache }
 import org.tresql.ast.Braces
 import org.tresql.ast.Exp
 import org.tresql.ast.Obj
@@ -19,21 +19,23 @@ import scala.collection.immutable.{ Map, Seq }
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
 
-class TresqlJoinsParser(tresqlMetadata: TresqlMetadata) extends JoinsParser {
+class TresqlJoinsParser(
+  tresqlMetadata: TresqlMetadata,
+  createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096))
+) extends JoinsParser {
   trait JoinsParserCompiler extends Compiler {
     val metadata: TresqlMetadata
     def compile(exp: String): Exp
   }
   val dbToMetadata: Map[String, TresqlMetadata] =
     tresqlMetadata.extraDbToMetadata + (tresqlMetadata.db -> tresqlMetadata)
-  val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[CacheBase[Exp]])] = tresqlMetadata.dbSet.map { db =>
+  val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[Cache])] = tresqlMetadata.dbSet.map { db =>
     val joinsParserCompiler = new JoinsParserCompiler {
       override val metadata = if (db == tresqlMetadata.db) tresqlMetadata else dbToMetadata(db)
       override val extraMetadata = dbToMetadata - db
       override def compile(exp: String): Exp = compile(parseExp(exp))
     }
-    val cache: Option[CacheBase[Exp]] = Some(new SimpleCacheBase[Exp](4096))
-    db -> (joinsParserCompiler, cache)
+    db -> (joinsParserCompiler, createCache(db))
   }.toMap
   def apply(db: String, baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
     val (joinsParserCompiler, cache) = dbToCompilerAndCache(db)
@@ -136,7 +138,8 @@ object TresqlJoinsParser {
     tableDefs: Seq[TableDef],
     typeDefs: collection.immutable.Seq[TypeDef],
     macrosClass: Class[_] = null,
+    createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096))
   ): TresqlJoinsParser = {
-    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass))
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass), createCache)
   }
 }
