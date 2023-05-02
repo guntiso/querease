@@ -30,12 +30,7 @@ val mojozV  = "5.0.0-SNAPSHOT"
 val tresqlV = "12.0.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.mojoz"     %% "mojoz"      % mojozV,
-  (if (scalaVersion.value startsWith "3") {
-    "org.tresql"  %% "tresql"     % tresqlV  % "provided" cross CrossVersion.for3Use2_13
-   } else {
-    "org.tresql"  %% "tresql"     % tresqlV
-   }
-  ),
+  "org.tresql"    %% "tresql"     % tresqlV,
   // test
   "org.hsqldb"     % "hsqldb"     % "2.7.1"  % "test" classifier "jdk8",
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
