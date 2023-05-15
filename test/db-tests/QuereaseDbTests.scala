@@ -2,8 +2,10 @@ package test
 
 import com.typesafe.config.ConfigFactory
 
-import java.sql.{Connection, Timestamp}
+import java.sql.Connection
 import java.text.SimpleDateFormat
+import java.time.format.DateTimeFormatter
+import java.time.{LocalDate, LocalDateTime, LocalTime}
 import java.util.Date
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
@@ -294,7 +296,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     acc.resolve_bank_id shouldBe accb.id
     AccountWithBank.resolve_bank_id(accb) shouldBe accb.id
     acc.billing_account = bacNr
-    acc.last_modified = new Timestamp(System.currentTimeMillis)
+    acc.last_modified = LocalDateTime.now() // new Timestamp(System.currentTimeMillis)
     val accountId = qe.save(acc)
     accountId shouldBe 10004
     qe.get[AccountWithBank](accountId).get.bank.id shouldBe accb.id
@@ -1038,9 +1040,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // strings and dates
     obj.string = "Rūķīši-X-123"
-    obj.date = java.sql.Date.valueOf("2021-12-21")
-    obj.time = java.sql.Time.valueOf("10:42:15")
-    obj.date_time = java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+    obj.date = LocalDate.parse("2021-12-21") // java.sql.Date.valueOf("2021-12-21")
+    obj.time = LocalTime.parse("10:42:15")   // java.sql.Time.valueOf("10:42:15")
+    obj.date_time =                          // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     // negatives
@@ -1067,8 +1070,9 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // child view
     obj.child = new TypesTestChild
     obj.child.name = "CHILD-1"
-    obj.child.date = java.sql.Date.valueOf("2021-11-08")
-    obj.child.date_time = java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+    obj.child.date = LocalDate.parse("2021-11-08")  // java.sql.Date.valueOf("2021-11-08")
+    obj.child.date_time =                           // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
 
     // children

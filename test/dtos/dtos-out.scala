@@ -26,7 +26,7 @@ class account_details extends account with DtoWithId {
 class account_with_bank extends DtoWithId {
   var id: java.lang.Long = null
   var billing_account: String = null
-  var last_modified: java.sql.Timestamp = null
+  var last_modified: java.time.LocalDateTime = null
   var bank: account_with_bank_bank = null
   def resolve_bank_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
     tresql"""{:bank.id}"""(env.withParams(this.toMap))
@@ -108,16 +108,16 @@ class bank_with_account_1 extends DtoWithId {
 class bank_with_account_1_account extends DtoWithId {
   var id: java.lang.Long = null
   var billing_account: String = null
-  var last_modified: java.sql.Timestamp = null
+  var last_modified: java.time.LocalDateTime = null
   def resolve_last_modified(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
     tresql"""{now()}"""(env.withParams(this.toMap))
-      .unique[java.sql.Timestamp]
+      .unique[java.time.LocalDateTime]
   }
 }
 object bank_with_account_1_account {
   def resolve_last_modified(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
     tresql"""{now()}"""(env.withParams(Map.empty))
-      .unique[java.sql.Timestamp]
+      .unique[java.time.LocalDateTime]
   }
 }
 class bank_with_accounts_1 extends DtoWithId {
@@ -129,16 +129,16 @@ class bank_with_accounts_1 extends DtoWithId {
 class bank_with_accounts_1_accounts extends DtoWithId {
   var id: java.lang.Long = null
   var billing_account: String = null
-  var last_modified: java.sql.Timestamp = null
+  var last_modified: java.time.LocalDateTime = null
   def resolve_last_modified(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
     tresql"""{now()}"""(env.withParams(this.toMap))
-      .unique[java.sql.Timestamp]
+      .unique[java.time.LocalDateTime]
   }
 }
 object bank_with_accounts_1_accounts {
   def resolve_last_modified(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
     tresql"""{now()}"""(env.withParams(Map.empty))
-      .unique[java.sql.Timestamp]
+      .unique[java.time.LocalDateTime]
   }
 }
 class car_and_person_01 extends DtoWithId {
@@ -1497,9 +1497,9 @@ class types_test extends DtoWithId {
   var id: java.lang.Long = null
   var long: java.lang.Long = null
   var string: String = null
-  var date: java.sql.Date = null
-  var time: java.sql.Time = null
-  var date_time: java.sql.Timestamp = null
+  var date: java.time.LocalDate = null
+  var time: java.time.LocalTime = null
+  var date_time: java.time.LocalDateTime = null
   var int: java.lang.Integer = null
   var bigint: scala.math.BigInt = null
   var double: java.lang.Double = null
@@ -1511,8 +1511,8 @@ class types_test extends DtoWithId {
 }
 class types_test_child extends Dto {
   var name: String = null
-  var date: java.sql.Date = null
-  var date_time: java.sql.Timestamp = null
+  var date: java.time.LocalDate = null
+  var date_time: java.time.LocalDateTime = null
 }
 class types_test_small extends DtoWithId {
   var id: java.lang.Long = null
