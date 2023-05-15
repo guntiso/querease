@@ -539,6 +539,51 @@ trait QuereaseMetadata {
       ).get
     nameToPersistenceMetadata.getOrElse(view.name, dynamicPersistenceMetadata)
   }
+
+  /** Compile all queries - to test viewDef. Used by sbt-mojoz plugin */
+  def compileAllQueries(
+    previouslyCompiledQueries: Set[String],
+    showFailedViewQuery: Boolean,
+    log: => String => Unit,
+  ): (Set[String], Map[String, Array[Byte]]) = {
+    val childViews =
+      nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
+    val startTime = System.currentTimeMillis
+    val viewsToCompile =
+      nameToViewDef.values.toList
+      .filter(viewDef => !childViews.contains(viewDef.name)) // compile only top-level views
+      .sortBy(_.name)
+    log(s"Compiling ${viewsToCompile.size} top-level views (${nameToViewDef.size} views total)")
+    val compiler = new org.tresql.compiling.Compiler {
+      override val metadata = tresqlMetadata
+      override val extraMetadata = tresqlMetadata.extraDbToMetadata
+    }
+    val viewNamesAndQueriesToCompile = viewsToCompile.flatMap { viewDef =>
+      allQueryStrings(viewDef).map(q => viewDef.name -> q)
+    }
+    val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
+    var compiledCount = 0
+    viewNamesAndQueriesToCompile.foreach { case (viewName, q) =>
+      if (!compiledQueries.contains(q)) {
+        try compiler.compile(compiler.parseExp(q)) catch { case util.control.NonFatal(ex) =>
+          val msg = s"\nFailed to compile viewdef $viewName: ${ex.getMessage}" +
+            (if (showFailedViewQuery) s"\n$q" else "")
+          throw new RuntimeException(msg, ex)
+        }
+        compiledCount += 1
+        compiledQueries += q
+      }
+    }
+    val endTime = System.currentTimeMillis
+    val allQueries = viewNamesAndQueriesToCompile.map(_._2).toSet
+    log(
+      s"View compilation done in ${endTime - startTime} ms, " +
+      s"queries compiled: $compiledCount" +
+      (if (compiledCount != allQueries.size) s" of ${allQueries.size}" else ""))
+    (allQueries, serializedCaches)
+  }
+
+  protected def serializedCaches: Map[String, Array[Byte]] = Map.empty
 }
 
 object QuereaseMetadata {
