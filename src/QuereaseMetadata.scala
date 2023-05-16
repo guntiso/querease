@@ -2,7 +2,7 @@ package org.mojoz.querease
 
 import org.mojoz.metadata._
 import org.mojoz.metadata.TableMetadata.Ref
-import org.mojoz.metadata.in.{YamlMd, YamlTableDefLoader, YamlViewDefLoader}
+import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
 import org.tresql.ast.{Ident, Variable}
@@ -42,10 +42,10 @@ trait QuereaseMetadata {
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
   lazy val macrosClass: Class[_] = null
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass)
-  protected lazy val tresqlJoinsParser = new TresqlJoinsParser(tresqlMetadata)
+  lazy val joinsParser: JoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefLoader: YamlViewDefLoader =
-    YamlViewDefLoader(tableMetadata, yamlMetadata, tresqlJoinsParser, metadataConventions, Nil, typeDefs)
+    YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, Nil, typeDefs)
   import QuereaseMetadata.toQuereaseViewDefs
   lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
     viewDefLoader

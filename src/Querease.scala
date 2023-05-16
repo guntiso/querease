@@ -1191,8 +1191,6 @@ trait QueryStringBuilder {
     Option(view.table)
       .map(_ + Option(view.tableAlias).map(" " + _).getOrElse(""))
       .orNull
-  lazy val joinsParser: JoinsParser =
-    tresqlJoinsParser
 /*
   val values = if (filter == null) Map[String, Any]() else filter.map(f => {
     val v = f._2.Value
