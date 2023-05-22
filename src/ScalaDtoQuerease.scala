@@ -21,12 +21,6 @@ class ScalaDtoQuereaseIo[-DTO <: Dto](qe: QuereaseMetadata with QuereaseResolver
   @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   def toSaveableMap[B <: DTO](dto: B): Map[String, Any] =
     dto.toSaveableMap(qe)
-  @deprecated("Results of this method are not used and this method will be removed", "6.1.0")
-  def keyMap[B <: DTO](dto: B) = dto match {
-    case o: DtoWithId => Map("id" -> o.id)
-    case _ => sys.error(
-      s"getting key map for ${dto.getClass.getName} not supported yet")
-  }
   override def toMap[B <: DTO](dto: B): Map[String, Any] =
     dto.toMap(qe)
 
