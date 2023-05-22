@@ -116,26 +116,28 @@ trait QuereaseMetadata { this: QuereaseExpressions with QuereaseResolvers with Q
   }
 
   protected def keyColNameForGetById(view: ViewDef): String =
-    Option(view.table)
-      .map(tableMetadata.tableDef(_, view.db))
-      .flatMap { t =>
-        ((if (t.pk != null) t.pk.toSeq else Nil) ++
-         (if (t.uk != null) t.uk       else Nil)
-        ).filter(_ != null)
-         .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == "long") }
-      } .map(_.cols.head)
-        .orNull
+    keyColNameOfTypeForGet(view, "long")
 
   protected def keyColNameForGetByCode(view: ViewDef): String =
-    Option(view.table)
-      .map(tableMetadata.tableDef(_, view.db))
-      .flatMap { t =>
-        ((if (t.pk != null) t.pk.toSeq else Nil) ++
-         (if (t.uk != null) t.uk       else Nil)
-        ).filter(_ != null)
-         .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == "string") }
-      } .map(_.cols.head)
+    keyColNameOfTypeForGet(view, "string")
+
+  protected def keyColNameOfTypeForGet(view: ViewDef, keyColTypeName: String): String =
+    if (view.table != null)
+      Option(view.table)
+        .map(tableMetadata.tableDef(_, view.db))
+        .flatMap { t =>
+          ((if (t.pk != null) t.pk.toSeq else Nil) ++
+           (if (t.uk != null) t.uk       else Nil)
+          ).filter(_ != null)
+           .find { k => k.cols.size == 1 && t.cols.exists(col => col.name == k.cols.head && col.type_.name == keyColTypeName) }
+        } .map(_.cols.head)
+          .orNull
+    else if (view.joins != null && view.joins.nonEmpty)
+      Option(viewNameToKeyFields(view.name))
+        .filter(_.size == 1)
+        .flatMap(_.find(_.type_.name == keyColTypeName).map(_.name))
         .orNull
+    else null
 
   val supportedIdTypeNames: Set[String] = ListSet("long", "int", "short")
   protected def idFieldName(view: ViewDef): String =

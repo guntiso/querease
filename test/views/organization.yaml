@@ -45,6 +45,26 @@ fields:
     - number
 
 
+name:   organization_joins_key_test_code
+table:
+key:    name
+joins:
+- (organization[name = :name] { id, name }) org
+fields:
+- id
+- name
+
+
+name:   organization_joins_key_test_id
+table:
+key:    id
+joins:
+- (organization[id = :id] { id, name }) org
+fields:
+- id
+- name
+
+
 name:   organization_ref_only_update_test
 table:  organization
 fields:

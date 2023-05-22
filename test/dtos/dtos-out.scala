@@ -394,6 +394,14 @@ class organization_account_key_test extends Dto {
 class organization_account_key_test_2 extends Dto {
   var balance: scala.math.BigDecimal = null
 }
+class organization_joins_key_test_code extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+}
+class organization_joins_key_test_id extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+}
 class organization_key_test extends Dto {
   var name: String = null
   var main_account: organization_key_test_main_account = null
