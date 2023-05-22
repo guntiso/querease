@@ -411,6 +411,14 @@ class organization_account_optional_fields_test extends DtoWithId {
 class organization_account_optional_fields_test_organization extends Dto {
   var name: String = null
 }
+class organization_joins_key_test_code extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+}
+class organization_joins_key_test_id extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+}
 class organization_key_test extends Dto {
   var name: String = null
   var main_account: organization_key_test_main_account = null

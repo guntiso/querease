@@ -845,6 +845,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_saved.main_account.number shouldBe "A1"
     org_saved.main_account.balance shouldBe 200
 
+    val org_jk = qe.get[OrganizationJoinsKeyTestCode]("org").get
+    org_jk.name shouldBe "org"
+    qe.get[OrganizationJoinsKeyTestId](org_jk.id).get.name shouldBe "org"
+
     val a2 = new OrganizationKeyTestAccounts
     a2.number = "A2"
     a2.balance = 2
