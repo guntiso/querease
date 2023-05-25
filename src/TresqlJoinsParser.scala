@@ -15,6 +15,7 @@ import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.TypeDef
 
+import java.io.InputStream
 import scala.collection.immutable.{ Map, Seq }
 import scala.language.reflectiveCalls
 import scala.util.control.NonFatal
@@ -138,8 +139,9 @@ object TresqlJoinsParser {
     tableDefs: Seq[TableDef],
     typeDefs: collection.immutable.Seq[TypeDef],
     macrosClass: Class[_] = null,
-    createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096))
+    createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096)),
+    resourceLoader: String => InputStream = null,
   ): TresqlJoinsParser = {
-    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass), createCache)
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader), createCache)
   }
 }
