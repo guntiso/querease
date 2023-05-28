@@ -40,7 +40,7 @@ trait QuereaseMetadata {
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
-  lazy val macrosClass: Class[_] = null
+  lazy val macrosClass: Class[_] = classOf[org.tresql.Macros]
   lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass)
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
