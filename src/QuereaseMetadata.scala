@@ -248,13 +248,6 @@ trait QuereaseMetadata {
       .filter(_.nonEmpty)
       .isDefined
   }
-  // FIXME remove isKeyValueSupported_ - waiting for https://github.com/mrumkovskis/tresql/issues/42
-  protected def isKeyValueSupported_(view: ViewDef, keyFields: Seq[FieldDef], saveToTables: Seq[TableDef]) = {
-    hasExplicitKey(view) ||
-    !keyFields.exists { f =>
-      saveToTables.exists(_.pk.map(_.cols.contains(f.name)) getOrElse false)
-    }
-  }
   def oldKeyParamName = "old key"
   private lazy val oldKeyRef = Variable(oldKeyParamName, Nil, opt = false).tresql
   protected def toPersistenceMetadata(
@@ -270,7 +263,7 @@ trait QuereaseMetadata {
       // provide Ref(view_name) instead - when supported by tresql
       sys.error("Persistence metadata of unlimited depth for recursive structure not supported: " +
         (view.name :: parentNames).reverse.mkString(" -> "))
-    val keyFields = if (parentNames == Nil) viewNameToKeyFields(view.name) else Nil
+    val keyFields = viewNameToKeyFields(view.name)
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     def saveToNames(view: ViewDef) =
       Option(view.saveTo).getOrElse(Seq(view.table)).filter(_ != null)
@@ -344,8 +337,6 @@ trait QuereaseMetadata {
       }
     val filtersOpt = Option(persistenceFilters(view))
     lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
-    val isKeyValueSupported = // FIXME remove - waiting for https://github.com/mrumkovskis/tresql/issues/42
-      isKeyValueSupported_(view, keyFields, tables)
     val properties = view.fields
       .map { f => try {
         val fieldName = f.fieldName
@@ -375,12 +366,20 @@ trait QuereaseMetadata {
           val tresqlValue = TresqlValue(
             tresql    = valueTresql,
           )
-          if (keyFields.contains(f) && isKeyValueSupported)
-            KeyValue(
-              whereTresql = s"if_defined_or_else($oldKeyRef.$fieldName?, $oldKeyRef.$fieldName?, :$fieldName)",
-              valueTresql = tresqlValue,
-            )
-          else tresqlValue
+          if (keyFields.contains(f)) {
+            val where = s"if_defined_or_else($oldKeyRef.$fieldName?, $oldKeyRef.$fieldName?, :$fieldName)"
+            if (tables.exists(_.pk.exists(_.cols.contains(fieldName))))
+              KeyValue(
+                whereTresql = where,
+                valueTresql = AutoValue(valueTresql),
+                updValueTresql = Some(AutoValue(valueTresql)),
+              )
+            else
+              KeyValue(
+                whereTresql = where,
+                valueTresql = tresqlValue,
+              )
+          } else tresqlValue
         }
         val childView =
           if (f.type_.isComplexType) {

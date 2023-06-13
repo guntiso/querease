@@ -112,7 +112,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
@@ -124,7 +124,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             Some(Filters(None,None,None)),
             null,
             List(
-              Property("id",TresqlValue(":id"),false,true,false),
+              Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
               Property("number",TresqlValue(":number"),false,true,true),
               Property("balance",TresqlValue(":balance"),false,true,true)
             ),
@@ -140,7 +140,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)",TresqlValue(":id")),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("main_account_id",TresqlValue(
           """(checked_resolve(:main_account, array(organization_account[number = :main_account]{id}@(2)), """ +
@@ -152,7 +152,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             Some(Filters(None,None,None)),
             null,
             List(
-              Property("id",TresqlValue(":id"),false,true,false),
+              Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
               Property("number",TresqlValue(":number"),false,true,true),
               Property("balance",TresqlValue(":balance"),false,true,true)
             ),
@@ -171,7 +171,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       "u",
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("sex",TresqlValue("('M')"),false,true,true),
         Property("password",TresqlValue(":password"),false,true,true),
@@ -204,7 +204,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           Some(Filters(None,None,None)),
           null,
           List(
-            Property("number",TresqlValue(":number"),false,true,true),
+            Property("number",KeyValue("if_defined_or_else(:'old key'.number?, :'old key'.number?, :number)", TresqlValue(":number"), None),false,true,true),
             Property("balance",TresqlValue(":balance"),false,true,true),
           ),
           null,
@@ -215,7 +215,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             Some(Filters(None,None,None)),
             null,
             List(
-              Property("number",TresqlValue(":number"),false,true,true),
+              Property("number",KeyValue("if_defined_or_else(:'old key'.number?, :'old key'.number?, :number)", TresqlValue(":number"), None),false,true,true),
               Property("balance",TresqlValue(":balance"),false,true,true),
             ),
             null
@@ -231,7 +231,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       "m",
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("sex",TresqlValue("('F')"),false,true,true),
         Property("daughters",ViewValue(
@@ -296,7 +296,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       "bk",
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("bank.code",TresqlValue("(:code)"),false,true,true),
         Property("bank.name",TresqlValue("(:bk_name)"),false,true,true),
         Property("country.name",TresqlValue("(:cr_name)"),false,true,true),
@@ -311,7 +311,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("number",TresqlValue(":number?"),true,true,true),
         Property("balance",TresqlValue(":balance?"),true,true,true),
         Property("organization_id",LookupViewValue("organization",View(
@@ -321,7 +321,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           Some(Filters(None,None,None)),
           null,
           List(
-            Property("name",TresqlValue(":name"),false,true,true),
+            Property("name", KeyValue("if_defined_or_else(:'old key'.name?, :'old key'.name?, :name)", TresqlValue(":name"), None),false,true,true),
           ),
           null,
         )), true, true, true),
@@ -336,7 +336,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("surname",TresqlValue(":surname"),false,true,true),
         Property("sex",TresqlValue(":sex"),false,true,true),
@@ -347,7 +347,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           Some(Filters(None,None,None)),
           null,
           List(
-            Property("id",TresqlValue(":id"),false,true,false),
+            Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
             Property("name",TresqlValue(":name"),false,true,true),
             Property("surname",TresqlValue(":surname"),false,true,true),
             Property("sex",TresqlValue(":sex"),false,true,true),
@@ -365,7 +365,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("surname",TresqlValue(":surname"),false,true,true),
         Property("sex",TresqlValue(":sex"),false,true,true),
@@ -376,7 +376,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           Some(Filters(None,None,None)),
           null,
           List(
-            Property("id",TresqlValue(":id"),false,true,false),
+            Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
             Property("name",TresqlValue(":name"),false,true,true),
             Property("surname",TresqlValue(":surname"),false,true,true),
             Property("sex",TresqlValue(":sex"),false,true,true),
@@ -387,7 +387,7 @@ class QuereaseTests extends FlatSpec with Matchers {
               Some(Filters(None,None,None)),
               null,
               List(
-                Property("id",TresqlValue(":id"),false,true,false),
+                Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
                 Property("name",TresqlValue(":name"),false,true,true),
                 Property("surname",TresqlValue(":surname"),false,true,true),
                 Property("sex",TresqlValue(":sex"),false,true,true),
@@ -408,7 +408,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("surname",TresqlValue(":surname"),false,true,true),
         Property("sex",TresqlValue(":sex"),false,true,true),
@@ -420,7 +420,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             Some(Filters(None,None,None)),
             null,
             List(
-              Property("id",TresqlValue(":id"),false,true,false),
+              Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
               Property("name",TresqlValue(":name"),false,true,true),
               Property("surname",TresqlValue(":surname"),false,true,true),
               Property("sex",TresqlValue(":sex"),false,true,true),
@@ -440,7 +440,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       Some(Filters(None,None,None)),
       null,
       List(
-        Property("id",TresqlValue(":id"),false,true,false),
+        Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
         Property("name",TresqlValue(":name"),false,true,true),
         Property("surname",TresqlValue(":surname"),false,true,true),
         Property("sex",TresqlValue(":sex"),false,true,true),
@@ -452,7 +452,7 @@ class QuereaseTests extends FlatSpec with Matchers {
             Some(Filters(None,None,None)),
             null,
             List(
-              Property("id",TresqlValue(":id"),false,true,false),
+              Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
               Property("name",TresqlValue(":name"),false,true,true),
               Property("surname",TresqlValue(":surname"),false,true,true),
               Property("sex",TresqlValue(":sex"),false,true,true),
@@ -464,7 +464,7 @@ class QuereaseTests extends FlatSpec with Matchers {
                   Some(Filters(None,None,None)),
                   null,
                   List(
-                    Property("id",TresqlValue(":id"),false,true,false),
+                    Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
                     Property("name",TresqlValue(":name"),false,true,true),
                     Property("surname",TresqlValue(":surname"),false,true,true),
                     Property("sex",TresqlValue(":sex"),false,true,true),
