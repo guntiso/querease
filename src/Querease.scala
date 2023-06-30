@@ -61,7 +61,7 @@ class Querease extends QueryStringBuilder
     filter: String = null,
     params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long =
     saveToMultiple(
-      tablesToSaveTo(viewDef(ManifestFactory.classType(pojo.getClass))),
+      tablesToSaveTo(viewDefFromMf(ManifestFactory.classType(pojo.getClass))),
       pojo,
       extraPropsToSave,
       forceInsert,
@@ -92,7 +92,7 @@ class Querease extends QueryStringBuilder
     filter: String = null,
     params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
     val pojoPropMap = qio.toMap(pojo)
-    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
     val method = if (forceInsert) Insert else Save
     save(view, pojoPropMap, extraPropsToSave, method, filter, params)
   }
@@ -351,7 +351,7 @@ class Querease extends QueryStringBuilder
   }
   def validationResults[B <: AnyRef](pojo: B, params: Map[String, Any]
     )(implicit resources: Resources, qio: QuereaseIo[B]): List[ValidationResult] = {
-    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
     validationResults(view, qio.toMap(pojo), params)
   }
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
@@ -391,7 +391,7 @@ class Querease extends QueryStringBuilder
     validateViewAndSubviews(Nil, view, data, Nil).reverse
   }
   def validate[B <: AnyRef](pojo: B, params: Map[String, Any])(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
-    val view = viewDef(ManifestFactory.classType(pojo.getClass))
+    val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
     validate(view, qio.toMap(pojo), params)
   }
   def validate(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(implicit resources: Resources): Unit = {
@@ -405,7 +405,7 @@ class Querease extends QueryStringBuilder
   def countAll[B <: AnyRef: Manifest](params: Map[String, Any],
     extraFilter: String = null, extraParams: Map[String, Any] = Map())(
       implicit resources: Resources, qio: QuereaseIo[B]) = {
-      countAll_(viewDef[B], params, extraFilter, extraParams)
+      countAll_(viewDefFromMf[B], params, extraFilter, extraParams)
   }
   protected def countAll_(viewDef: ViewDef, params: Map[String, Any],
     extraFilter: String = null, extraParams: Map[String, Any] = Map())(
@@ -427,7 +427,7 @@ class Querease extends QueryStringBuilder
       extraFilter: String = null, extraParams: Map[String, Any] = Map(),
       fieldFilter: FieldFilter = null)(
         implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] = {
-    val (q, p) = queryStringAndParams(viewDef[B], params,
+    val (q, p) = queryStringAndParams(viewDefFromMf[B], params,
         offset, limit, orderBy, extraFilter, extraParams, fieldFilter)
     result(q, p)
   }
@@ -479,7 +479,7 @@ class Querease extends QueryStringBuilder
   def get[B <: AnyRef](keyValues: Seq[Any],
       extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
       implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
-    val view = viewDef[B]
+    val view = viewDefFromMf[B]
     keyValues match {
       case Nil =>
         get(keyValues, Nil, extraFilter, extraParams, fieldFilter)
@@ -503,7 +503,7 @@ class Querease extends QueryStringBuilder
   def get[B <: AnyRef](keyValues: Seq[Any], keyColNames: Seq[String],
       extraFilter: String, extraParams: Map[String, Any], fieldFilter: FieldFilter)(
       implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): Option[B] = {
-    get(viewDef[B], keyValues, keyColNames, extraFilter, extraParams, fieldFilter).map { row =>
+    get(viewDefFromMf[B], keyValues, keyColNames, extraFilter, extraParams, fieldFilter).map { row =>
       val converted = qio.convertRow[B](row)
       row.close()
       converted
@@ -577,7 +577,7 @@ class Querease extends QueryStringBuilder
   def create[B <: AnyRef](params: Map[String, Any] = Map.empty)(
       implicit mf: Manifest[B], resources: Resources, qio: QuereaseIo[B]): B = {
     import QuereaseMetadata.AugmentedQuereaseFieldDef
-    val view = this.viewDef
+    val view = this.viewDefFromMf
     if (view.fields.exists(_.initial != null)) {
       Option(create(view, params)).map { row =>
         val converted = qio.convertRow[B](row)
@@ -599,12 +599,12 @@ class Querease extends QueryStringBuilder
       override def hasNext = result.hasNext
       override def next() = qio.convertRow[B](result.next())
       override def close = result.close
-      override def view: ViewDef = viewDef[B]
+      override def view: ViewDef = viewDefFromMf[B]
     }
 
   def delete[B <: AnyRef](instance: B, filter: String = null, params: Map[String, Any] = null)(
     implicit resources: Resources, qio: QuereaseIo[B]): Int = {
-    val view = viewDef(ManifestFactory.classType(instance.getClass))
+    val view = viewDefFromMf(ManifestFactory.classType(instance.getClass))
     val propMap = qio.toMap(instance)
     delete(view, propMap, filter, params)
   }

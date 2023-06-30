@@ -209,7 +209,7 @@ trait Dto { self =>
   def containsField(fieldName: String) = setters.contains(fieldName)
 
   def toString(implicit qe: QuereaseMetadata): String = {
-    val view = qe.viewDef(ManifestFactory.classType(getClass))
+    val view = qe.viewDefFromMf(ManifestFactory.classType(getClass))
     val fieldNames = view.fields.map(_.fieldName)
     toString(fieldNames)
   }
@@ -265,7 +265,7 @@ trait Dto { self =>
     true
   @deprecated("Results of this method are not used and this method will be removed, use toMap", "6.1.0")
   protected lazy val saveableValue: QuereaseMetadata with QuereaseResolvers => String => PartialFunction[Any, List[(String, Any)]] = implicit qe => {
-    val view = qe.viewDef(ManifestFactory.classType(getClass))
+    val view = qe.viewDefFromMf(ManifestFactory.classType(getClass))
     val saveToMulti = view.saveTo != null && view.saveTo.nonEmpty
     val saveTo = if (!saveToMulti) Seq(view.table) else view.saveTo
     val saveToTableNames = saveTo.map(identifier)

@@ -90,7 +90,7 @@ trait QuereaseMetadata {
   def viewDef(viewName: String) = viewDefOption(viewName)
     .getOrElse(throw ViewNotFoundException(s"View definition for $viewName not found"))
   def viewDefOption[T <: AnyRef: Manifest]: Option[ViewDef] = viewDefOption(viewName[T])
-  def viewDef[T <: AnyRef](implicit mf: Manifest[T]): ViewDef =
+  def viewDefFromMf[T <: AnyRef](implicit mf: Manifest[T]): ViewDef =
     viewDefOption[T].getOrElse(throw ViewNotFoundException(s"View definition for type $mf not found"))
 
   def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
