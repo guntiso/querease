@@ -201,8 +201,9 @@ trait Dto { self =>
     }
     propName -> propValue
   }.filter(_._2 != None)
-  def toMap(implicit qe: QuereaseMetadata): Map[String, Any] = qe.fieldOrderingOption(ManifestFactory.classType(getClass))
-    .map(toMapWithOrdering).getOrElse(toUnorderedMap)
+  def toMap(implicit qe: QuereaseMetadata): Map[String, Any] =
+    qe.fieldOrderingOptionFromMf(ManifestFactory.classType(getClass))
+      .map(toMapWithOrdering).getOrElse(toUnorderedMap)
   def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QuereaseMetadata): Map[String, Any] =
     TreeMap[String, Any]()(fieldOrdering) ++ toUnorderedMap
 
@@ -353,7 +354,7 @@ trait Dto { self =>
           val f = childTableFieldDefOpt.orNull
           //objects from one list can be put into different tables
           s map { d =>
-            qe.viewDefOption(ManifestFactory.classType(d.getClass))
+            qe.viewDefOptionFromMf(ManifestFactory.classType(d.getClass))
               .map(v => v -> childSaveTo(f, v))
               .filter(_._2 != null)
               .filter(vs => isSaveableChildField(f, vs._1))

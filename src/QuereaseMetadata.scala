@@ -83,17 +83,17 @@ trait QuereaseMetadata {
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)
     .getOrElse(throw FieldOrderingNotFoundException(s"Field ordering for view $viewName not found"))
-  def fieldOrderingOption[T <: AnyRef: Manifest]: Option[Ordering[String]] = fieldOrderingOption(viewName[T])
-  def fieldOrdering[T <: AnyRef](implicit mf: Manifest[T]): Ordering[String] = fieldOrderingOption[T]
+  def fieldOrderingOptionFromMf[T <: AnyRef: Manifest]: Option[Ordering[String]] = fieldOrderingOption(viewNameFromMf[T])
+  def fieldOrderingFromMf[T <: AnyRef](implicit mf: Manifest[T]): Ordering[String] = fieldOrderingOptionFromMf[T]
     .getOrElse(throw FieldOrderingNotFoundException(s"Field ordering for view $mf not found"))
   def viewDefOption(viewName: String): Option[ViewDef] = nameToViewDef.get(viewName)
   def viewDef(viewName: String) = viewDefOption(viewName)
     .getOrElse(throw ViewNotFoundException(s"View definition for $viewName not found"))
-  def viewDefOption[T <: AnyRef: Manifest]: Option[ViewDef] = viewDefOption(viewName[T])
+  def viewDefOptionFromMf[T <: AnyRef: Manifest]: Option[ViewDef] = viewDefOption(viewNameFromMf[T])
   def viewDefFromMf[T <: AnyRef](implicit mf: Manifest[T]): ViewDef =
-    viewDefOption[T].getOrElse(throw ViewNotFoundException(s"View definition for type $mf not found"))
+    viewDefOptionFromMf[T].getOrElse(throw ViewNotFoundException(s"View definition for type $mf not found"))
 
-  def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
+  def viewNameFromMf[T <: AnyRef](implicit mf: Manifest[T]): String =
     mf.runtimeClass.getSimpleName
 
   protected def keyFields(view: ViewDef): Seq[FieldDef] = {

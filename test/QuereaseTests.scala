@@ -764,7 +764,7 @@ object QuereaseTests {
           .map(_.fieldName)
           .zipWithIndex.toMap)
        ))
-     override def viewName[T <: AnyRef](implicit mf: Manifest[T]): String =
+     override def viewNameFromMf[T <: AnyRef](implicit mf: Manifest[T]): String =
        Naming.dasherize(mf.runtimeClass.getSimpleName).replace("-", "_")
      def persistenceMetadata(viewName: String, data: Map[String, Any] = Map.empty): OrtMetadata.View =
        persistenceMetadata(nameToViewDef(viewName), data)
