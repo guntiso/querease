@@ -3,9 +3,10 @@ package org.mojoz.querease
 import org.tresql.compiling.Compiler
 import org.tresql.{ Cache, SimpleCache }
 import org.tresql.ast.Braces
+import org.tresql.ast.CompilerAst
 import org.tresql.ast.Exp
 import org.tresql.ast.Obj
-import org.tresql.ast.CompilerAst
+import org.tresql.ast.StringConst
 
 import org.mojoz.metadata.in.Join
 import org.mojoz.metadata.in.JoinsParser
@@ -57,19 +58,25 @@ class TresqlJoinsParser(
         // otherwise (subquery) suffix with {*} to avoid BinSelectDef and get proper metadata
         joinsStr + " {*}"
     val compiledExpr =
-      try {
-        cache.flatMap(_.get(compileStr)).getOrElse {
-          val e = joinsParserCompiler.compile(compileStr)
-          cache.foreach(_.put(compileStr, e))
-          e
+      cache.flatMap(_.get(compileStr)).getOrElse {
+        val e = try joinsParserCompiler.compile(compileStr) catch {
+          case NonFatal(ex) =>
+            cache.foreach(_.put(compileStr, StringConst(Option(ex.getMessage).getOrElse(""))))
+            throw new RuntimeException("Failed to compile: " + compileStr, ex)
         }
-      } catch {
-        case NonFatal(ex) =>
-          throw new RuntimeException("Failed to compile: " + compileStr, ex)
+        cache.foreach(_.put(compileStr, e))
+        e
       }
-    def exprNotSupportedException(x: AnyRef) = sys.error(
-      "Joins can be parsed only from select statement, instead found: " +
-      (Option(x).map(_.getClass.getName).orNull + " in " + compileStr))
+    def exprNotSupportedException(x: AnyRef) = x match {
+      case StringConst(errorMsg) =>
+        throw new RuntimeException(
+          "Invalid select statement for joins parser or failed to compile previously: " + compileStr,
+          new RuntimeException(errorMsg))
+      case _ =>
+        sys.error(
+          "Joins can be parsed only from select statement, instead found: " +
+          (Option(x).map(_.getClass.getName).orNull + " in " + compileStr))
+    }
     def selectDefBase(x: AnyRef): SelectDefBase = x match {
       case s: SelectDefBase => s
       case b: Braces => selectDefBase(b.expr)
