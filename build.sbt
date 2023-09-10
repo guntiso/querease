@@ -34,7 +34,7 @@ libraryDependencies ++= Seq(
   // test
   "org.hsqldb"     % "hsqldb"     % "2.7.2"  % "test" classifier "jdk8",
   "com.typesafe"   % "config"     % "1.4.2"  % "test",
-  "org.scalatest" %% "scalatest"  % "3.2.16" % "test",
+  "org.scalatest" %% "scalatest"  % "3.2.17" % "test",
   "org.postgresql" % "postgresql" % "42.6.0" % "test",
 )
 
