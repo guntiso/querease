@@ -589,7 +589,7 @@ trait QuereaseMetadata {
 
 object QuereaseMetadata {
   trait QuereaseViewDefExtras {
-    // val keyFieldNames:         Seq[String] // TODO Minor binary incompatible. Why this trait, remove it?
+    val keyFieldNames: Seq[String]
     val validations: Seq[String]
   }
 
@@ -627,7 +627,7 @@ object QuereaseMetadata {
   implicit class AugmentedQuereaseViewDef(viewDef: ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
-    val keyFieldNames        = quereaseExtras.keyFieldNames
+    override val keyFieldNames = quereaseExtras.keyFieldNames
     override val validations = quereaseExtras.validations
     def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): ViewDef =
       updateExtras(QuereaseViewExtrasKey, updater, defaultExtras)
