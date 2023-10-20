@@ -427,16 +427,15 @@ class Querease extends QueryStringBuilder
       extraFilter: String = null, extraParams: Map[String, Any] = Map(),
       fieldFilter: FieldFilter = null)(
         implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] = {
-    val (q, p) = queryStringAndParams(viewDefFromMf[B], params,
-        offset, limit, orderBy, extraFilter, extraParams, fieldFilter)
-    result(q, p)
+    result(rowsResult(viewDefFromMf[B], params, offset, limit, orderBy, extraFilter, extraParams, fieldFilter))
   }
   def rowsResult(viewDef: ViewDef, params: Map[String, Any],
-      offset: Int, limit: Int, orderBy: String, extraFilter: String,
+      offset: Int, limit: Int, orderBy: String,
+      extraFilter: String, extraParams: Map[String, Any],
       fieldFilter: FieldFilter)(
         implicit resources: Resources): Result[RowLike] = {
     val (q, p) = queryStringAndParams(viewDef, params,
-        offset, limit, orderBy, extraFilter, Map.empty, fieldFilter)
+        offset, limit, orderBy, extraFilter, extraParams, fieldFilter)
     Query(q, p)
   }
 
@@ -594,8 +593,11 @@ class Querease extends QueryStringBuilder
     result(query, params).toList
   def result[B <: AnyRef: Manifest](query: String, params: Map[String, Any])(
       implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] =
+    result(Query(query, params))
+  private def result[B <: AnyRef: Manifest](queryReult: Result[RowLike])(
+      implicit resources: Resources, qio: QuereaseIo[B]): QuereaseIteratorResult[B] =
     new QuereaseIteratorResult[B] {
-      private val result = Query(query, params)
+      private val result = queryReult
       override def hasNext = result.hasNext
       override def next() = qio.convertRow[B](result.next())
       override def close = result.close
