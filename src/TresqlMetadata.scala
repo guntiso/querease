@@ -54,11 +54,16 @@ class TresqlMetadata(
   private val tablesNormalized = tables.map { case (n, t) => (n.toLowerCase, t) }
 
   private val typeToVendorType: Map[String, Map[String, String]] =
-    typeDefs.map { t =>
-      t.name -> t.ddlWrite.map { case (vendor, seqWi) =>
-        vendor.replace(" sql", "") ->
-          seqWi.head.targetNamePattern.replace("(size char)", "").replace("(size)", "")
+    typeDefs.flatMap { t =>
+      val vendorTypeName =
+        t.ddlWrite.map { case (vendor, seqWi) =>
+          vendor.replace(" sql", "") ->
+            seqWi.head.targetNamePattern.replace("(size char)", "").replace("(size)", "")
       }
+      Seq(
+        t.name -> vendorTypeName,
+        t.targetNames.getOrElse("scala", null) -> vendorTypeName
+      ).filter(_._1 != null)
     }.filter(_._2.nonEmpty).toMap
   override def to_sql_type(vendor: String, typeName: String): String =
     typeToVendorType.get(typeName).flatMap(vt => vt.get(vendor).orElse(vt.get("sql"))) getOrElse typeName
