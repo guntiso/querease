@@ -590,11 +590,13 @@ trait QuereaseMetadata {
 object QuereaseMetadata {
   trait QuereaseViewDefExtras {
     val keyFieldNames: Seq[String]
+    val minSearchKeyFieldCount: Int
     val validations: Seq[String]
   }
 
   private [querease] case class QuereaseViewDef(
     keyFieldNames: Seq[String] = Nil,
+    minSearchKeyFieldCount: Int = 0,
     validations: Seq[String] = Nil
   ) extends QuereaseViewDefExtras
 
@@ -628,6 +630,7 @@ object QuereaseMetadata {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
     override val keyFieldNames = quereaseExtras.keyFieldNames
+    override val minSearchKeyFieldCount = quereaseExtras.minSearchKeyFieldCount
     override val validations = quereaseExtras.validations
     def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): ViewDef =
       updateExtras(QuereaseViewExtrasKey, updater, defaultExtras)
@@ -687,9 +690,16 @@ object QuereaseMetadata {
       val initial = getExtraOpt(f, Initial).orNull
       f.updateExtras(_ => QuereaseFieldDef(initial))
     }
-    val keyFieldNames = getStringSeq(Key, viewDef.extras).flatMap(
-      Option(_).map(_.split(",").filter(_ != "").map(_.trim).toList).getOrElse(Nil))
+    val rawKey = getStringSeq(Key, viewDef.extras).flatMap(Option(_).toList).mkString(",")
+    val keyFieldNames =
+      rawKey.split("[,()]+").map(_.trim).filter(_ != "").toList
+    val minSearchKeyFieldCount =
+      rawKey.indexOf('(') match {
+        case -1 => keyFieldNames.size
+        case ix => rawKey.substring(0, ix).split("[,()]+").map(_.trim).filter(_ != "").size
+      }
     val validations = getStringSeq(Validations, viewDef.extras)
-    viewDef.copy(fields = qeFields).updateExtras(_ => QuereaseViewDef(keyFieldNames, validations))
+    viewDef.copy(fields = qeFields).updateExtras(_ =>
+      QuereaseViewDef(keyFieldNames, minSearchKeyFieldCount, validations))
   }
 }
