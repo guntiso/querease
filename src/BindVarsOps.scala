@@ -87,7 +87,7 @@ trait BindVarsOps {
               case (_, (m: Map[String@unchecked, _], i)) =>
                 traverseData(ch_cursor, ch_view, i.toString :: new_path, m)
                 true
-              case (r, _) => r || false
+              case (r, _) => r
             }
             if (!succ) emptyCurs
           case _ => emptyCurs
