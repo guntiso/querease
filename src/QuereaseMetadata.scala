@@ -38,10 +38,14 @@ trait QuereaseMetadata {
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
+  /** db connection name mapping to db instance */
+  val aliasToDb: String => String = QuereaseMetadata.aliasToDb
+  /** db instance name mapping to corresponding db connections */
+  val dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
   lazy val macrosClass: Class[_] = classOf[org.tresql.Macros]
-  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass)
+  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, dbToAlias = dbToAlias)
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(tresqlMetadata)
 
   lazy val viewDefLoader: YamlViewDefLoader =
@@ -104,7 +108,7 @@ trait QuereaseMetadata {
         view.fieldOpt(fieldName).getOrElse(sys.error(s"Custom key field $fieldName not found, view ${view.name}"))
       }) getOrElse
     Option(view.table)
-      .map(tableMetadata.tableDef(_, view.db))
+      .map(tableMetadata.tableDef(_, aliasToDb(view.db)))
       .flatMap { t =>
         ((if (t.pk != null) t.pk.toSeq else Nil) ++
          (if (t.uk != null) t.uk       else Nil)
@@ -123,7 +127,7 @@ trait QuereaseMetadata {
   protected def keyColNameOfTypeForGet(view: ViewDef, keyColTypeName: String): String =
     if (view.table != null)
       Option(view.table)
-        .map(tableMetadata.tableDef(_, view.db))
+        .map(tableMetadata.tableDef(_, aliasToDb(view.db)))
         .flatMap { t =>
           ((if (t.pk != null) t.pk.toSeq else Nil) ++
            (if (t.uk != null) t.uk       else Nil)
@@ -140,7 +144,7 @@ trait QuereaseMetadata {
 
   val supportedIdTypeNames: Set[String] = ListSet("long", "int", "short")
   protected def idFieldName(view: ViewDef): String =
-    tableMetadata.tableDefOption(view.table, view.db).flatMap { t =>
+    tableMetadata.tableDefOption(view.table, aliasToDb(view.db)).flatMap { t =>
       t.pk
         .map(_.cols)
         .filter(_.size == 1)
@@ -330,13 +334,13 @@ trait QuereaseMetadata {
         saveToTableNames.map(t => SaveTo(
           table = t,
           refs  = refsToParent,
-          key   = tableMetadata.tableDef(t, view.db).pk.map { pk =>
+          key   = tableMetadata.tableDef(t, aliasToDb(view.db)).pk.map { pk =>
             if (!hasExplicitKey(view) && pk.cols == keyCols) Nil else keyCols // TODO annoying, improve tresql?
           }.getOrElse(Nil),
         ))
       }
     val filtersOpt = Option(persistenceFilters(view))
-    lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
+    lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, aliasToDb(view.db)))
     val properties = view.fields
       .map { f => try {
         val fieldName = f.fieldName
@@ -588,6 +592,12 @@ trait QuereaseMetadata {
 }
 
 object QuereaseMetadata {
+
+  /** db connection name mapping to db instance */
+  val aliasToDb: String => String = identity
+  /** db instance name mapping to corresponding db connections */
+  val dbToAlias: String => Seq[String] = Seq(_)
+
   trait QuereaseViewDefExtras {
     val keyFieldNames: Seq[String]
     val minSearchKeyFieldCount: Int

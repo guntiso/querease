@@ -17,6 +17,7 @@ class TresqlMetadata(
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
   val resourceLoader: String => InputStream = null,
+  dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
 ) extends Metadata with TypeMapper {
 
   val simpleTypeNameToXsdSimpleTypeName =
@@ -25,7 +26,7 @@ class TresqlMetadata(
       .filter(_._2 != null)
       .toMap
 
-  private val dbInfo = new TableMetadataDbInfo(tableDefs)
+  private val dbInfo = new TableMetadataDbInfo(tableDefs, dbToAlias)
   import dbInfo.dbToTableDefs
   val dbSet = dbInfo.dbSet
   val db    = dbInfo.db
@@ -139,8 +140,12 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
-    val dbInfo = new TableMetadataDbInfo(tableDefs)
-    val tresqlMetadata = TresqlMetadata(tableDefs, typeDefs = Nil, macrosClassOpt.orNull)
+    val dbToAlias = conf.get("db_to_alias")
+      .map(Class.forName)
+      .map(_.newInstance.asInstanceOf[Function[String, Seq[String]]])
+      .getOrElse(QuereaseMetadata.dbToAlias)
+    val tresqlMetadata = TresqlMetadata(tableDefs,
+      typeDefs = Nil, macrosClass = macrosClassOpt.orNull, dbToAlias = dbToAlias)
     new CompilerMetadata {
       override def metadata: Metadata = tresqlMetadata
       override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
@@ -151,10 +156,13 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
 }
 
 object TresqlMetadata {
-  class TableMetadataDbInfo(tableDefs: Seq[TableDef]) {
+  class TableMetadataDbInfo(tableDefs: Seq[TableDef], dbToAlias: String => Seq[String]) {
     val dbToTableDefs: Map[String, Seq[TableDef]] = tableDefs.groupBy(_.db)
-    val dbSet: Set[String] = dbToTableDefs.keySet
-    val db = if (dbSet.contains(null)) null else tableDefs.headOption.map(_.db).orNull
+      .flatMap { case (db, tbls) => dbToAlias(db).map(_ -> tbls) }
+    val dbSet: Set[String] = dbToTableDefs.keySet flatMap dbToAlias
+    val db =
+      if (dbSet.contains(null)) null
+      else tableDefs.headOption.map(_.db).flatMap(dbToAlias(_).headOption).orNull
   }
   /** Creates tresql compiler metadata from table metadata, typedefs and macros class.
    */
@@ -163,8 +171,8 @@ object TresqlMetadata {
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
       resourceLoader: String => InputStream = null,
+      dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
   ): TresqlMetadata = {
-    val dbInfo = new TableMetadataDbInfo(tableDefs)
-    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader)
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias)
   }
 }

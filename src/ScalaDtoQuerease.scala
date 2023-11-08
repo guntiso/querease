@@ -367,7 +367,7 @@ trait Dto { self =>
           childTableFieldDefOpt
           .filter(f => isSaveableChildField(f, qe.viewDefOption(f.type_.name).get))
           .map { f =>
-            val tables = saveToTableNames.map(qe.tableMetadata.tableDef(_, view.db))
+            val tables = saveToTableNames.map(qe.tableMetadata.tableDef(_, qe.aliasToDb(view.db)))
             val childTableName = qe.viewDefOption(f.type_.name).map(tablesTo).get
             val key = // XXX too complicated to save a child
             // TODO support multiple, multiple direction, multi-col etc. refs properly
