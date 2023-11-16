@@ -625,6 +625,8 @@ object QuereaseMetadata {
   val BindVarCursorsForViewCmdRegex =
     new Regex(BindVarCursorsForViewCmd + """\s+(:?\w+)((\s+:\w+)*)""")
 
+  val BindVarCursorsFunctionName = "build_cursors"
+
   val QuereaseViewExtrasKey = "querease-view-extras"
   val QuereaseFieldExtrasKey = "querease-field-extras"
   trait ExtrasMap {

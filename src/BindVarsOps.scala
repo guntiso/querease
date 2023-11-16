@@ -1,9 +1,12 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata.{FieldDef, ViewDef}
+import org.mojoz.querease.QuereaseMetadata.BindVarCursorsFunctionName
+import org.tresql.ast.{Arr, Exp, Fun, Join, Obj, With, Query => PQuery}
+import org.tresql.parsing.QueryParsers
 import org.tresql.{Query, Resources, SingleValueResult}
-import scala.collection.mutable.{Map => MM, ArrayBuffer => AB}
 
+import scala.collection.mutable.{ArrayBuffer => AB, Map => MM}
 import scala.util.Try
 
 trait BindVarsOps {
@@ -136,5 +139,36 @@ trait BindVarsOps {
       }.toMap
     }
     calc(view, Set())
+  }
+
+  def maybeExpandWithBindVarsCursorsForView(
+    tresql: String,
+    vars: Map[String, Any],
+  )(
+    view: ViewDef,
+    qp: QueryParsers,
+  ): String = {
+    if (tresql.indexOf(BindVarCursorsFunctionName) == -1) tresql
+    else {
+      def bindVarsCursorsCreator(bindVars: Map[String, Any]): qp.Transformer = {
+        qp.transformer {
+          case q@PQuery(List(
+          Obj(_, _, Join(_,
+          Arr(List(Fun(BindVarCursorsFunctionName, _, _, _, _))), _
+          ), _, _), _*), _, _, _, _, _, _) =>
+
+            qp.parseExp(cursorsFromViewBindVars(vars, view)) match {
+              case With(tables, _) => With(tables, q)
+              case _ => q
+            }
+          case With(tables, query) => bindVarsCursorsCreator(bindVars)(query) match {
+            case w: With => With(w.tables ++ tables, w.query) //put bind var cursor tables first
+            case q: Exp => With(tables, q)
+          }
+        }
+      }
+      require(view != null, "Cannot expand bind variable cursors. View is null")
+      bindVarsCursorsCreator(vars)(qp.parseExp(tresql)).tresql
+    }
   }
 }
