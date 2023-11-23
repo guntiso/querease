@@ -730,13 +730,13 @@ trait QueryStringBuilder {
           val vd = this.viewDef(if (view_name.startsWith(":"))
             String.valueOf(env(view_name.drop(1))) else view_name)
           val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(values, vd) + ", " + tresql(validations.tail)
+          cursorsFromViewBindVars(Nil, values, vd) + ", " + tresql(validations.tail)
         } else if (validations_head.startsWith(BindVarCursorsCmd) &&
           BindVarCursorsCmdRegex.pattern.matcher(validations_head).matches) {
           val m = BindVarCursorsCmdRegex.findAllMatchIn(validations_head).toList.head
           val bind_vars = bindVarsFromRegex(m.subgroups.head)
           val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(values, viewDef) + ", " + tresql(validations.tail)
+          cursorsFromViewBindVars(Nil, values, viewDef) + ", " + tresql(validations.tail)
         } else tresql(validations)
       } else null
 

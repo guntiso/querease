@@ -3,7 +3,7 @@ package test
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterAll
-import org.tresql.{Query, Resources, dialects}
+import org.tresql.{Query, QueryParser, Resources, dialects}
 
 import java.sql.{Connection, DriverManager}
 
@@ -30,16 +30,13 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
   import QuereaseTests.qe
 
-  Map("banks" -> List(Map("code" -> "SWE", "name" -> "Swedbank"), Map("code" -> "DNB", "name" -> "Luminor")))
-  Map("banks" -> List(Map("code" -> "SWE", "name" -> "Swedbank"), Map("code" -> "DNB", "name" -> "Luminor", "accounts" -> List(Map("billing_account" -> "AAA"), Map("billing_account" -> "BBB", "currencies" -> List())))))
-
   val cursorData: List[ViewCursorTest] =
     List(
       ViewCursorTest
       ( "have three empty cursors"
       , "country"
       , Map()
-      , """(banks { 1 nr, count(*) c }(1) ++
+      , """[build_cursors()](banks { 1 nr, count(*) c }(1) ++
           |banks_accounts { 2 nr, count(*) c }(1) ++
           |banks_accounts_currencies { 3 nr, count(*) c }(1)){count(*) c}#(1)""".stripMargin
       , List(Map("c" -> 0))
@@ -53,11 +50,12 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
           , Map("code" -> "DNB", "name" -> "Luminor", "accounts" ->
               List
               ( Map("billing_account" -> "AAA")
-              , Map("billing_account" -> "BBB", "currencies" ->
-                  List(Map("code" -> "LVL"), Map("name" -> "Eiro")))))
+              , Map("billing_account" -> "BBB", "currencies" -> List(Map("code" -> "LVL"), Map("name" -> "Eiro")))
+              )
+            )
           )
         )
-      , """(banks { 1 nr, count(*) c }(1) ++
+      , """[build_cursors()](banks { 1 nr, count(*) c }(1) ++
           |banks_accounts { 2 nr, count(*) c }(1) ++
           |banks_accounts_currencies { 3 nr, count(*) c }(1)){nr, c}#(1)""".stripMargin
       , List(Map("nr" -> 1, "c" -> 2), Map("nr" -> 2, "c" -> 2), Map("nr" -> 3, "c" -> 2))
@@ -75,7 +73,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
                 List(Map("currency_code" -> "LVL"), Map("currency_name" -> "Eiro")))))
             )
           )
-        , """banks_accounts_currencies { currency_code, currency_name }#(null 1, 2)"""
+        , """[build_cursors()]banks_accounts_currencies { currency_code, currency_name }#(null 1, 2)"""
         , List(Map("currency_code" -> null, "currency_name" -> "Eiro"), Map("currency_code" -> "LVL", "currency_name" -> null))
       )
       , ViewCursorTest
@@ -92,7 +90,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
                 List(Map("currency_code" -> "USD"), Map("currency_code" -> "EUR")))))
             )
           )
-        , """((banks { :name || ' (' || :code || ')' parent, code name }#(1)) ++
+        , """[build_cursors()]((banks { :name || ' (' || :code || ')' parent, code name }#(1)) ++
             |(banks_accounts ba { (banks b[b.__row_nr = ba.__row_nr_ref] {b.code}) parent,
             | group_concat(billing_account)#(~billing_account) name }(parent)) ++
             |(banks_accounts_currencies cur {
@@ -112,21 +110,29 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         ( "handle empty lookup view references"
         , "person_with_parents_1"
         , Map()
-        , """(mother{count(name) c} ++ father{count(surname)}){sum(c) c}"""
+        , """[build_cursors()](mother{count(name) c} ++ father{count(surname)}){sum(c) c}"""
         , List(Map("c" -> 0))
         )
       , ViewCursorTest
       ( "handle lookup view references"
       , "person_with_parents_1"
       , Map("mother" -> Map("name" -> "Jana"), "father" -> Map("name" -> "Joi"))
-      , """(mother{ name } ++ father { name }){name}#(1)"""
+      , """[build_cursors()](mother{ name } ++ father { name }){name}#(1)"""
       , List(Map("name" -> "Jana"), Map("name" -> "Joi"))
+      )
+      , ViewCursorTest
+      ("handle list data"
+        , null
+        , Map("currencies" -> List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar")))
+        , """[build_cursors(:currencies, currency)]currencies{code, name}#(1)"""
+        , List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar"))
       )
     )
 
   cursorData foreach { case ViewCursorTest(test, view, data, tresql, testRes) =>
     it should test in {
-      val val_tresql = qe.cursorsFromViewBindVars(data, qe.viewDef(view)) + " " + tresql
+      val val_tresql = qe.maybeExpandWithBindVarsCursorsForView(tresql, data)(
+        Option(view).map(qe.viewDef).orNull, new QueryParser(null, null))
       val res = Query(val_tresql, data).toListOfMaps
       res should be (testRes)
     }
