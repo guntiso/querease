@@ -758,15 +758,15 @@ trait QueryStringBuilder {
     }
     vqsRecursively(viewDef)
   }
-  /** All queries and dml-s from viewDef for compilation - to test viewDef */
-  def allQueryStrings(viewDef: ViewDef): Seq[String] = {
+  /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
+  def allQueryStrings(viewDef: ViewDef): Seq[(String, String)] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
          (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
       List(
-        queryStringAndParams(viewDef, Map.empty)._1
+        ("queries", queryStringAndParams(viewDef, Map.empty)._1)
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef, emptyData(viewDef))
+  } ++ validationsQueryStrings(viewDef, emptyData(viewDef)).map(("validations", _))
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec

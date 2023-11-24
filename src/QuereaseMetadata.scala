@@ -545,26 +545,39 @@ trait QuereaseMetadata {
     nameToPersistenceMetadata.getOrElse(view.name, dynamicPersistenceMetadata)
   }
 
-  /** Compile all queries - to test viewDef. Used by sbt-mojoz plugin */
-  def compileAllQueries(
-    previouslyCompiledQueries: Set[String],
-    showFailedViewQuery: Boolean,
-    log: => String => Unit,
-  ): (Set[String], Map[String, Array[Byte]]) = {
+  // returns Seq[(viewName, category, query)]
+  protected def generateQueriesForCompilation(log: => String => Unit): Seq[(String, String, String)] = {
     val childViews =
       nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
-    val startTime = System.currentTimeMillis
     val viewsToCompile =
       nameToViewDef.values.toList
       .filter(viewDef => !childViews.contains(viewDef.name)) // compile only top-level views
       .sortBy(_.name)
-    log(s"Compiling ${viewsToCompile.size} top-level views (${nameToViewDef.size} views total)")
+    log(s"Generating queries to be compiled for ${viewsToCompile.size} top-level views" +
+        s" (${nameToViewDef.size} views total)")
+    val startTime = System.currentTimeMillis
+    val result = viewsToCompile.flatMap { viewDef =>
+      allQueryStrings(viewDef).map { case (category, q) =>
+        (viewDef.name, category, q)
+      }
+    }
+    val endTime = System.currentTimeMillis
+    log(s"Query generation done in ${endTime - startTime} ms, ${result.size} queries generated")
+    result
+  }
+
+  protected def compileQueries(
+    category: String,
+    viewNamesAndQueriesToCompile: Seq[(String, String)],
+    previouslyCompiledQueries: Set[String],
+    showFailedViewQuery: Boolean,
+    log: => String => Unit,
+  ): Int = {
+    log(s"Compiling $category - ${viewNamesAndQueriesToCompile.size} total")
+    val startTime = System.currentTimeMillis
     val compiler = new org.tresql.compiling.Compiler {
       override val metadata = tresqlMetadata
       override val extraMetadata = tresqlMetadata.extraDbToMetadata
-    }
-    val viewNamesAndQueriesToCompile = viewsToCompile.flatMap { viewDef =>
-      allQueryStrings(viewDef).map(q => viewDef.name -> q)
     }
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
@@ -581,6 +594,33 @@ trait QuereaseMetadata {
     }
     val endTime = System.currentTimeMillis
     val allQueries = viewNamesAndQueriesToCompile.map(_._2).toSet
+    log(
+      s"Compilation done - $category - ${endTime - startTime} ms, " +
+      s"queries compiled: $compiledCount" +
+      (if (compiledCount != allQueries.size) s" of ${allQueries.size}" else ""))
+    compiledCount
+  }
+
+  /** Compile all queries - to test viewDef. Used by sbt-mojoz plugin */
+  def compileAllQueries(
+    previouslyCompiledQueries: Set[String],
+    showFailedViewQuery: Boolean,
+    log: => String => Unit,
+  ): (Set[String], Map[String, Array[Byte]]) = {
+    val startTime = System.currentTimeMillis
+    val queriesForCompilation = generateQueriesForCompilation(log)
+    val categorizedQueriesForCompilation = queriesForCompilation.groupBy(_._2).toSeq.sortBy(_._1)
+    val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
+    val compiledCount =
+      categorizedQueriesForCompilation.map { case (category, qSeq) =>
+        val viewNamesAndQueriesToCompile = qSeq.map { case (viewName, category, query) => (viewName, query) }
+        val count =
+          compileQueries(category, viewNamesAndQueriesToCompile, compiledQueries.toSet, showFailedViewQuery, log)
+        compiledQueries ++= viewNamesAndQueriesToCompile.map(_._2)
+        count
+      }.sum
+    val allQueries = queriesForCompilation.map(_._3).toSet
+    val endTime = System.currentTimeMillis
     log(
       s"View compilation done in ${endTime - startTime} ms, " +
       s"queries compiled: $compiledCount" +
