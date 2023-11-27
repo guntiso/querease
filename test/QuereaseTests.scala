@@ -11,8 +11,6 @@ import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
 import org.mojoz.querease._
 import org.tresql.OrtMetadata
-import org.tresql.macro_.TresqlMacroInterpolator
-import org.tresql.parsing
 
 
 class QuereaseTests extends FlatSpec with Matchers {
