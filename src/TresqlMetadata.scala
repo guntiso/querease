@@ -1,6 +1,6 @@
 package org.mojoz.querease
 
-import org.mojoz.metadata.{ColumnDef, TableDef, TypeDef, TypeMetadata}
+import org.mojoz.metadata.{ColumnDef, FieldDef, TableDef, TypeDef, TypeMetadata, ViewDef}
 import org.mojoz.metadata.in._
 import org.mojoz.metadata.io._
 import org.mojoz.querease.TresqlMetadata._
@@ -18,6 +18,8 @@ class TresqlMetadata(
   override val macrosClass: Class[_]  = null,
   val resourceLoader: String => InputStream = null,
   dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
+  val viewDefs: Map[String, ViewDef] = Map(), // for cursor tables
+  cursorDefs: Map[String, Table] = Map(),
 ) extends Metadata with TypeMapper {
 
   val simpleTypeNameToXsdSimpleTypeName =
@@ -30,13 +32,28 @@ class TresqlMetadata(
   import dbInfo.dbToTableDefs
   val dbSet = dbInfo.dbSet
   val db    = dbInfo.db
+  private val cursors =
+    if (cursorDefs.isEmpty) viewDefs.map { case (vn, vd) =>
+      def toTresqlCol(fd: FieldDef) = {
+        val typeName = fd.type_.name
+        val scalaType =
+          if (fd.type_.isComplexType) s"Table[${fd.type_.name}]"
+          else
+            xsd_scala_type_map(simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName))
+              .toString
+        val jdbcTypeCode = 0 // unknown, not interested
+        Col(fd.name, fd.nullable, jdbcTypeCode, ExprType(scalaType))
+      }
+      val cols = vd.fields.map(toTresqlCol).toList
+      s"$CursorsSchemaName.$vn" -> Table(s"$CursorsSchemaName.$vn", cols, Key(Nil), Map())
+    } else cursorDefs
   val extraDbToMetadata: Map[String, TresqlMetadata] =
     dbToTableDefs
       .filter(_._1 != null)
       .transform { case (extraDb, tableDefs) =>
         if  (extraDb == db)
              this
-        else TresqlMetadata(tableDefs, typeDefs, macrosClass) }
+        else TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias, viewDefs, cursors) }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
       val typeName = c.type_.name
@@ -51,7 +68,7 @@ class TresqlMetadata(
     val refs = td.refs.groupBy(_.refTable)
       .map(kv => kv._1 -> kv._2.map(r => TresqlRef(r.cols.toList, r.refCols.toList)).toList).toMap
     Table(name, cols, key, refs)
-  }.map(t => (t.name, t)).toMap
+  }.map(t => (t.name, t)).toMap ++ cursors
   private val tablesNormalized = tables.map { case (n, t) => (n.toLowerCase, t) }
 
   private val typeToVendorType: Map[String, Map[String, String]] =
@@ -156,6 +173,9 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
 }
 
 object TresqlMetadata {
+  val CursorsSchemaName = "_cursors_"
+  val CursorsComplexTypePattern = """Table\[(.+)\]""".r
+
   class TableMetadataDbInfo(tableDefs: Seq[TableDef], dbToAlias: String => Seq[String]) {
     val dbToTableDefs: Map[String, Seq[TableDef]] = tableDefs.groupBy(_.db)
       .flatMap { case (db, tbls) => dbToAlias(db).map(_ -> tbls) }
@@ -172,7 +192,9 @@ object TresqlMetadata {
       macrosClass: Class[_]  = null,
       resourceLoader: String => InputStream = null,
       dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
+      viewDefs: Map[String, ViewDef] = Map(),
+      cursorDefs: Map[String, Table] = Map(),
   ): TresqlMetadata = {
-    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias)
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias, viewDefs, cursorDefs)
   }
 }

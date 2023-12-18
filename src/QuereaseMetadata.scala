@@ -45,8 +45,9 @@ trait QuereaseMetadata {
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
   lazy val macrosClass: Class[_] = classOf[org.tresql.Macros]
-  lazy val tresqlMetadata = TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, dbToAlias = dbToAlias)
-  lazy val joinsParser: JoinsParser = new TresqlJoinsParser(tresqlMetadata)
+  lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
+    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, dbToAlias = dbToAlias)
+  )
 
   lazy val viewDefLoader: YamlViewDefLoader =
     YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, Nil, typeDefs)
@@ -55,6 +56,9 @@ trait QuereaseMetadata {
     viewDefLoader
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
+  lazy val tresqlMetadata =
+    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, dbToAlias = dbToAlias, viewDefs = nameToViewDef)
+
   // TODO merge all extra metadata, attach to view: ordering, persistence metadata, key fields, ...
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
   protected lazy val persistenceMetadataMaxDepth: Int = -1
