@@ -5,8 +5,7 @@ import scala.collection.immutable.Seq
 import org.tresql.ast.Ident
 
 trait QuereaseResolvers {
-  this: QuereaseMetadata with QueryStringBuilder with QuereaseExpressions
-  with BindVarsOps with FilterTransformer =>
+  this: QuereaseMetadata with QueryStringBuilder with QuereaseExpressions with FilterTransformer =>
 
         import parser._
         def allResolvers(view: ViewDef, f: FieldDef): Seq[String] =

@@ -42,7 +42,7 @@ class TresqlMetadata(
             xsd_scala_type_map(simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName))
               .toString
         val jdbcTypeCode = 0 // unknown, not interested
-        Col(fd.name, fd.nullable, jdbcTypeCode, ExprType(scalaType))
+        Col(fd.fieldName, fd.nullable, jdbcTypeCode, ExprType(scalaType))
       }
       val cols = vd.fields.map(toTresqlCol).toList
       s"$CursorsSchemaName.$vn" -> Table(s"$CursorsSchemaName.$vn", cols, Key(Nil), Map())

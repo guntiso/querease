@@ -3,13 +3,13 @@ package org.mojoz.querease
 import org.mojoz.querease.TresqlMetadata.{CursorsComplexTypePattern, CursorsSchemaName}
 import org.tresql.ast.Exp
 import org.tresql.parsing.QueryParsers
-import org.tresql.{Expr, QueryBuilder, ast, metadata}
+import org.tresql.{Expr, Macros, QueryBuilder, ast, metadata}
 
 import scala.collection.mutable.{ArrayBuffer => AB, Map => MM}
 import scala.util.Try
 import scala.util.matching.Regex
 
-class QuereaseMacros {
+class QuereaseMacros extends Macros {
 
   val CursorRowNrColName = "__row_nr"
   val CursorRowNrRefColName = "__row_nr_ref"

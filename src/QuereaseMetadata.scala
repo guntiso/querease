@@ -1,13 +1,10 @@
 package org.mojoz.querease
 
 import org.mojoz.metadata._
-import org.mojoz.metadata.TableMetadata.Ref
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 
 import org.tresql.ast.{Ident, Variable}
-import org.tresql.MacroResourcesImpl
-import org.tresql.QueryParser
 import org.tresql.OrtMetadata
 import org.tresql.OrtMetadata._
 
@@ -19,7 +16,7 @@ case class FieldOrderingNotFoundException(message: String) extends Exception(mes
 
 trait QuereaseMetadata {
   this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder
-  with BindVarsOps with QuereaseResolvers with FilterTransformer =>
+  with QuereaseResolvers with FilterTransformer =>
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
@@ -44,7 +41,7 @@ trait QuereaseMetadata {
   val dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
-  lazy val macrosClass: Class[_] = classOf[org.tresql.Macros]
+  lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
     TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, dbToAlias = dbToAlias)
   )
@@ -663,11 +660,9 @@ object QuereaseMetadata {
   ) extends QuereaseFieldDefExtras
 
   val BindVarCursorsCmd = "build cursors"
-  val BindVarCursorsCmdRegex =
-    new Regex(BindVarCursorsCmd + """((\s+:\w+)*)""")
   val BindVarCursorsForViewCmd = "build cursors for view"
   val BindVarCursorsForViewCmdRegex =
-    new Regex(BindVarCursorsForViewCmd + """\s+(:?\w+)((\s+:\w+)*)""")
+    new Regex(BindVarCursorsForViewCmd + """\s+(\w+)""")
 
   val BindVarCursorsFunctionName = "build_cursors"
 

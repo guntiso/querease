@@ -3,7 +3,7 @@ package org.mojoz.querease
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
-import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsCmdRegex, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
+import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
@@ -34,7 +34,7 @@ trait FieldFilter {
 }
 
 class Querease extends QueryStringBuilder
-  with BindVarsOps with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
+  with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
 
   private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
   private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
@@ -357,7 +357,7 @@ class Querease extends QueryStringBuilder
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
     def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
-      validationsQueryString(viewDef, obj) match {
+      validationsQueryString(viewDef) match {
         case Some(query) =>
           Query(query, obj).map(_.s("msg")).toList
         case _ => Nil
@@ -639,7 +639,7 @@ class Querease extends QueryStringBuilder
 }
 
 trait QueryStringBuilder {
-  this: QuereaseMetadata with QuereaseExpressions with BindVarsOps with FilterTransformer with QuereaseResolvers =>
+  this: QuereaseMetadata with QuereaseExpressions with FilterTransformer with QuereaseResolvers =>
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -661,17 +661,16 @@ trait QueryStringBuilder {
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   protected val FieldRefRegexp = regex(s"\\^($ident)\\.($ident)\\s*(\\[(.*)\\])?")
 
-  def validationsQueryString(viewDef: ViewDef, env: Map[String, Any]): Option[String] = {
+  def validationsQueryString(viewDef: ViewDef): Option[String] = {
     import QuereaseMetadata.AugmentedQuereaseViewDef
-    validationsQueryString(viewDef, env, viewDef.validations)
+    validationsQueryString(viewDef, viewDef.validations)
   }
 
   def validationsQueryString(viewDef: ViewDef,
-                             env: Map[String, Any],
                              validations: Seq[String]): Option[String] = {
     val result =
       if (validations != null && validations.nonEmpty) {
-        def tresql(vs: Seq[String]): String = {
+        def tresql(cursorsView: String, vs: Seq[String]): String = {
           def error(exp: Exp) = {
             val msg =
               s"Validation expression must consist of" +
@@ -702,53 +701,30 @@ trait QueryStringBuilder {
                     }
                   s"{ $i idx, if_not($valExp) msg }"
               }.mkString(" + ") +
-              "} messages[msg != null] { msg } #(idx)"
+              s"} ${if (cursorsView == null) "" else s"[build_cursors($cursorsView)]"}" +
+              s"messages[msg != null] { msg } #(idx)"
           if (cursorList.isEmpty) valTresql
           else cursorList.reverse.mkString(", ") + ", " + valTresql
         }
 
-
         val validations_head = validations.head.trim
-        def createEnv(bindVars: List[String]) =
-          bindVars.foldLeft(Map[String, Any]()) { (res, bv) =>
-            env(bv) match {
-              case m: Map[String, _]@unchecked => res ++ m
-              case x => res + (bv -> x)
-            }
-          }
-        def bindVarsFromRegex(vars: String) =
-          vars.split("\\s+")
-            .filter(_.nonEmpty)
-            .map(_.substring(1)) // remove colon
-            .toList
-        if (validations_head.startsWith(BindVarCursorsForViewCmd) &&
-          BindVarCursorsForViewCmdRegex.pattern.matcher(validations_head).matches) {
-          val m = BindVarCursorsForViewCmdRegex.findAllMatchIn(validations_head).toList.head
-          val view_name = m.subgroups.head
-          val bind_vars =
-            if (m.subgroups.tail.nonEmpty) bindVarsFromRegex(m.subgroups.tail.head) else Nil
-          val vd = this.viewDef(if (view_name.startsWith(":"))
-            String.valueOf(env(view_name.drop(1))) else view_name)
-          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(Nil, values, vd) + ", " + tresql(validations.tail)
-        } else if (validations_head.startsWith(BindVarCursorsCmd) &&
-          BindVarCursorsCmdRegex.pattern.matcher(validations_head).matches) {
-          val m = BindVarCursorsCmdRegex.findAllMatchIn(validations_head).toList.head
-          val bind_vars = bindVarsFromRegex(m.subgroups.head)
-          val values = if (bind_vars.isEmpty) env else createEnv(bind_vars)
-          cursorsFromViewBindVars(Nil, values, viewDef) + ", " + tresql(validations.tail)
-        } else tresql(validations)
+        if (validations_head.startsWith(BindVarCursorsForViewCmd)) {
+          val BindVarCursorsForViewCmdRegex(view_name) = validations_head
+          tresql(view_name, validations.tail)
+        } else if (validations_head.startsWith(BindVarCursorsCmd)) {
+          tresql(viewDef.name, validations.tail)
+        } else tresql(null, validations)
       } else null
 
     Option(result)
   }
-  def validationsQueryStrings(viewDef: ViewDef, env: Map[String, Any]): Seq[String] = {
+  def validationsQueryStrings(viewDef: ViewDef): Seq[String] = {
     val visited: collection.mutable.Set[String] = collection.mutable.Set.empty
     def vqsRecursively(viewDef: ViewDef): Seq[String] = {
       if (visited contains viewDef.name) Nil
       else {
         visited += viewDef.name
-        validationsQueryString(viewDef, env).toList ++
+        validationsQueryString(viewDef).toList ++
           viewDef.fields.flatMap { f =>
             if (f.type_.isComplexType)
               vqsRecursively(this.viewDef(f.type_.name))
@@ -766,7 +742,7 @@ trait QueryStringBuilder {
         ("queries", queryStringAndParams(viewDef, Map.empty)._1)
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef, emptyData(viewDef)).map(("validations", _))
+  } ++ validationsQueryStrings(viewDef).map(("validations", _))
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
@@ -1221,7 +1197,7 @@ trait QueryStringBuilder {
 }
 
 trait OracleQueryStringBuilder extends QueryStringBuilder {
-  this: QuereaseMetadata with QuereaseExpressions with BindVarsOps with FilterTransformer with QuereaseResolvers =>
+  this: QuereaseMetadata with QuereaseExpressions with FilterTransformer with QuereaseResolvers =>
   override def limitOffset(query: String, countAll: Boolean, limit: Int, offset: Int) =
     if (countAll || limit == 0 || offset == 0)
       super.limitOffset(query, countAll, limit, offset)

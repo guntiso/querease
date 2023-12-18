@@ -28,7 +28,7 @@ object FilterType {
 
 trait FilterTransformer {
   this: QuereaseExpressions with QueryStringBuilder with FilterTransformer
-  with QuereaseMetadata with BindVarsOps with QuereaseResolvers =>
+  with QuereaseMetadata with QuereaseResolvers =>
   // TODO resolve names like in views (maybe strip prefix etc.)
   private val ident = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
   private val ident2 = s"$ident\\.$ident"

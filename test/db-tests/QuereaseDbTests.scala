@@ -1291,8 +1291,10 @@ object QuereaseDbTests {
     conn.setAutoCommit(false)
     env.dialect = dialect
     env.metadata = db match {
-      case MainDb   => new TresqlMetadata(qe.tableMetadata.tableDefs)
-      case ExtraDb  => new TresqlMetadata(qe.tableMetadata.tableDefs).extraDbToMetadata(ExtraDb)
+      case MainDb   => TresqlMetadata(qe.tableMetadata.tableDefs, qe.typeDefs, qe.macrosClass,
+        dbToAlias = qe.dbToAlias, viewDefs = qe.nameToViewDef)
+      case ExtraDb  => TresqlMetadata(qe.tableMetadata.tableDefs, qe.typeDefs, qe.macrosClass,
+        dbToAlias = qe.dbToAlias, viewDefs = qe.nameToViewDef).extraDbToMetadata(ExtraDb)
     }
     env.idExpr = s => "nextval('seq')"
     env.setMacros(new QuereaseTestMacros)

@@ -2,9 +2,6 @@ package org.mojoz.querease
 
 import org.mojoz.metadata.ViewDef
 import org.mojoz.metadata.FieldDef
-import org.mojoz.metadata.FieldDef
-import org.mojoz.metadata.ViewDef
-import org.mojoz.metadata.TableDef
 import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.Type
 import org.tresql.{Cache, SimpleCache}
@@ -78,7 +75,7 @@ object QuereaseExpressions {
 import QuereaseExpressions._
 trait QuereaseExpressions {
   this: QuereaseMetadata with QueryStringBuilder with FilterTransformer
-  with BindVarsOps with QuereaseResolvers with QueryStringBuilder =>
+  with QuereaseResolvers with QueryStringBuilder =>
   case class Context(
     viewDef: ViewDef,
     fieldDef: FieldDef,
