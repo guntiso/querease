@@ -4,7 +4,7 @@ import org.mojoz.querease.QuereaseMacros
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterAll
-import org.tresql.{Query, Resources}
+import org.tresql.{MacroResourcesImpl, Query, QueryCompiler, Resources}
 
 import java.sql.{Connection, DriverManager}
 
@@ -121,6 +121,12 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         , """[build_cursors(currency, :currencies)]currencies{code, name}#(1)"""
         , List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar"))
       )
+      , ViewCursorTest
+      ("handle list data with view name as string literal"
+        , Map("currencies" -> List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar")))
+        , """[build_cursors('currency', :currencies)]currencies{code, name}#(1)"""
+        , List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar"))
+      )
     )
 
   cursorData foreach { case ViewCursorTest(test, data, tresql, testRes) =>
@@ -128,6 +134,24 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       val res = Query(tresql, data).toListOfMaps
       res should be (testRes)
     }
+  }
+
+  it should "compile cursors" in {
+    def compileQueries = {
+      val compiler = new QueryCompiler(
+        QuereaseTests.qe.tresqlMetadata,
+        Map(),
+        new MacroResourcesImpl(new QuereaseMacros, QuereaseTests.qe.tresqlMetadata)
+      )
+      cursorData.foreach { ct =>
+        try compiler.compile(ct.tresql) catch {
+          case e: Exception =>
+            throw new RuntimeException(s"Failed to compile tresql for test '${ct.testName}'", e)
+        }
+      }
+      "done"
+    }
+    compileQueries shouldBe "done"
   }
 
   override def afterAll(): Unit = conn.close()
