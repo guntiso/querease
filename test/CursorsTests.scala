@@ -127,6 +127,18 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         , """[build_cursors('currency', :currencies)]currencies{code, name}#(1)"""
         , List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar"))
       )
+      , ViewCursorTest
+      ( "handle build cursors in with query"
+        , Map("mother" -> Map("name" -> "Jana"), "father" -> Map("name" -> "Joi"))
+        , """mf(#name) { {(mother{ name }) || ',' || (father { name })} } [build_cursors(person_with_parents_1)]mf{name}"""
+        , List(Map("name" -> "Jana,Joi"))
+      )
+      , ViewCursorTest
+      ("handle 2 par build cursors in with query"
+        , Map("currencies" -> List(Map("code" -> "EUR", "name" -> "Euro"), Map("code" -> "USD", "name" -> "US dollar")))
+        , """cc(# c) { currencies {count(*)} } [build_cursors(currency, :currencies)] cc{c}"""
+        , List(Map("c" -> 2))
+      )
     )
 
   cursorData foreach { case ViewCursorTest(test, data, tresql, testRes) =>
