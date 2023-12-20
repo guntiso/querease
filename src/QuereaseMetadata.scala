@@ -3,12 +3,11 @@ package org.mojoz.querease
 import org.mojoz.metadata._
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
-
 import org.tresql.ast.{Ident, Variable}
-import org.tresql.OrtMetadata
+import org.tresql.{MacroResourcesImpl, OrtMetadata}
 import org.tresql.OrtMetadata._
 
-import scala.collection.immutable.{Map, ListSet, Seq, TreeMap}
+import scala.collection.immutable.{ListSet, Map, Seq, TreeMap}
 import scala.util.matching.Regex
 
 case class ViewNotFoundException(message: String) extends Exception(message)
@@ -579,6 +578,8 @@ trait QuereaseMetadata {
     val compiler = new org.tresql.compiling.Compiler {
       override val metadata = tresqlMetadata
       override val extraMetadata = tresqlMetadata.extraDbToMetadata
+      override protected val macros =
+        new MacroResourcesImpl(Option(macrosClass).map(_.newInstance()).orNull, tresqlMetadata)
     }
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
