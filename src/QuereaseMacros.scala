@@ -19,7 +19,7 @@ class QuereaseMacros extends Macros {
   private def tableCols(table: metadata.Table) = table.cols.filter(c => !isComplexType(c.scalaType.name))
   private def tableComplexCols(table: metadata.Table) = table.cols.collect {
     case c if isComplexType(c.scalaType.name) =>
-      val CursorsComplexTypePattern(t) = c.scalaType.name
+      val CursorsComplexTypePattern(t) = c.scalaType.name : @unchecked
       (c.name, t)
   }
   private def cursorTable(metadata: Metadata, name: String) = metadata.table(s"$CursorsSchemaName.$name")
@@ -39,7 +39,7 @@ class QuereaseMacros extends Macros {
       ))
       child_cols.foreach { c =>
         val n = c.name
-        val CursorsComplexTypePattern(vn) = c.scalaType.name
+        val CursorsComplexTypePattern(vn) = c.scalaType.name : @unchecked
         addEmptyCursor(s"${name}_$n", vn, curs, emptyRowFun, metadata)
       }
     }

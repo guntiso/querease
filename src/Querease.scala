@@ -709,7 +709,7 @@ trait QueryStringBuilder {
 
         val validations_head = validations.head.trim
         if (validations_head.startsWith(BindVarCursorsForViewCmd)) {
-          val BindVarCursorsForViewCmdRegex(view_name) = validations_head
+          val BindVarCursorsForViewCmdRegex(view_name) = validations_head : @unchecked
           tresql(view_name, validations.tail)
         } else if (validations_head.startsWith(BindVarCursorsCmd)) {
           tresql(viewDef.name, validations.tail)
