@@ -1292,9 +1292,9 @@ object QuereaseDbTests {
     env.dialect = dialect
     env.metadata = db match {
       case MainDb   => TresqlMetadata(qe.tableMetadata.tableDefs, qe.typeDefs, qe.macrosClass,
-        dbToAlias = qe.dbToAlias, viewDefs = qe.nameToViewDef)
+        null, qe.aliasToDb, qe.nameToViewDef)
       case ExtraDb  => TresqlMetadata(qe.tableMetadata.tableDefs, qe.typeDefs, qe.macrosClass,
-        dbToAlias = qe.dbToAlias, viewDefs = qe.nameToViewDef).extraDbToMetadata(ExtraDb)
+        null, qe.aliasToDb, qe.nameToViewDef).extraDbToMetadata(ExtraDb)
     }
     env.idExpr = s => "nextval('seq')"
     env.setMacros(new QuereaseTestMacros)

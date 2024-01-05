@@ -17,7 +17,7 @@ class TresqlMetadata(
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
   val resourceLoader: String => InputStream = null,
-  dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
+  val aliasToDb: Map[String, String] = Map(),
   val viewDefs: Map[String, ViewDef] = Map(), // for cursor tables
   cursorDefs: Map[String, Table] = Map(),
 ) extends Metadata with TypeMapper {
@@ -28,7 +28,7 @@ class TresqlMetadata(
       .filter(_._2 != null)
       .toMap
 
-  private val dbInfo = new TableMetadataDbInfo(tableDefs, dbToAlias)
+  private val dbInfo = new TableMetadataDbInfo(tableDefs)
   import dbInfo.dbToTableDefs
   val dbSet = dbInfo.dbSet
   val db    = dbInfo.db
@@ -47,13 +47,21 @@ class TresqlMetadata(
       val cols = vd.fields.map(toTresqlCol).toList
       s"$CursorsSchemaName.$vn" -> Table(s"$CursorsSchemaName.$vn", cols, Key(Nil), Map())
     } else cursorDefs
+  val dbToAlias: Map[String, Set[String]] =
+    (dbSet.map(db => (db, db)) ++ aliasToDb)
+      .groupBy(_._2)
+      .transform { case (_, set) => set.map(_._1) }
   val extraDbToMetadata: Map[String, TresqlMetadata] =
     dbToTableDefs
       .filter(_._1 != null)
       .transform { case (extraDb, tableDefs) =>
         if  (extraDb == db)
              this
-        else TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias, viewDefs, cursors) }
+        else TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursors)
+      }
+      .flatMap { case (extraDb, metadata) =>
+        dbToAlias(extraDb).map(_ -> metadata)
+      }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
       val typeName = c.type_.name
@@ -157,12 +165,11 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
     val tableDefs = new YamlTableDefLoader(rawTableMetadata, mdConventions, typeDefs).tableDefs
-    val dbToAlias = conf.get("db_to_alias")
-      .map(Class.forName)
-      .map(_.newInstance.asInstanceOf[Function[String, Seq[String]]])
-      .getOrElse(QuereaseMetadata.dbToAlias)
+    val aliasToDb = conf.get("alias_to_db")
+      .map(_.split(",").filter(_ contains "->").map(_.split("->", 2)).map { case Array(k, v) => (k.trim, v.trim) }.toMap)
+      .getOrElse(Map[String, String]())
     val tresqlMetadata = TresqlMetadata(tableDefs,
-      typeDefs = Nil, macrosClass = macrosClassOpt.orNull, dbToAlias = dbToAlias)
+      typeDefs = Nil, macrosClass = macrosClassOpt.orNull, aliasToDb = aliasToDb)
     new CompilerMetadata {
       override def metadata: Metadata = tresqlMetadata
       override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
@@ -176,13 +183,12 @@ object TresqlMetadata {
   val CursorsSchemaName = "_cursors_"
   val CursorsComplexTypePattern = """Table\[(.+)\]""".r
 
-  class TableMetadataDbInfo(tableDefs: Seq[TableDef], dbToAlias: String => Seq[String]) {
+  class TableMetadataDbInfo(tableDefs: Seq[TableDef]) {
     val dbToTableDefs: Map[String, Seq[TableDef]] = tableDefs.groupBy(_.db)
-      .flatMap { case (db, tbls) => dbToAlias(db).map(_ -> tbls) }
-    val dbSet: Set[String] = dbToTableDefs.keySet flatMap dbToAlias
+    val dbSet: Set[String] = dbToTableDefs.keySet
     val db =
       if (dbSet.contains(null)) null
-      else tableDefs.headOption.map(_.db).flatMap(dbToAlias(_).headOption).orNull
+      else tableDefs.headOption.map(_.db).orNull
   }
   /** Creates tresql compiler metadata from table metadata, typedefs and macros class.
    */
@@ -191,10 +197,10 @@ object TresqlMetadata {
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
       resourceLoader: String => InputStream = null,
-      dbToAlias: String => Seq[String] = QuereaseMetadata.dbToAlias,
+      aliasToDb: Map[String, String] = Map(),
       viewDefs: Map[String, ViewDef] = Map(),
       cursorDefs: Map[String, Table] = Map(),
   ): TresqlMetadata = {
-    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, dbToAlias, viewDefs, cursorDefs)
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursorDefs)
   }
 }
