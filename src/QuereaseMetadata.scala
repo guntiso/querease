@@ -46,9 +46,9 @@ trait QuereaseMetadata {
     TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb),
     _ => Some(new SimpleCache(parserCacheSize)),
   )
-
+  lazy val uninheritableExtras: Seq[String] = Seq()
   lazy val viewDefLoader: YamlViewDefLoader =
-    YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, Nil, typeDefs)
+    YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, uninheritableExtras, typeDefs)
   import QuereaseMetadata.toQuereaseViewDefs
   lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
     viewDefLoader
