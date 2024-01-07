@@ -23,7 +23,7 @@ import scala.util.control.NonFatal
 
 class TresqlJoinsParser(
   tresqlMetadata: TresqlMetadata,
-  createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096))
+  createCache: String => Option[Cache],
 ) extends JoinsParser {
   trait JoinsParserCompiler extends Compiler {
     val metadata: TresqlMetadata
@@ -146,7 +146,7 @@ object TresqlJoinsParser {
     tableDefs: Seq[TableDef],
     typeDefs: collection.immutable.Seq[TypeDef],
     macrosClass: Class[_] = null,
-    createCache: String => Option[Cache] = _ => Some(new SimpleCache(4096)),
+    createCache: String => Option[Cache],
     resourceLoader: String => InputStream = null,
   ): TresqlJoinsParser = {
     new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader), createCache)

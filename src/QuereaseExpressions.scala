@@ -87,7 +87,7 @@ trait QuereaseExpressions {
     addParensToSubquery: Boolean
   )
 
-  protected def createParserCache: Option[Cache] = Some(new SimpleCache(4096))
+  protected def createParserCache: Option[Cache] = Some(new SimpleCache(parserCacheSize))
   val parser: Parser = new DefaultParser(createParserCache)
 
   /** Returns missing var expression for inclusion in resolver error message expression */

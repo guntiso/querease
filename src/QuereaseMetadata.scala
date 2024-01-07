@@ -4,7 +4,7 @@ import org.mojoz.metadata._
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 import org.tresql.ast.{Ident, Variable}
-import org.tresql.{MacroResourcesImpl, OrtMetadata}
+import org.tresql.{MacroResourcesImpl, OrtMetadata, SimpleCache}
 import org.tresql.OrtMetadata._
 
 import java.io.InputStream
@@ -32,6 +32,7 @@ trait QuereaseMetadata {
       new FieldOrdering(view.fields.map(_.fieldName).zipWithIndex.toMap)
   }
 
+  protected lazy val parserCacheSize: Int = 32 * 1024
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
@@ -42,7 +43,8 @@ trait QuereaseMetadata {
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
   protected lazy val resourceLoader: String => InputStream = getClass.getResourceAsStream _
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
-    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb)
+    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb),
+    _ => Some(new SimpleCache(parserCacheSize)),
   )
 
   lazy val viewDefLoader: YamlViewDefLoader =

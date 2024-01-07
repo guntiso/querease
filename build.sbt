@@ -97,10 +97,11 @@ Test / sourceGenerators += Def.task {
     import org.mojoz.metadata._
     import org.mojoz.metadata.in._
     import org.mojoz.metadata.out._
+    import org.tresql.SimpleCache
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
     val viewDefLoader = YamlViewDefLoader(tableMd, yamlMd,
-      new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs)))
+      new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs), _ => Some(new SimpleCache(-1))))
     val plainViewDefs = viewDefLoader.plainViewDefs
     val xViewDefs = viewDefLoader.nameToViewDef
     val qe = new Querease {
