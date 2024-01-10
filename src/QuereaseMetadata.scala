@@ -44,7 +44,7 @@ trait QuereaseMetadata {
   protected lazy val resourceLoader: String => InputStream = getClass.getResourceAsStream _
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
     TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb),
-    _ => Some(new SimpleCache(parserCacheSize)),
+    _ => Some(new SimpleCache(parserCacheSize, "TresqlJoinsParser cache")),
   )
   lazy val uninheritableExtras: Seq[String] = Seq()
   lazy val viewDefLoader: YamlViewDefLoader =
