@@ -581,7 +581,7 @@ trait QuereaseMetadata {
       override val metadata = tresqlMetadata
       override val extraMetadata = tresqlMetadata.extraDbToMetadata
       override protected val macros =
-        new MacroResourcesImpl(Option(macrosClass).map(_.newInstance()).orNull, tresqlMetadata)
+        new MacroResourcesImpl(Option(macrosClass).map(_.getDeclaredConstructor().newInstance()).orNull, tresqlMetadata)
     }
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
