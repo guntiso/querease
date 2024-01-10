@@ -605,6 +605,16 @@ trait QuereaseMetadata {
     compiledCount
   }
 
+  /** Clear all caches used for query compilation */
+  protected def clearAllCaches(): Unit = {
+    joinsParser match {
+      case tjp: TresqlJoinsParser =>
+        tjp.dbToCompilerAndCache.values.foreach(_._2.foreach(_.clear()))
+      case _ =>
+    }
+    parser.cache.foreach(_.clear())
+  }
+
   /** Compile all queries - to test viewDef. Used by sbt-mojoz plugin */
   def compileAllQueries(
     previouslyCompiledQueries: Set[String],
@@ -612,6 +622,8 @@ trait QuereaseMetadata {
     log: => String => Unit,
   ): (Set[String], Map[String, Array[Byte]]) = {
     val startTime = System.currentTimeMillis
+    if (previouslyCompiledQueries.isEmpty)
+      clearAllCaches() // clear caches if full recompile required, e.g. when table or type metadata changed
     val queriesForCompilation = generateQueriesForCompilation(log)
     val categorizedQueriesForCompilation = queriesForCompilation.groupBy(_._2).toSeq.sortBy(_._1)
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)

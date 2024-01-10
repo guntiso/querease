@@ -1,7 +1,7 @@
 package org.mojoz.querease
 
 import org.tresql.compiling.Compiler
-import org.tresql.{ Cache, SimpleCache }
+import org.tresql.Cache
 import org.tresql.ast.Braces
 import org.tresql.ast.CompilerAst
 import org.tresql.ast.Exp
