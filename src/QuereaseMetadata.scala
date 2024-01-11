@@ -548,6 +548,16 @@ trait QuereaseMetadata {
   }
 
   import QueryStringBuilder.CompilationUnit
+  /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
+  def allQueryStrings(viewDef: ViewDef): Seq[CompilationUnit] = {
+    if (viewDef.fields != null && viewDef.fields.nonEmpty &&
+      (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
+      List(
+        CompilationUnit("queries", viewDef.name, queryStringAndParams(viewDef, Map.empty)._1)
+      )
+    else Nil
+  } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit("validations", viewDef.name, vq))
+
   protected def generateQueriesForCompilation(log: => String => Unit): Seq[CompilationUnit] = {
     val childViews =
       nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
@@ -584,7 +594,7 @@ trait QuereaseMetadata {
     compilationUnits.foreach { case CompilationUnit(_, viewName, q) =>
       if (!compiledQueries.contains(q)) {
         try compiler.compile(compiler.parseExp(q)) catch { case util.control.NonFatal(ex) =>
-          val msg = s"\nFailed to compile viewdef $viewName: ${ex.getMessage}" +
+          val msg = s"\nFailed to compile $viewName query: ${ex.getMessage}" +
             (if (showFailedViewQuery) s"\n$q" else "")
           throw new RuntimeException(msg, ex)
         }

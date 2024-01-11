@@ -747,15 +747,6 @@ trait QueryStringBuilder {
     }
     vqsRecursively(viewDef)
   }
-  /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
-  def allQueryStrings(viewDef: ViewDef): Seq[CompilationUnit] = {
-    if (viewDef.fields != null && viewDef.fields.nonEmpty &&
-         (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
-      List(
-        CompilationUnit("queries", viewDef.name, queryStringAndParams(viewDef, Map.empty)._1)
-      )
-    else Nil
-  } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit("validations", viewDef.name, vq))
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
