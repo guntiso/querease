@@ -547,8 +547,8 @@ trait QuereaseMetadata {
     nameToPersistenceMetadata.getOrElse(view.name, dynamicPersistenceMetadata)
   }
 
-  // returns Seq[(viewName, category, query)]
-  protected def generateQueriesForCompilation(log: => String => Unit): Seq[(String, String, String)] = {
+  import QueryStringBuilder.CompilationUnit
+  protected def generateQueriesForCompilation(log: => String => Unit): Seq[CompilationUnit] = {
     val childViews =
       nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
     val viewsToCompile =
@@ -558,11 +558,7 @@ trait QuereaseMetadata {
     log(s"Generating queries to be compiled for ${viewsToCompile.size} top-level views" +
         s" (${nameToViewDef.size} views total)")
     val startTime = System.currentTimeMillis
-    val result = viewsToCompile.flatMap { viewDef =>
-      allQueryStrings(viewDef).map { case (category, q) =>
-        (viewDef.name, category, q)
-      }
-    }
+    val result = viewsToCompile flatMap allQueryStrings
     val endTime = System.currentTimeMillis
     log(s"Query generation done in ${endTime - startTime} ms, ${result.size} queries generated")
     result
@@ -570,12 +566,12 @@ trait QuereaseMetadata {
 
   protected def compileQueries(
     category: String,
-    viewNamesAndQueriesToCompile: Seq[(String, String)],
+    compilationUnits: Seq[CompilationUnit],
     previouslyCompiledQueries: Set[String],
     showFailedViewQuery: Boolean,
     log: => String => Unit,
   ): Int = {
-    log(s"Compiling $category - ${viewNamesAndQueriesToCompile.size} total")
+    log(s"Compiling $category - ${compilationUnits.size} total")
     val startTime = System.currentTimeMillis
     val compiler = new org.tresql.compiling.Compiler {
       override val metadata = tresqlMetadata
@@ -585,7 +581,7 @@ trait QuereaseMetadata {
     }
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
-    viewNamesAndQueriesToCompile.foreach { case (viewName, q) =>
+    compilationUnits.foreach { case CompilationUnit(_, viewName, q) =>
       if (!compiledQueries.contains(q)) {
         try compiler.compile(compiler.parseExp(q)) catch { case util.control.NonFatal(ex) =>
           val msg = s"\nFailed to compile viewdef $viewName: ${ex.getMessage}" +
@@ -597,7 +593,7 @@ trait QuereaseMetadata {
       }
     }
     val endTime = System.currentTimeMillis
-    val allQueries = viewNamesAndQueriesToCompile.map(_._2).toSet
+    val allQueries = compilationUnits.map(_.query).toSet
     log(
       s"Compilation done - $category - ${endTime - startTime} ms, " +
       s"queries compiled: $compiledCount" +
@@ -625,17 +621,16 @@ trait QuereaseMetadata {
     if (previouslyCompiledQueries.isEmpty)
       clearAllCaches() // clear caches if full recompile required, e.g. when table or type metadata changed
     val queriesForCompilation = generateQueriesForCompilation(log)
-    val categorizedQueriesForCompilation = queriesForCompilation.groupBy(_._2).toSeq.sortBy(_._1)
+    val categorizedQueriesForCompilation = queriesForCompilation.groupBy(_.category).toSeq.sortBy(_._1)
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     val compiledCount =
-      categorizedQueriesForCompilation.map { case (category, qSeq) =>
-        val viewNamesAndQueriesToCompile = qSeq.map { case (viewName, category, query) => (viewName, query) }
+      categorizedQueriesForCompilation.map { case (category, compilationUnits) =>
         val count =
-          compileQueries(category, viewNamesAndQueriesToCompile, compiledQueries.toSet, showFailedViewQuery, log)
-        compiledQueries ++= viewNamesAndQueriesToCompile.map(_._2)
+          compileQueries(category, compilationUnits, compiledQueries.toSet, showFailedViewQuery, log)
+        compiledQueries ++= compilationUnits.map(_.query)
         count
       }.sum
-    val allQueries = queriesForCompilation.map(_._3).toSet
+    val allQueries = queriesForCompilation.map(_.query).toSet
     val endTime = System.currentTimeMillis
     log(
       s"View compilation done in ${endTime - startTime} ms, " +

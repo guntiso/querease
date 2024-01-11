@@ -638,8 +638,18 @@ class Querease extends QueryStringBuilder
   }
 }
 
+object QueryStringBuilder {
+  case class CompilationUnit(
+    category: String, // queries | validations
+    source:   String, // view name
+    query:    String, // query string to be compiled
+  )
+}
+
 trait QueryStringBuilder {
   this: QuereaseMetadata with QuereaseExpressions with FilterTransformer with QuereaseResolvers =>
+
+  import QueryStringBuilder.CompilationUnit
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
@@ -738,14 +748,14 @@ trait QueryStringBuilder {
     vqsRecursively(viewDef)
   }
   /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
-  def allQueryStrings(viewDef: ViewDef): Seq[(String, String)] = {
+  def allQueryStrings(viewDef: ViewDef): Seq[CompilationUnit] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
          (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
       List(
-        ("queries", queryStringAndParams(viewDef, Map.empty)._1)
+        CompilationUnit("queries", viewDef.name, queryStringAndParams(viewDef, Map.empty)._1)
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef).map(("validations", _))
+  } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit("validations", viewDef.name, vq))
 
   protected def unusedName(name: String, usedNames: collection.Set[String]): String = {
     @tailrec
