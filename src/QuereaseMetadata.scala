@@ -34,12 +34,7 @@ trait QuereaseMetadata {
 
   protected lazy val parserCacheSize: Int = 32 * 1024
   protected lazy val yamlMetadata = YamlMd.fromResources()
-  import MdConventions._
-  lazy val metadataConventions: MdConventions = new SimplePatternMdConventions(
-    booleanNamePatternStrings  = namePatternsFromResource(defaultBooleanNamePatternSource,  resourceLoader),
-    dateNamePatternStrings     = namePatternsFromResource(defaultDateNamePatternSource,     resourceLoader),
-    dateTimeNamePatternStrings = namePatternsFromResource(defaultDateTimeNamePatternSource, resourceLoader),
-  )
+  lazy val metadataConventions: MdConventions = new SimplePatternMdConventions(resourceLoader)
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   /** db connection name mapping to db instance */
   lazy val aliasToDb: Map[String, String] = Map()
