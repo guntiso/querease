@@ -92,7 +92,8 @@ class TresqlMetadata(
       ).filter(_._1 != null)
     }.filter(_._2.nonEmpty).toMap
   override def to_sql_type(vendor: String, typeName: String): String =
-    typeToVendorType.get(typeName).flatMap(vt => vt.get(vendor).orElse(vt.get("sql"))) getOrElse typeName
+    typeToVendorType.get(typeName).flatMap(vt => vt.get(vendor).orElse(vt.get("sql")))
+      .getOrElse(super.to_sql_type(vendor, typeName))
 
   private val dbAsSuffix = Option(db).filter(_ != "") getOrElse "main-db"
   override val functionSignaturesResource: String =
