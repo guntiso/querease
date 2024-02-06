@@ -94,6 +94,13 @@ class TresqlMetadata(
   override def to_sql_type(vendor: String, typeName: String): String =
     typeToVendorType.get(typeName).flatMap(vt => vt.get(vendor).orElse(vt.get("sql")))
       .getOrElse(super.to_sql_type(vendor, typeName))
+  private val typeNameToScalaTypeName =
+    typeDefs
+      .map(td => td.name -> td.targetNames.get("scala").orNull)
+      .filter(_._2 != null)
+      .toMap
+  override def to_scala_type(typeName: String): String =
+    typeNameToScalaTypeName.getOrElse(typeName, super.to_scala_type(typeName))
 
   private val dbAsSuffix = Option(db).filter(_ != "") getOrElse "main-db"
   override val functionSignaturesResource: String =
