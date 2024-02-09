@@ -104,7 +104,7 @@ class TresqlJoinsParser(
           columns = table.cols.map { col =>
             ColumnDef(
               name = col.name,
-              type_ = Type(metadata.sql_xsd_type_map(col.sqlType), None, None, None, false),
+              type_ = Type(metadata.from_jdbc_type(col.sqlType), None, None, None, false),
               nullable = outerJoin || col.nullable,
               dbDefault = null,
               enum_ = Nil,
