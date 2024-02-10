@@ -40,6 +40,7 @@ class QuereaseMacros extends Macros {
       child_cols.foreach { c =>
         val n = c.name
         val CursorsComplexTypePattern(vn) = c.scalaType.name : @unchecked
+       if (!name.endsWith(s"_$n" * 4)) // more stack overflow protection FIXME fix logic - use paths
         addEmptyCursor(s"${name}_$n", vn, curs, emptyRowFun, metadata)
       }
     }
