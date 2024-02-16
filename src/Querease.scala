@@ -192,6 +192,8 @@ class Querease extends QueryStringBuilder
           childSeq.head
         else
           sys.error(s"Incompatible result for field $field of view ${view.name} - expected one row, got more")
+      } else if (field.isCollection) {
+        List(typedValue(row, index, field.type_))
       } else {
         typedValue(row, index, field.type_)
       }
@@ -974,6 +976,7 @@ trait QueryStringBuilder {
     else view.fields
       .filter(f => !f.isExpression || f.expression != null)
       .filter(f => !f.isCollection ||
+        !f.type_.isComplexType     ||
         (f.type_.isComplexType && !countAll && !f.isExpression))
       .filter(f => fieldFilter == null || !isOptionalField(f) || fieldFilter.shouldQuery(f.fieldName))
       .map(f => queryColExpression(view, f, pathToAlias, fieldFilter)
