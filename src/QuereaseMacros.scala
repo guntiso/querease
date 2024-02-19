@@ -13,6 +13,9 @@ class QuereaseMacros extends Macros {
 
   val CursorRowNrColName = "__row_nr"
   val CursorRowNrRefColName = "__row_nr_ref"
+  /** Postgres db max identifier length */
+  val MaxCursorNameLength = 63
+
   private case class Cursor[T](cols: List[String], values: AB[T])
   private def isComplexType(tn: String) = CursorsComplexTypePattern.pattern.matcher(tn).matches()
   private def tresqlType(metadata: Metadata, scalaType: String) = metadata.scala_xsd_type_map(scalaType)
@@ -25,11 +28,7 @@ class QuereaseMacros extends Macros {
   private def cursorTable(metadata: Metadata, name: String) = metadata.table(s"$CursorsSchemaName.$name")
   private def addEmptyCursor[T](name: String, tableName: String, curs: MM[String, Cursor[T]],
                         emptyRowFun: org.tresql.metadata.Table => T, metadata: org.tresql.Metadata): Unit = {
-    val SingleRep = new Regex(s"$name(_$name){2}")
-    val MultiRep = new Regex(s"$name")
-    if (!curs.contains(name) &&
-      // check name has not too much repetitions in case of recursive references to avoid stack overflow
-      SingleRep.findFirstMatchIn(name).isEmpty && MultiRep.findAllIn(name).toList.size < 4) {
+    if (!curs.contains(name) && name.length <= MaxCursorNameLength) {
       val table = cursorTable(metadata, tableName)
       val (table_cols, child_cols) =
         table.cols.partition(c => !isComplexType(c.scalaType.name))
@@ -40,7 +39,6 @@ class QuereaseMacros extends Macros {
       child_cols.foreach { c =>
         val n = c.name
         val CursorsComplexTypePattern(vn) = c.scalaType.name : @unchecked
-       if (!name.endsWith(s"_$n" * 4)) // more stack overflow protection FIXME fix logic - use paths
         addEmptyCursor(s"${name}_$n", vn, curs, emptyRowFun, metadata)
       }
     }
