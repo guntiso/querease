@@ -18,11 +18,10 @@ class QuereaseMacros extends Macros {
 
   private case class Cursor[T](cols: List[String], values: AB[T])
   private def isComplexType(tn: String) = CursorsComplexTypePattern.pattern.matcher(tn).matches()
-  private def tresqlType(metadata: Metadata, scalaType: String) = metadata.scala_xsd_type_map(scalaType)
-  private def tableCols(table: metadata.Table) = table.cols.filter(c => !isComplexType(c.scalaType.name))
+  private def tableCols(table: metadata.Table) = table.cols.filter(c => !isComplexType(c.colType.name))
   private def tableComplexCols(table: metadata.Table) = table.cols.collect {
-    case c if isComplexType(c.scalaType.name) =>
-      val CursorsComplexTypePattern(t) = c.scalaType.name : @unchecked
+    case c if isComplexType(c.colType.name) =>
+      val CursorsComplexTypePattern(t) = c.colType.name : @unchecked
       (c.name, t)
   }
   private def cursorTable(metadata: Metadata, name: String) = metadata.table(s"$CursorsSchemaName.$name")
@@ -31,14 +30,14 @@ class QuereaseMacros extends Macros {
     if (!curs.contains(name) && name.length <= MaxCursorNameLength) {
       val table = cursorTable(metadata, tableName)
       val (table_cols, child_cols) =
-        table.cols.partition(c => !isComplexType(c.scalaType.name))
+        table.cols.partition(c => !isComplexType(c.colType.name))
       curs += (name -> Cursor(
         CursorRowNrColName :: CursorRowNrRefColName :: table_cols.map(_.name),
         AB(emptyRowFun(table))
       ))
       child_cols.foreach { c =>
         val n = c.name
-        val CursorsComplexTypePattern(vn) = c.scalaType.name : @unchecked
+        val CursorsComplexTypePattern(vn) = c.colType.name : @unchecked
         addEmptyCursor(s"${name}_$n", vn, curs, emptyRowFun, metadata)
       }
     }
@@ -50,7 +49,6 @@ class QuereaseMacros extends Macros {
     def constVal(v: Any, typ: String = null) =
       if (typ == null) b.ConstExpr(v) else b.CastExpr(b.ConstExpr(v), typ)
     def emptyVal(typ: String) = constVal(null, typ)
-    val tresql_type = tresqlType(b.env.metadata, _)
     def withTables(cursors: MM[String, Cursor[Expr]]) =
       cursors.foldLeft(List[b.WithTableExpr]()) { case (res, (name, curs)) =>
         withTable(name, curs) :: res
@@ -65,13 +63,13 @@ class QuereaseMacros extends Macros {
       def colExpr(name: String, typ: String) = {
         if (!isEmpty && values.contains(name)) {
           val rp = (name :: path).reverse
-          b.CastExpr(b.VarExpr(rp.head, rp.tail, false), tresql_type(typ))
+          b.CastExpr(b.VarExpr(rp.head, rp.tail, false), typ)
         } else {
-          emptyVal(tresql_type(typ))
+          emptyVal(typ)
         }
       }
       val cols = (id :: parent_id ::
-        tableCols(table).map(c => colExpr(c.name, c.scalaType.name))).map(b.ColExpr(_, null))
+        tableCols(table).map(c => colExpr(c.name, c.colType.name))).map(b.ColExpr(_, null))
       val filter = if (isEmpty) b.BinExpr("=", constVal(1), constVal(0)) else null
       b.SelectExpr(List(
         b.Table(b.ConstExpr(ast.Null), null, b.TableJoin(false, null, true, null), null, false, null)),
@@ -183,7 +181,7 @@ class QuereaseMacros extends Macros {
     }
     def emptyRow(table: metadata.Table) = {
       val vals = ast.Col(ast.IntConst(0), null) :: ast.Col(ast.Null, null) :: tableCols(table).map { c =>
-        ast.Col(ast.Cast(ast.Null, tresqlType(md, c.scalaType.name)), null)
+        ast.Col(ast.Cast(ast.Null, c.colType.name), null)
       }
       ast.Query(
         List(ast.Obj(ast.Null)),

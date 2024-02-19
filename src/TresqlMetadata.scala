@@ -36,13 +36,11 @@ class TresqlMetadata(
     if (cursorDefs.isEmpty) viewDefs.map { case (vn, vd) =>
       def toTresqlCol(fd: FieldDef) = {
         val typeName = fd.type_.name
-        val scalaType =
+        val colType =
           if (fd.type_.isComplexType) s"Table[${fd.type_.name}]"
-          else
-            xsd_scala_type_map(simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName))
-              .toString
+          else typeName
         val jdbcTypeCode = 0 // unknown, not interested
-        Col(fd.fieldName, fd.nullable, jdbcTypeCode, ExprType(scalaType))
+        Col(fd.fieldName, fd.nullable, ExprType(colType))
       }
       val cols = vd.fields.map(toTresqlCol).toList
       s"$CursorsSchemaName.$vn" -> Table(s"$CursorsSchemaName.$vn", cols, Key(Nil), Map())
@@ -64,11 +62,8 @@ class TresqlMetadata(
       }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
-      val typeName = c.type_.name
-      val scalaType = ExprType(xsd_scala_type_map(
-        simpleTypeNameToXsdSimpleTypeName.getOrElse(typeName, typeName)).toString)
       val jdbcTypeCode = 0 // unknown, not interested
-      Col(c.name, c.nullable, jdbcTypeCode, scalaType)
+      Col(c.name, c.nullable, ExprType(c.type_.name))
     }
     val name = td.name
     val cols = td.cols.map(toTresqlCol).toList
