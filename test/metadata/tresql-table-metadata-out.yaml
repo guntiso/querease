@@ -128,7 +128,7 @@ columns:
 - double double
 - decimal decimal
 - boolean boolean
-- bytes base64Binary
+- bytes bytes
 - child_id long
 pk: id
 refs:

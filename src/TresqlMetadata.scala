@@ -22,12 +22,6 @@ class TresqlMetadata(
   cursorDefs: Map[String, Table] = Map(),
 ) extends Metadata with TypeMapper {
 
-  val simpleTypeNameToXsdSimpleTypeName =
-    typeDefs
-      .map(td => td.name -> td.targetNames.get("xsd").orNull)
-      .filter(_._2 != null)
-      .toMap
-
   private val dbInfo = new TableMetadataDbInfo(tableDefs)
   import dbInfo.dbToTableDefs
   val dbSet = dbInfo.dbSet
@@ -123,7 +117,7 @@ class TresqlMetadata(
     def colToString(col: ColumnDef) =
       col.name +
         (if (!col.nullable) " !" else "") +
-        " " + simpleTypeNameToXsdSimpleTypeName.getOrElse(col.type_.name, col.type_.name) // XXX
+        " " + col.type_.name
     def refToString(cols: Seq[String], refTableName: String, refCols: Seq[String]) =
       cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions
