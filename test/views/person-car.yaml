@@ -94,6 +94,24 @@ fields:
 - car_name = car_schema.person_car.car_name
 
 
+name:   person_and_car_11
+table:  person p
+fields:
+- id
+- name
+- cars    *     = 'X'
+- car_ids * int = 42
+
+
+name:   person_and_car_12
+table:  person p
+fields:
+- id
+- name
+- cars    *     = |[]car_schema.person_car {car_name}
+- car_ids * int = |[]car_schema.person_car {id}
+
+
 name:   car_and_person_01
 table:  car_schema.person_car
 joins:

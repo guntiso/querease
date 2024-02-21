@@ -172,6 +172,9 @@ class Querease extends QueryStringBuilder
   protected def typedValue(row: RowLike, index: Int, type_ : Type) =
     row.typed(index, typeNameToScalaTypeName.get(type_.name).orNull)
 
+  protected def typedSeqOfValues(result: Result[RowLike], index: Int, type_ : Type): Seq[Any] =
+    result.map(row => typedValue(row, index, type_)).toList
+
   def toCompatibleSeqOfMaps(result: Result[RowLike], view: ViewDef): Seq[Map[String, Any]] =
     result.foldLeft(List[Map[String, Any]]()) { (l, childRow) =>
       toCompatibleMap(childRow, view) :: l
@@ -193,7 +196,10 @@ class Querease extends QueryStringBuilder
         else
           sys.error(s"Incompatible result for field $field of view ${view.name} - expected one row, got more")
       } else if (field.isCollection) {
-        List(typedValue(row, index, field.type_))
+        if (row.column(index).isResult)
+          typedSeqOfValues(row.result(index), 0, field.type_)
+        else
+          List(typedValue(row, index, field.type_))
       } else {
         typedValue(row, index, field.type_)
       }

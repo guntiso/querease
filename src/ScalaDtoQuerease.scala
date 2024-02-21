@@ -136,14 +136,14 @@ trait Dto { self =>
   // populate from RowLike
   def fill(r: RowLike)(implicit qe: QuereaseMetadata): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
-      case Column(_, name, _) if name != null => set(name, r)
+      case c @ Column(_, name, _) if name != null => set(name, c.isResult, r)
       case _ =>
     }
     this
   }
 
   protected def setters = DtoReflection.setters(this)
-  protected def set(dbName: String, r: RowLike)(implicit qe: QuereaseMetadata) =
+  protected def set(dbName: String, isResult: Boolean, r: RowLike)(implicit qe: QuereaseMetadata) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
       //declare local converter
       def conv[A <: QDto]: CoreTypes.Converter[A] =
@@ -156,7 +156,10 @@ trait Dto { self =>
             val childResult = r.result(dbName)
             childResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).headOption.orNull.asInstanceOf[Object]
           case (mSeq, null) =>
-            r.typed(dbName)(mSeq).asInstanceOf[Object]
+            if (isResult)
+              r.result(dbName).map(_.typed(0)(s.mfOth)).toList.asInstanceOf[Object]
+            else
+              List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
           case (mSeq, mDto) =>
             val childrenResult = r.result(dbName)
             childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]

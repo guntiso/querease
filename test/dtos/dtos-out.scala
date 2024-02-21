@@ -573,6 +573,18 @@ class person_and_car_10 extends DtoWithId {
   var name: String = null
   var car_name: String = null
 }
+class person_and_car_11 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var cars: List[String] = Nil
+  var car_ids: List[java.lang.Integer] = Nil
+}
+class person_and_car_12 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var cars: List[String] = Nil
+  var car_ids: List[java.lang.Integer] = Nil
+}
 class person_choice_resolver_implied extends Dto {
   var full_name: String = null
   def resolve_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {

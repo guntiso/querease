@@ -996,6 +996,34 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.get[OrganizationAccountKeyTest3]("A1").get.organization.name   shouldBe "org"
   }
 
+  if (isDbAvailable) it should s"query primitive seq-s $dbName" in {
+    def getAsMap(viewName: String, id: Int): Map[String, Any] = {
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map.empty, extraFilter = s"id = $id")
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, view).head
+    }
+    val pcm1 = getAsMap("person_and_car_11", 1127)
+    pcm1("id")      shouldBe 1127
+    pcm1("car_ids") shouldBe List(42)
+    pcm1("cars")    shouldBe List("X")
+
+    val pco1 = qe.get[PersonAndCar11](1127).get
+    pco1.id         shouldBe 1127
+    pco1.car_ids    shouldBe List(42)
+    pco1.cars       shouldBe List("X")
+
+    val pcm2 = getAsMap("person_and_car_12", 1127)
+    pcm2("id")      shouldBe 1127
+    pcm1("car_ids") shouldBe List(42)
+    pcm2("cars")    shouldBe List("Prius", "Tesla")
+
+    val pco2 = qe.get[PersonAndCar12](1127).get
+    pco2.id         shouldBe 1127
+    pco1.car_ids    shouldBe List(42)
+    pco2.cars       shouldBe List("Prius", "Tesla")
+  }
+
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {
     val m = new Mother
     var m_saved: Mother = null
