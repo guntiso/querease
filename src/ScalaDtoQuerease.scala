@@ -136,7 +136,7 @@ trait Dto { self =>
   // populate from RowLike
   def fill(r: RowLike)(implicit qe: QuereaseMetadata): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
-      case c @ Column(_, name, _) if name != null => set(name, c.isResult, r)
+      case c if c.name != null => set(c.name, c.isResult, r)
       case _ =>
     }
     this

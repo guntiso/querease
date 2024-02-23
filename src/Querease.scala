@@ -205,8 +205,8 @@ class Querease extends QueryStringBuilder
       }
     }
     for (i <- 0 until row.columnCount) row.column(i) match {
-      case Column(_, name, _) if name != null =>
-        typed(name, i).foreach(value => compatibleMap += (name -> value))
+      case c if c.name != null =>
+        typed(c.name, i).foreach(value => compatibleMap += (c.name -> value))
       case _ =>
     }
     compatibleMap
