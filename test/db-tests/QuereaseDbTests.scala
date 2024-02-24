@@ -306,10 +306,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     child.name    = "Some"
     child.surname = "Child"
     child.sex     = "M"
-    @annotation.nowarn("cat=deprecation") // OK to test deprecated method
-    def toDeprecatedMap(instance: Dto) = instance.toSaveableMap
-    toDeprecatedMap(child).filter(_._1 matches "^\\w+$").toMap shouldBe
-      Map("id" -> null, "name" -> "Some", "surname" -> "Child", "sex" -> "M", "mother_id" -> null, "father_id" -> null)
+    child.toMap.filter(_._1 matches "^\\w+$").toMap shouldBe
+      Map("id" -> null, "name" -> "Some", "surname" -> "Child", "sex" -> "M", "mother" -> null, "father" -> null)
     val childId = qe.save(child)
     childId shouldBe 10005
     child = qe.get[PersonWithComplexTypeResolvers1](childId).get
@@ -458,14 +456,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // save with lookup tests
     var accwb2 = qe.get[AccountWithBank2](accountId).get
-    toDeprecatedMap(accwb2) shouldBe Map("id" -> accountId, "billing_account" -> bacNr,
-      "bank_id" -> Map("id" -> accb.id, "code" -> "b2", "*country_code" -> null))
+    accwb2.toMap shouldBe Map("id" -> accountId, "billing_account" -> bacNr,
+      "bank" -> Map("id" -> accb.id, "code" -> "b2", "country_code" -> null))
     accwb2.billing_account = bacNr2
     accwb2.bank.code = "b2-upd"
     qe.save(accwb2)
     accwb2 = qe.get[AccountWithBank2](accountId).get
-    toDeprecatedMap(accwb2) shouldBe Map("id" -> accountId, "billing_account" -> bacNr2,
-      "bank_id" -> Map("id" -> accb.id, "code" -> "b2-upd", "*country_code" -> null))
+    accwb2.toMap shouldBe Map("id" -> accountId, "billing_account" -> bacNr2,
+      "bank" -> Map("id" -> accb.id, "code" -> "b2-upd", "country_code" -> null))
     // save with lookup tests - auto-resolve ambiguity from alias
     var pwp = new PersonWithParents1
     pwp.name = "With"

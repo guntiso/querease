@@ -53,39 +53,7 @@ class Querease extends QueryStringBuilder
   }
 
   // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  @annotation.nowarn("cat=deprecation") // OK to call deprecated save here - same tables will be extracted again
   def save[B <: AnyRef](
-    pojo: B,
-    extraPropsToSave: Map[String, Any] = null,
-    forceInsert: Boolean = false,
-    filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long =
-    saveToMultiple(
-      tablesToSaveTo(viewDefFromMf(ManifestFactory.classType(pojo.getClass))),
-      pojo,
-      extraPropsToSave,
-      forceInsert,
-      filter,
-      params)
-
-  @deprecated("Parameter 'tableName' is ignored, this method will not work as expected and will be removed", "6.1.0")
-  def saveTo[B <: AnyRef](
-    tableName: String, pojo: B,
-    extraPropsToSave: Map[String, Any] = null,
-    forceInsert: Boolean = false,
-    filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long =
-    saveToMultiple(
-      Seq(tableName),
-      pojo,
-      extraPropsToSave,
-      forceInsert,
-      filter,
-      params)
-
-  @deprecated("Parameter 'tables' is ignored, this method will not work as expected and will be removed", "6.1.0")
-  def saveToMultiple[B <: AnyRef](
-    tables: Seq[String],
     pojo: B,
     extraPropsToSave: Map[String, Any] = null,
     forceInsert: Boolean = false,

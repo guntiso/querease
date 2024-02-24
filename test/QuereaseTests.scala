@@ -15,9 +15,8 @@ import org.tresql.OrtMetadata
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
-  // TODO convert or copy save-to maps tests to persistence metadata tests
+  /* TODO convert or copy save-to maps tests to persistence metadata tests
   "objects" should "produce correct save-to maps" in {
-    @annotation.nowarn("cat=deprecation") // OK to test deprecated method
     def asKeys(instance: Dto) =
       qio.asInstanceOf[ScalaDtoQuereaseIo[Dto]].toSaveableMap(instance).toList.sortBy(_._1).map {
         case (k, v) if k endsWith "->" => k + v
@@ -101,6 +100,7 @@ class QuereaseTests extends FlatSpec with Matchers {
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))"
     ).mkString("; "))
   }
+  */
 
   "querease" should "build correct persistence metadata" in {
     import org.tresql.OrtMetadata._
