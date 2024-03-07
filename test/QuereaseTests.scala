@@ -752,7 +752,7 @@ object QuereaseTests {
 
    object TestQuerease extends Querease {
      override lazy val tableMetadata =
-       new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName)
+       new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions).tableDefs, dbName, aliasToDb)
      override lazy val yamlMetadata =
         YamlMd.fromFiles(path = "test/tables") ++
         YamlMd.fromFiles(path = "test/views")

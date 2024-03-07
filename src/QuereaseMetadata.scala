@@ -39,7 +39,7 @@ trait QuereaseMetadata {
   /** db connection name mapping to db instance */
   lazy val aliasToDb: Map[String, String] = Map()
   lazy val tableMetadata: TableMetadata =
-    new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs)
+    new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
   protected lazy val resourceLoader: String => InputStream = getClass.getResourceAsStream _
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
