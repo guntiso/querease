@@ -7,7 +7,7 @@ val scalaV = "2.13.13"
 scalaVersion := scalaV
 
 crossScalaVersions := Seq(
-  "3.3.1",
+  "3.3.3",
   scalaV,
   "2.12.19",
 )
