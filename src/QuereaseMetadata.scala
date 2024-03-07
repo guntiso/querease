@@ -1,5 +1,6 @@
 package org.mojoz.querease
 
+import com.typesafe.config.{ConfigFactory, ConfigObject, ConfigValueType}
 import org.mojoz.metadata._
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
@@ -7,8 +8,9 @@ import org.tresql.ast.{Ident, Variable}
 import org.tresql.{MacroResourcesImpl, OrtMetadata, SimpleCache}
 import org.tresql.OrtMetadata._
 
-import java.io.InputStream
+import java.io.{BufferedReader, InputStream, InputStreamReader}
 import scala.collection.immutable.{ListSet, Map, Seq, TreeMap}
+import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
 
 case class ViewNotFoundException(message: String) extends Exception(message)
@@ -36,8 +38,31 @@ trait QuereaseMetadata {
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions(resourceLoader)
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
+  protected lazy val defaultCpName = "main"
   /** db connection name mapping to db instance */
-  lazy val aliasToDb: Map[String, String] = Map()
+  lazy val aliasToDb: Map[String, String] = {
+    Option(resourceLoader("tresql-resources.conf"))
+      .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
+      .map(ConfigFactory parseReader _)
+      .filter(_ hasPath "tresql")
+      .map(_ getConfig "tresql")
+      .toSeq
+      .flatMap(_.root().asScala
+        .collect { case e@(_, v) if v.valueType() == ConfigValueType.OBJECT => e }
+        .map { case (cpName, confValue) =>
+          val alias  = (if (cpName == defaultCpName) null else cpName)
+          val dbName =
+            Option(confValue).collect {
+              case confObj: ConfigObject => confObj.toConfig
+            }.filter(_.hasPathOrNull("db"))
+             .map(conf => if (conf.getIsNull("db")) null else conf.getString("db"))
+             .getOrElse(alias)
+          alias -> dbName
+        }
+      )
+      .filter { case (alias, dbName) => alias != dbName }
+      .toMap
+  }
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
