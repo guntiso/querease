@@ -135,7 +135,7 @@ trait QuereaseMetadata {
         view.fieldOpt(fieldName).getOrElse(sys.error(s"Custom key field $fieldName not found, view ${view.name}"))
       }) getOrElse
     Option(view.table)
-      .map(tableMetadata.tableDef(_, aliasToDb.getOrElse(view.db, view.db)))
+      .map(tableMetadata.tableDef(_, view.db))
       .flatMap { t =>
         ((if (t.pk != null) t.pk.toSeq else Nil) ++
          (if (t.uk != null) t.uk       else Nil)
@@ -154,7 +154,7 @@ trait QuereaseMetadata {
   protected def keyColNameOfTypeForGet(view: ViewDef, keyColTypeName: String): String =
     if (view.table != null)
       Option(view.table)
-        .map(tableMetadata.tableDef(_, aliasToDb.getOrElse(view.db, view.db)))
+        .map(tableMetadata.tableDef(_, view.db))
         .flatMap { t =>
           ((if (t.pk != null) t.pk.toSeq else Nil) ++
            (if (t.uk != null) t.uk       else Nil)
@@ -171,7 +171,7 @@ trait QuereaseMetadata {
 
   val supportedIdTypeNames: Set[String] = ListSet("long", "int", "short")
   protected def idFieldName(view: ViewDef): String =
-    tableMetadata.tableDefOption(view.table, aliasToDb.getOrElse(view.db, view.db)).flatMap { t =>
+    tableMetadata.tableDefOption(view).flatMap { t =>
       t.pk
         .map(_.cols)
         .filter(_.size == 1)
@@ -361,13 +361,13 @@ trait QuereaseMetadata {
         saveToTableNames.map(t => SaveTo(
           table = t,
           refs  = refsToParent,
-          key   = tableMetadata.tableDef(t, aliasToDb.getOrElse(view.db, view.db)).pk.map { pk =>
+          key   = tableMetadata.tableDef(t, view.db).pk.map { pk =>
             if (!hasExplicitKey(view) && pk.cols == keyCols) Nil else keyCols // TODO annoying, improve tresql?
           }.getOrElse(Nil),
         ))
       }
     val filtersOpt = Option(persistenceFilters(view))
-    lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, aliasToDb.getOrElse(view.db, view.db)))
+    lazy val tables = saveToTableNames.map(tableMetadata.tableDef(_, view.db))
     val properties = view.fields
       .map { f => try {
         val fieldName = f.fieldName

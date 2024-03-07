@@ -278,7 +278,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
   def resolverTargetType(f: FieldDef, db: String): Type = {
     val colName = resolverTargetColName(f)
     Option(f.table)
-      .flatMap(qe.tableMetadata.tableDefOption(_, qe.aliasToDb.getOrElse(db, db)))
+      .flatMap(qe.tableMetadata.tableDefOption(_, db))
       .flatMap(_.cols.find(_.name == colName))
       .map(_.type_)
       .orElse(Option(qe.metadataConventions.typeFromExternal(colName, None)))

@@ -304,7 +304,7 @@ trait QuereaseExpressions {
       val tableOrAlias = Option(view.tableAlias).getOrElse(view.table)
       val refTable = refViewDef.table
       val refTableOrAlias = Option(refViewDef.tableAlias).getOrElse(refViewDef.table)
-      val tableDefOpt = Option(table).map(tableMetadata.tableDef(_, aliasToDb.getOrElse(view.db, view.db)))
+      val tableDefOpt = Option(table).map(tableMetadata.tableDef(_, view.db))
       val key = tableDefOpt
         .map(_.pk).filter(_ != null).filter(_.isDefined).flatten
         .getOrElse(tableDefOpt

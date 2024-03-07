@@ -840,7 +840,7 @@ trait QueryStringBuilder {
       case q: QueryParser_Query => q
       case ident @ Ident(i) if !i.startsWith("^") =>
         if (i.lengthCompare(1) == 0)
-          if (tableMetadata.col(view.table, i.head, aliasToDb.getOrElse(view.db, view.db)).isDefined)
+          if (tableMetadata.col(view.table, i.head, view.db).isDefined)
             Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
           else ident // no-arg function or unknown pseudo-col
         else if (ignoreUnknownPaths)
@@ -1053,8 +1053,8 @@ trait QueryStringBuilder {
       def isTableOrAliasInScope(tableOrAlias: String) =
         joinedAliases.contains(tableOrAlias)                                  ||
         baseTableOrAlias == tableOrAlias                                      ||
-        tableMetadata.aliasedRef(view.table, tableOrAlias, aliasToDb.getOrElse(view.db, view.db)).isDefined ||
-        tableMetadata.tableDefOption(tableOrAlias, aliasToDb.getOrElse(view.db, view.db)).isDefined
+        tableMetadata.aliasedRef(view.table, tableOrAlias, view.db).isDefined ||
+        tableMetadata.tableDefOption(tableOrAlias, view.db).isDefined
       val qualifiedTablePaths = tablePaths map { parts =>
         (1 to parts.length - 1).find { i =>
           isTableOrAliasInScope(parts.take(i).mkString("."))
@@ -1088,7 +1088,7 @@ trait QueryStringBuilder {
       // TODO inner join if all steps in path to root are not nullable
       val shouldOuterJoin = true
       val joinMod = if (shouldOuterJoin) "?" else ""
-      tableMetadata.aliasedRef(contextTable, tableOrAlias, aliasToDb.getOrElse(view.db, view.db)) match {
+      tableMetadata.aliasedRef(contextTable, tableOrAlias, view.db) match {
         // FIXME support multi-col refs
         case Some(ref) =>
           aliasToTable += alias -> ref.refTable
