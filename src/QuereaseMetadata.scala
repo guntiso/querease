@@ -49,15 +49,15 @@ trait QuereaseMetadata {
       .toSeq
       .flatMap(_.root().asScala
         .collect { case e@(_, v) if v.valueType() == ConfigValueType.OBJECT => e }
-        .map { case (cpName, confValue) =>
-          val alias  = (if (cpName == defaultCpName) null else cpName)
+        .flatMap { case (cpName, confValue) =>
+          val aliases  = if (cpName == defaultCpName) Seq(null, defaultCpName) else Seq(cpName)
           val dbName =
             Option(confValue).collect {
               case confObj: ConfigObject => confObj.toConfig
             }.filter(_.hasPathOrNull("db"))
              .map(conf => if (conf.getIsNull("db")) null else conf.getString("db"))
-             .getOrElse(alias)
-          alias -> dbName
+             .getOrElse(aliases.head)
+          aliases.map(_ -> dbName)
         }
       )
       .filter { case (alias, dbName) => alias != dbName }
