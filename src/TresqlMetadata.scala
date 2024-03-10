@@ -45,14 +45,13 @@ class TresqlMetadata(
       .transform { case (_, set) => set.map(_._1) }
   val extraDbToMetadata: Map[String, TresqlMetadata] =
     dbToTableDefs
-      .filter(_._1 != null)
       .transform { case (extraDb, tableDefs) =>
         if  (extraDb == db)
              this
         else TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursors)
       }
       .flatMap { case (extraDb, metadata) =>
-        dbToAlias(extraDb).map(_ -> metadata)
+        dbToAlias(extraDb).filter(_ != null).map(_ -> metadata)
       }
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
