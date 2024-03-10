@@ -618,14 +618,16 @@ object QueryStringBuilder {
   case class CompilationUnit(
     category: String, // queries | validations
     source:   String, // view name
+    db:       String, // context database (or alias) for query
     query:    String, // query string to be compiled
-  )
+  ) {
+    val queryStringWithContext = s"[${category}${if (db == null) "" else s" @ $db"}]: $query"
+  }
 }
 
 trait QueryStringBuilder {
   this: QuereaseMetadata with QuereaseExpressions with FilterTransformer with QuereaseResolvers =>
 
-  import QueryStringBuilder.CompilationUnit
   /*
   val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
   def comparison(comp: String) =
