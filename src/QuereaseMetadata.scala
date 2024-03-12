@@ -40,29 +40,7 @@ trait QuereaseMetadata {
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
   protected lazy val defaultCpName = "main"
   /** db connection name mapping to db instance */
-  lazy val aliasToDb: Map[String, String] = {
-    Option(resourceLoader("tresql-resources.conf"))
-      .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
-      .map(ConfigFactory parseReader _)
-      .filter(_ hasPath "tresql")
-      .map(_ getConfig "tresql")
-      .toSeq
-      .flatMap(_.root().asScala
-        .collect { case e@(_, v) if v.valueType() == ConfigValueType.OBJECT => e }
-        .flatMap { case (cpName, confValue) =>
-          val aliases  = if (cpName == defaultCpName) Seq(null, defaultCpName) else Seq(cpName)
-          val dbName =
-            Option(confValue).collect {
-              case confObj: ConfigObject => confObj.toConfig
-            }.filter(_.hasPathOrNull("db"))
-             .map(conf => if (conf.getIsNull("db")) null else conf.getString("db"))
-             .getOrElse(aliases.head)
-          aliases.map(_ -> dbName)
-        }
-      )
-      .filter { case (alias, dbName) => alias != dbName }
-      .toMap
-  }
+  lazy val aliasToDb: Map[String, String] = QuereaseMetadata.aliasToDb(resourceLoader, defaultCpName)
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
@@ -737,6 +715,30 @@ object QuereaseMetadata {
 
     override protected def updateExtrasMap(extras: Map[String, Any]): Any = fieldDef.copy(extras = extras)
     override protected def extrasMap = fieldDef.extras
+  }
+
+  def aliasToDb(resourceLoader: String => InputStream, defaultCpName: String): Map[String, String] = {
+    Option(resourceLoader("tresql-resources.conf"))
+      .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
+      .map(ConfigFactory parseReader _)
+      .filter(_ hasPath "tresql")
+      .map(_ getConfig "tresql")
+      .toSeq
+      .flatMap(_.root().asScala
+        .collect { case e@(_, v) if v.valueType() == ConfigValueType.OBJECT => e }
+        .flatMap { case (cpName, confValue) =>
+          val aliases  = if (cpName == defaultCpName) Seq(null, defaultCpName) else Seq(cpName)
+          val dbName =
+            Option(confValue).collect {
+              case confObj: ConfigObject => confObj.toConfig
+            }.filter(_.hasPathOrNull("db"))
+             .map(conf => if (conf.getIsNull("db")) null else conf.getString("db"))
+             .getOrElse(aliases.head)
+          aliases.map(_ -> dbName)
+        }
+      )
+      .filter { case (alias, dbName) => alias != dbName }
+      .toMap
   }
 
   def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
