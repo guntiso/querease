@@ -718,7 +718,7 @@ object QuereaseMetadata {
   }
 
   def aliasToDb(resourceLoader: String => InputStream, defaultCpName: String): Map[String, String] = {
-    Option(resourceLoader("tresql-resources.conf"))
+    Option(resourceLoader("/tresql-resources.conf"))
       .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
       .map(ConfigFactory parseReader _)
       .filter(_ hasPath "tresql")
