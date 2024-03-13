@@ -38,9 +38,8 @@ trait QuereaseMetadata {
   protected lazy val yamlMetadata = YamlMd.fromResources()
   lazy val metadataConventions: MdConventions = new SimplePatternMdConventions(resourceLoader)
   lazy val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs
-  protected lazy val defaultCpName = "main"
   /** db connection name mapping to db instance */
-  lazy val aliasToDb: Map[String, String] = QuereaseMetadata.aliasToDb(resourceLoader, defaultCpName)
+  lazy val aliasToDb: Map[String, String] = QuereaseMetadata.aliasToDb(resourceLoader)
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
@@ -717,11 +716,21 @@ object QuereaseMetadata {
     override protected def extrasMap = fieldDef.extras
   }
 
-  def aliasToDb(resourceLoader: String => InputStream, defaultCpName: String): Map[String, String] = {
-    Option(resourceLoader("/tresql-resources.conf"))
+  def aliasToDb(resourceLoader: String => InputStream): Map[String, String] = {
+    val confOpt =
+     Option(resourceLoader("/tresql-resources.conf"))
       .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
       .map(ConfigFactory parseReader _)
       .filter(_ hasPath "tresql")
+
+    val defaultCpName =
+     confOpt
+      .map(_ -> "tresql.default")
+      .filter { case (c, n) => c hasPathOrNull n }
+      .map { case (c, n) => if (c getIsNull n) null else c.getString(n) }
+      .getOrElse("main")
+
+    confOpt
       .map(_ getConfig "tresql")
       .toSeq
       .flatMap(_.root().asScala
