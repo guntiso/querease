@@ -53,6 +53,7 @@ class TresqlMetadata(
       .flatMap { case (extraDb, metadata) =>
         dbToAlias(extraDb).filter(_ != null).map(_ -> metadata)
       }
+  val dbAndAliasSet = extraDbToMetadata.keySet + db
   val tables = dbToTableDefs.getOrElse(db, Nil).map { td =>
     def toTresqlCol(c: ColumnDef) = {
       val jdbcTypeCode = 0 // unknown, not interested

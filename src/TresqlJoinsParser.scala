@@ -31,7 +31,7 @@ class TresqlJoinsParser(
   }
   val dbToMetadata: Map[String, TresqlMetadata] =
     tresqlMetadata.extraDbToMetadata + (tresqlMetadata.db -> tresqlMetadata)
-  val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[Cache])] = tresqlMetadata.dbSet.map { db =>
+  val dbToCompilerAndCache: Map[String, (JoinsParserCompiler, Option[Cache])] = tresqlMetadata.dbAndAliasSet.map { db =>
     val joinsParserCompiler = new JoinsParserCompiler {
       override val metadata = if (db == tresqlMetadata.db) tresqlMetadata else dbToMetadata(db)
       override val extraMetadata = dbToMetadata - db
@@ -145,10 +145,11 @@ object TresqlJoinsParser {
   def apply(
     tableDefs: Seq[TableDef],
     typeDefs: collection.immutable.Seq[TypeDef],
+    aliasToDb: Map[String, String] = Map(),
     macrosClass: Class[_] = null,
     createCache: String => Option[Cache],
     resourceLoader: String => InputStream = null,
   ): TresqlJoinsParser = {
-    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader), createCache)
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb), createCache)
   }
 }
