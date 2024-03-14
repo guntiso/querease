@@ -730,6 +730,12 @@ object QuereaseMetadata {
       .map { case (c, n) => if (c getIsNull n) null else c.getString(n) }
       .getOrElse("main")
 
+    val defaultDbNameOpt =
+     confOpt
+      .map(_ -> "tresql.db")
+      .filter { case (c, n) => c hasPathOrNull n }
+      .map { case (c, n) => if (c getIsNull n) null else c.getString(n) }
+
     confOpt
       .map(_ getConfig "tresql")
       .toSeq
@@ -742,6 +748,7 @@ object QuereaseMetadata {
               case confObj: ConfigObject => confObj.toConfig
             }.filter(_.hasPathOrNull("db"))
              .map(conf => if (conf.getIsNull("db")) null else conf.getString("db"))
+             .orElse(defaultDbNameOpt)
              .getOrElse(aliases.head)
           aliases.map(_ -> dbName)
         }
