@@ -63,7 +63,7 @@ class QuereaseMacros extends Macros {
       def colExpr(name: String, typ: String) = {
         if (!isEmpty && values.contains(name)) {
           val rp = (name :: path).reverse
-          b.CastExpr(b.VarExpr(rp.head, rp.tail, false), typ)
+          b.CastExpr(b.VarExpr(rp.head, rp.tail, false, false), typ)
         } else {
           emptyVal(typ)
         }
