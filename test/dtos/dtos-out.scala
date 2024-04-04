@@ -1400,13 +1400,13 @@ object resolver_test_person_9_c {
 class resolver_test_scala_escapes_01 extends Dto {
   var name: String = null
   def resolve_name(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{case(:name `~` '^\\d+$$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(this.toMap))
+    tresql"""{case(bin_op_function('`~`', :name, '^\\d+$$'), 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(this.toMap))
       .unique[String]
   }
 }
 object resolver_test_scala_escapes_01 {
   def resolve_name(name: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{case(:name `~` '^\\d+$$', 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(Map("name" -> name)))
+    tresql"""{case(bin_op_function('`~`', :name, '^\\d+$$'), 'dig-only - ' || :name, 'not-dig-only - ' || :name)}"""(env.withParams(Map("name" -> name)))
       .unique[String]
   }
 }

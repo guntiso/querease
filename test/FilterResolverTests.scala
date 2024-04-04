@@ -11,7 +11,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
   private val Identifiers = "blah some_ident1".split("\\s+").toSet
   private val FieldRefs = "^blah".split("\\s+").toSet
   private val IntervalOps = "< <=".split("\\s+").toSet
-  private val ComparisonOps = "= < > <= >= != ~ ~~ !~ !~~".split("\\s+").toSet
+  private val ComparisonOps = "= < > <= >= != ~ !~".split("\\s+").toSet
+  private val CustomComparisonOps = "~~ !~~".split("\\s+").toSet
   private val OtherFilters = Set("id = :id?", "a = b", "a = b & c = :d")//, "a<<")
 
   val transformer = new Querease
@@ -129,6 +130,13 @@ class FilterResolverTests extends FlatSpec with Matchers {
         //
         resolve(s"$ident $comp", b) should be(s"base.$ident $comp :$ident?")
         resolve(s"$ident $comp !", b) should be(s"base.$ident $comp :$ident")
+      }
+      CustomComparisonOps foreach { comp =>
+        resolve(s"$ident $comp") should be(s"bin_op_function('$comp', $ident, :$ident?)")
+        resolve(s"$ident $comp !") should be(s"bin_op_function('$comp', $ident, :$ident)")
+        //
+        resolve(s"$ident $comp", b) should be(s"bin_op_function('$comp', base.$ident, :$ident?)")
+        resolve(s"$ident $comp !", b) should be(s"bin_op_function('$comp', base.$ident, :$ident)")
       }
     }
   }
