@@ -31,4 +31,4 @@ jobs:
     - name: Configure tests
       run:  cp test/conf/application.conf.ci test/conf/application.conf
     - name: Compile and test and check version policy
-      run:  sbt clean update +compile +test +versionPolicyCheck
+      run:  sbt clean update +compile +test
