@@ -2,7 +2,7 @@ name := "querease"
 
 organization := "org.mojoz"
 
-val scalaV = "2.13.6"
+val scalaV = "2.13.13"
 
 scalaVersion := scalaV
 
