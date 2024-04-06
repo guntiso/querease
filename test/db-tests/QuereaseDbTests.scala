@@ -1197,7 +1197,7 @@ object QuereaseDbTests {
     loadCurrencyData
   }
 
-  implicit val resources = Env
+  implicit val resources: ThreadLocalResources = Env
   def loadPersonData: Unit = {
     def person(id: Long, name: String, surname: String, mId: Option[Long], fId: Option[Long]) = {
       def toId(id: Long) = java.lang.Long.valueOf(id + 1000)

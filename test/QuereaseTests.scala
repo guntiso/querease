@@ -800,7 +800,7 @@ object QuereaseTests {
      override protected def resolvableCastToText(typeOpt: Option[Type]) =
        "::text" // always cast - for hsqldb since v2.3.4
    }
-  implicit val qe = TestQuerease
+  implicit val qe: TestQuerease.type = TestQuerease
   val nl = System.getProperty("line.separator")
   def fileToString(filename: String) = {
     val source = Source.fromFile(filename)
