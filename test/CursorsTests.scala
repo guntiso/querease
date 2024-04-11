@@ -148,6 +148,15 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
   }
 
+  it should "not throw StackOverflowError" in {
+    val data = Map(
+      ("currencies", (1 to (1024 * 16)).map(i => Map("code" -> s"c$i", "name" -> s"n$i")).toList)
+    )
+    val tresql = "[build_cursors(currency, :currencies)] currencies{count(*)}"
+    val res = Query.build(tresql, data).sql
+    res.length should be > 0
+  }
+
   it should "compile cursors" in {
     def compileQueries = {
       val compiler = new QueryCompiler(
