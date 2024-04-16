@@ -1022,6 +1022,44 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     pco2.cars       shouldBe List("Prius", "Tesla")
   }
 
+  if (isDbAvailable) it should s"support array types for $dbName" in {
+    def getAsMap(viewName: String, id: Int): Map[String, Any] = {
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map.empty, extraFilter = s"id = $id")
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, view).head
+    }
+
+    val a1 = new ArrayTypesTest
+    val id = qe.save(a1)
+    a1.id  = id
+
+    if (dbName != "hsqldb") { // FIXME support arrays for hsqldb!   
+      a1.long_arr = List(Long.MinValue, 0, 42, Long.MaxValue)
+      a1.string_arr = List("one", "two", "three")
+      // a1.date_arr = List()
+      // a1.time_arr = List()
+      // a1.date_time_arr = List()
+      a1.int_arr = List(Int.MinValue, 0, 42, Int.MaxValue)
+      // a1.bigint_arr = List()
+      // a1.double_arr = List()
+      // a1.decimal_arr = List()
+      a1.boolean_arr = List(true, false)
+    }
+    qe.save(a1)
+
+    val a2 = qe.get[ArrayTypesTest](id).get
+    a2.id shouldBe id
+    a2.long_arr     shouldBe a1.long_arr
+    a2.string_arr   shouldBe a1.string_arr
+    a2.int_arr      shouldBe a1.int_arr
+    a2.boolean_arr  shouldBe a1.boolean_arr
+    // TODO ...   
+
+    a1.id = id
+    qe.delete(a1)
+  }
+
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {
     val m = new Mother
     var m_saved: Mother = null

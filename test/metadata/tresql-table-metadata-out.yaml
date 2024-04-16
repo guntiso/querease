@@ -16,6 +16,21 @@ refs:
 - account_id -> account(id)
 - currency_code -> currency(code)
 
+table: array_types_test
+columns:
+- id ! long
+- long_arr * long
+- string_arr * string
+- date_arr * date
+- time_arr * time
+- date_time_arr * dateTime
+- int_arr * int
+- bigint_arr * integer
+- double_arr * double
+- decimal_arr * decimal
+- boolean_arr * boolean
+pk: id
+
 table: bank
 columns:
 - id ! long

@@ -1,3 +1,19 @@
+name:   array_types_test
+table:  array_types_test
+fields:
+- id
+- long_arr
+- string_arr
+- date_arr
+- time_arr
+- date_time_arr
+- int_arr
+- bigint_arr
+- double_arr
+- decimal_arr
+- boolean_arr
+
+
 name:   types_test
 table:  types_test
 fields:

@@ -156,7 +156,12 @@ trait Dto { self =>
             if (isResult)
               r.result(dbName).map(_.typed(0)(s.mfOth)).toList.asInstanceOf[Object]
             else
-              List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
+              r(dbName) match {
+                case arr: java.sql.Array =>
+                  arr.getArray.asInstanceOf[Array[_]].toList.asInstanceOf[Object]
+                case x =>
+                  List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
+              }
           case (mSeq, mDto) =>
             val childrenResult = r.result(dbName)
             childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]

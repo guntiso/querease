@@ -403,9 +403,10 @@ trait QuereaseMetadata {
         lazy val forUpdate = isFieldForUpdate(f) && !isPk
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
+          def typeCast  = if (f.isCollection && !f.type_.isComplexType) s"::'${f.type_.name}[]'" else ""
           val valueTresql =
             if (f.saveTo == null && f.resolver == null)
-              s":$fieldName${if (isOptionalField(f)) "?" else ""}"
+              s":${fieldName}${if (isOptionalField(f)) "?" else ""}${typeCast}"
             else {
               val resolvers = allResolvers(view, f)
               if (resolvers.nonEmpty) {

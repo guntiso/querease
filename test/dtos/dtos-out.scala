@@ -79,6 +79,19 @@ object ambiguity_resolver_test_person_1 {
       .unique[java.lang.Long]
   }
 }
+class array_types_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var long_arr: List[java.lang.Long] = Nil
+  var string_arr: List[String] = Nil
+  var date_arr: List[java.time.LocalDate] = Nil
+  var time_arr: List[java.time.LocalTime] = Nil
+  var date_time_arr: List[java.time.LocalDateTime] = Nil
+  var int_arr: List[java.lang.Integer] = Nil
+  var bigint_arr: List[scala.math.BigInt] = Nil
+  var double_arr: List[java.lang.Double] = Nil
+  var decimal_arr: List[scala.math.BigDecimal] = Nil
+  var boolean_arr: List[java.lang.Boolean] = Nil
+}
 class bank_list_row extends DtoWithId {
   var id: java.lang.Long = null
   var code: String = null

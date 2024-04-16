@@ -116,8 +116,8 @@ class TresqlMetadata(
   lazy val tableMetadataString = {
     def colToString(col: ColumnDef) =
       col.name +
-        (if (!col.nullable) " !" else "") +
-        " " + col.type_.name
+        (if (col.nullable) if (col.type_.isArray) " *" else "" else if (col.type_.isArray) " +" else " !") +
+        " " + col.type_.elementType
     def refToString(cols: Seq[String], refTableName: String, refCols: Seq[String]) =
       cols.mkString(", ") + " -> " + refTableName + refCols.mkString("(", ", ", ")")
     import scala.language.implicitConversions

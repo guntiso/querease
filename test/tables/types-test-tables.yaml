@@ -1,3 +1,18 @@
+table:    array_types_test
+columns:
+- id
+- long_arr        * long
+- string_arr      * string   4096
+- date_arr        * date
+- time_arr        * time
+- date_time_arr   * dateTime
+- int_arr         * int
+- bigint_arr      * integer
+- double_arr      * double
+- decimal_arr     * decimal  20 2
+- boolean_arr     * boolean
+
+
 table:    types_test
 columns:
 - id
