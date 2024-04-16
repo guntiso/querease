@@ -1037,24 +1037,38 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     if (dbName != "hsqldb") { // FIXME support arrays for hsqldb!   
       a1.long_arr = List(Long.MinValue, 0, 42, Long.MaxValue)
       a1.string_arr = List("one", "two", "three")
-      // a1.date_arr = List()
-      // a1.time_arr = List()
-      // a1.date_time_arr = List()
-      a1.int_arr = List(Int.MinValue, 0, 42, Int.MaxValue)
-      // a1.bigint_arr = List()
-      // a1.double_arr = List()
-      // a1.decimal_arr = List()
-      a1.boolean_arr = List(true, false)
+      a1.date_arr    = List(
+        LocalDate.parse("2021-11-08"),
+        LocalDate.parse("2024-04-16"),
+      )
+      a1.time_arr = List(
+        LocalTime.parse("10:42:15"),
+        LocalTime.parse("17:06:45"),
+      )
+      a1.date_time_arr = List(
+        LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+        LocalDateTime.parse("2024-01-16 13:09:10.2".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+      )
+      a1.int_arr      = List(Int.MinValue, 0, 42, Int.MaxValue)
+      a1.bigint_arr   = List(BigInt(0), BigInt(Long.MaxValue) + 1)
+      a1.double_arr   = List(0, Double.MaxValue)
+      a1.decimal_arr  = List(0, BigDecimal(Long.MaxValue, 2))
+      a1.boolean_arr  = List(true, false)
     }
     qe.save(a1)
 
     val a2 = qe.get[ArrayTypesTest](id).get
     a2.id shouldBe id
-    a2.long_arr     shouldBe a1.long_arr
-    a2.string_arr   shouldBe a1.string_arr
-    a2.int_arr      shouldBe a1.int_arr
-    a2.boolean_arr  shouldBe a1.boolean_arr
-    // TODO ...   
+    a2.long_arr       shouldBe a1.long_arr
+    a2.string_arr     shouldBe a1.string_arr
+    a2.date_arr       shouldBe a1.date_arr
+    a2.time_arr       shouldBe a1.time_arr
+    a2.date_time_arr  shouldBe a2.date_time_arr
+    a2.int_arr        shouldBe a1.int_arr
+    a2.bigint_arr     shouldBe a1.bigint_arr
+    a2.double_arr     shouldBe a1.double_arr
+    a2.decimal_arr    shouldBe a1.decimal_arr
+    a2.boolean_arr    shouldBe a1.boolean_arr
 
     a1.id = id
     qe.delete(a1)

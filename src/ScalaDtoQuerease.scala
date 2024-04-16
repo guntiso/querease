@@ -158,7 +158,12 @@ trait Dto { self =>
             else
               r(dbName) match {
                 case arr: java.sql.Array =>
-                  arr.getArray.asInstanceOf[Array[_]].toList.asInstanceOf[Object]
+                  import org.tresql._
+                  import org.tresql.given
+                  val tresqlResult: Result[RowLike] = arr.getResultSet
+                  val value = tresqlResult.map(_.typed(1)(s.mfOth)).toList.asInstanceOf[Object]
+                  arr.free()
+                  value
                 case x =>
                   List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
               }
