@@ -8,7 +8,7 @@ import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import scala.annotation.tailrec
-import scala.collection.immutable.{Seq, Set}
+import scala.collection.immutable.{Map, Seq, Set}
 import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
@@ -137,48 +137,86 @@ class Querease extends QueryStringBuilder
       .filter(_._2 != null)
       .toMap
 
-  protected def typedValue(row: RowLike, index: Int, type_ : Type) =
+  protected def typedValue(row: RowLike, index: Int, type_ : Type): Any =
     row.typed(index, typeNameToScalaTypeName.get(type_.name).orNull)
 
-  protected def typedSeqOfValues(result: Result[RowLike], index: Int, type_ : Type): Seq[Any] =
-    result.map(row => typedValue(row, index, type_)).toList
+  /** Override this method to add support for collections parsed from other types (string, json, xml, ...) of values from db */
+  protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
+    List(typedValue(row, index, type_))
+
+  /** Override this method to add support for other types (string, json, xml, ...) of values from db */
+  protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = ???
+
+  /** Override this method to add support for collections parsed from other types (string, json, xml, ...) of values from db */
+  protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] =
+    List(toCompatibleMap(row, index, view))
+
+  protected def mapSqlArray[T](arr: java.sql.Array, f: (RowLike, Int) => T): Iterator[T] = {
+    import org.tresql._
+    import org.tresql.given
+    val tresqlResult: Result[RowLike] = arr.getResultSet
+    val iterator = tresqlResult.map(f(_, 1))
+    arr.free()
+    iterator
+  }
+
+  protected def unwrapSeq(seq: Seq[Any]): Any =
+    if (seq.lengthCompare(0) == 0)
+      null
+    else if (seq.lengthCompare(1) == 0)
+      seq.head
+    else
+      sys.error(s"Expected at most one row or element, got more - can not unwrap")
 
   def toCompatibleSeqOfMaps(result: Result[RowLike], view: ViewDef): Seq[Map[String, Any]] =
-    result.foldLeft(List[Map[String, Any]]()) { (l, childRow) =>
-      toCompatibleMap(childRow, view) :: l
-    }.reverse
+    result.map(toCompatibleMap(_, view)).toList
 
   def toCompatibleMap(row: RowLike, view: ViewDef): Map[String, Any] = {
     var compatibleMap = viewNameToMapZero(view.name)
     def typed(name: String, index: Int) = view.fieldOpt(name).map { field =>
-      if (field.type_.isComplexType) {
-        val childView = viewDef(field.type_.name)
-        val childResult = row.result(index)
-        val childSeq = toCompatibleSeqOfMaps(childResult, childView)
-        if (field.isCollection)
-          childSeq
-        else if (childSeq.lengthCompare(0) == 0)
-          null
-        else if (childSeq.lengthCompare(1) == 0)
-          childSeq.head
-        else
-          sys.error(s"Incompatible result for field $field of view ${view.name} - expected one row, got more")
-      } else if (field.isCollection) {
-        if (row.column(index).isResult)
-          typedSeqOfValues(row.result(index), 0, field.type_)
-        else row(index) match {
-          case arr: java.sql.Array =>
-            import org.tresql._
-            import org.tresql.given
-            val tresqlResult: Result[RowLike] = arr.getResultSet
-            val value = tresqlResult.map(typedValue(_, 1, field.type_)).toList
-            arr.free()
-            value
-          case x =>
-            List(typedValue(row, index, field.type_))
+      try {
+        if (field.type_.isComplexType) {
+          val childView = viewDef(field.type_.name)
+          if (row.column(index).isResult) {
+            val childResult = row.result(index)
+            val childSeq    = toCompatibleSeqOfMaps(childResult, childView)
+            if (field.isCollection)
+                 childSeq
+            else unwrapSeq(childSeq)
+          } else row(index) match {
+            case arr: java.sql.Array =>
+              val childSeq = mapSqlArray(arr, toCompatibleMap(_, _, childView)).toList
+              if  (field.isCollection)
+                   childSeq
+              else unwrapSeq(childSeq)
+            case x =>
+              if  (field.isCollection)
+                   toCompatibleSeqOfMaps(row, index, childView)
+              else toCompatibleMap(row, index, childView)
+          }
+        } else { // simple type
+          val childType = field.type_
+          if (row.column(index).isResult) {
+            val childResult = row.result(index)
+            val childSeq    = childResult.map(typedValue(_, 0, childType)).toList
+            if  (field.isCollection)
+                 childSeq
+            else unwrapSeq(childSeq)
+          } else row(index) match {
+            case arr: java.sql.Array =>
+              val childSeq = mapSqlArray(arr, typedValue(_, _, childType)).toList
+              if  (field.isCollection)
+                   childSeq
+              else unwrapSeq(childSeq)
+            case x =>
+              if  (field.isCollection)
+                   typedSeqOfValues(row, index, childType)
+              else typedValue(row, index, childType)
+          }
         }
-      } else {
-        typedValue(row, index, field.type_)
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Incompatible result for field ${view.name}.${field.fieldName}", ex)
       }
     }
     for (i <- 0 until row.columnCount) row.column(i) match {

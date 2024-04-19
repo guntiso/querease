@@ -1022,6 +1022,43 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     pco2.cars       shouldBe List("Prius", "Tesla")
   }
 
+  if (isDbAvailable) it should s"expand primitive types $dbName" in {
+    def getAsMap(queryString: String, viewName: String) =
+      qe.toCompatibleSeqOfMaps(Query(queryString, Map.empty), qe.viewDef(viewName)).head
+
+    // expand to map
+    getAsMap("""{'name' name, '{"number": 42}' main_account}""", "organization_key_test") shouldBe Map(
+      "name" -> "name", "main_account" -> Map("number" -> 42), "accounts" -> List())
+
+    // expand to map and wrap
+    getAsMap("""{'name' name, '{"number": 42}' accounts}""", "organization_key_test") shouldBe Map(
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42)))
+
+    // expand to array of maps
+    getAsMap("""{'name' name, '[{"number": 42}, {"number": 44}]' accounts}""", "organization_key_test") shouldBe Map(
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42), Map("number" -> 44)))
+
+    // expand to array of maps and unwrap
+    getAsMap("""{'name' name, '[{"number": 42}]' main_account}""", "organization_key_test") shouldBe Map(
+      "name" -> "name", "main_account" -> Map("number" -> 42), "accounts" -> List())
+
+    // expand to array of primitives
+    getAsMap("""{'name' name, '[42, 44]' car_ids}""", "person_and_car_12") shouldBe Map(
+      "id" -> null, "name" -> "name", "cars" -> List(), "car_ids" -> List(42, 44))
+
+    // expand to array of primitives and unwrap
+    getAsMap("""{'[33]' id, 'name' name}""", "person_and_car_12") shouldBe Map(
+      "id" -> 33, "name" -> "name", "cars" -> List(), "car_ids" -> List())
+
+    /* TODO expand primitive types for dto.fill?
+    val o1 = new OrganizationWithAccounts
+    o1.fill(result1.head)
+    o1.accounts.size shouldBe 1
+    o1.accounts(0).number shouldBe 42
+    ...
+    */
+  }
+
   if (isDbAvailable) it should s"support array types for $dbName" in {
     def getAsMap(viewName: String, id: Long): Map[String, Any] = {
       val view = qe.viewDef(viewName)

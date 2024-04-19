@@ -1,17 +1,17 @@
 package test
 
 import java.io.PrintWriter
-import scala.io.Source
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import dto._
-import org.mojoz.metadata.TableMetadata
-import org.mojoz.metadata.Type
+import org.mojoz.metadata.{TableMetadata, Type, ViewDef}
 import org.mojoz.metadata.in.YamlMd
 import org.mojoz.metadata.in.YamlTableDefLoader
 import org.mojoz.querease._
-import org.tresql.OrtMetadata
+import org.tresql.{OrtMetadata, RowLike}
 
+import scala.collection.immutable.{Map, Seq}
+import scala.io.Source
 
 class QuereaseTests extends FlatSpec with Matchers {
   import QuereaseTests._
@@ -768,6 +768,28 @@ object QuereaseTests {
        persistenceMetadata(nameToViewDef(viewName), data)
      override protected def resolvableCastToText(typeOpt: Option[Type]) =
        "::text" // always cast - for hsqldb since v2.3.4
+
+     override protected def typedValue(row: RowLike, index: Int, type_ : Type): Any =
+       row(index) match {
+         case """[33]""" => unwrapSeq(List(33))
+         case _ => super.typedValue(row, index, type_)
+       }
+     override protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
+       row(index) match {
+         case """[42, 44]""" => List(42, 44)
+         case _ => super.typedSeqOfValues(row, index, type_)
+       }
+     override protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] =
+       row(index) match {
+         case """{"number": 42}""" => Map("number" -> 42)
+         case """[{"number": 42}]""" => unwrapSeq(List(Map("number" -> 42))).asInstanceOf[Map[String, Any]]
+         case x => sys.error(s"TestQuerease has no idea how to convert $x to compatible map")
+       }
+     override protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] =
+       row(index) match {
+         case """[{"number": 42}, {"number": 44}]""" => List(Map("number" -> 42), Map("number" -> 44))
+         case x => super.toCompatibleSeqOfMaps(row, index, view)
+       }
    }
   implicit val qe: TestQuerease.type = TestQuerease
   implicit val qio: QuereaseIo[Dto] = new ScalaDtoQuereaseIo[Dto](TestQuerease)
