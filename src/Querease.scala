@@ -166,8 +166,17 @@ class Querease extends QueryStringBuilder
       } else if (field.isCollection) {
         if (row.column(index).isResult)
           typedSeqOfValues(row.result(index), 0, field.type_)
-        else
-          List(typedValue(row, index, field.type_))
+        else row(index) match {
+          case arr: java.sql.Array =>
+            import org.tresql._
+            import org.tresql.given
+            val tresqlResult: Result[RowLike] = arr.getResultSet
+            val value = tresqlResult.map(typedValue(_, 1, field.type_)).toList
+            arr.free()
+            value
+          case x =>
+            List(typedValue(row, index, field.type_))
+        }
       } else {
         typedValue(row, index, field.type_)
       }

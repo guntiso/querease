@@ -1023,7 +1023,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   if (isDbAvailable) it should s"support array types for $dbName" in {
-    def getAsMap(viewName: String, id: Int): Map[String, Any] = {
+    def getAsMap(viewName: String, id: Long): Map[String, Any] = {
       val view = qe.viewDef(viewName)
       val (q, p) = qe.queryStringAndParams(view, Map.empty, extraFilter = s"id = $id")
       val result = Query(q, p)
@@ -1069,6 +1069,19 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     a2.double_arr     shouldBe a1.double_arr
     a2.decimal_arr    shouldBe a1.decimal_arr
     a2.boolean_arr    shouldBe a1.boolean_arr
+
+    val m2 = getAsMap("array_types_test", id)
+    m2("id")            shouldBe id
+    m2("long_arr")      shouldBe a1.long_arr
+    m2("string_arr")    shouldBe a1.string_arr
+    m2("date_arr")      shouldBe a1.date_arr
+    m2("time_arr")      shouldBe a1.time_arr
+    m2("date_time_arr") shouldBe a2.date_time_arr
+    m2("int_arr")       shouldBe a1.int_arr
+    m2("bigint_arr")    shouldBe a1.bigint_arr
+    m2("double_arr")    shouldBe a1.double_arr
+    m2("decimal_arr")   shouldBe a1.decimal_arr
+    m2("boolean_arr")   shouldBe a1.boolean_arr
 
     a1.id = id
     qe.delete(a1)
