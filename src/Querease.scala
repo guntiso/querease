@@ -581,7 +581,7 @@ class Querease extends QueryStringBuilder
           val expr =
             if (f.initial != null)
               f.initial
-            else if (f.type_ != null && f.type_.isComplexType)
+            else if (view.table != null && f.type_ != null && f.type_.isComplexType)
               s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
             else
               "null"
@@ -965,6 +965,9 @@ trait QueryStringBuilder {
         }
       */
       if (childViewDef.table == null && (childViewDef.joins == null || childViewDef.joins == Nil))
+       if (view.table == null)
+        qName
+       else
         s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
       else if (view.name == childViewDef.name)
         s"(|$joinToParent)"

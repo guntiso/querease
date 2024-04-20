@@ -424,6 +424,14 @@ class organization_account_optional_fields_test extends DtoWithId {
 class organization_account_optional_fields_test_organization extends Dto {
   var name: String = null
 }
+class organization_child_expand_test extends Dto {
+  var name: String = null
+  var accounts: List[organization_child_expand_test_accounts] = Nil
+}
+class organization_child_expand_test_accounts extends Dto {
+  var number: String = null
+  var balance: String = null
+}
 class organization_joins_key_test_code extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null

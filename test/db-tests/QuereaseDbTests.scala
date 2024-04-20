@@ -1023,6 +1023,12 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   if (isDbAvailable) it should s"expand primitive types $dbName" in {
+    def buildQueryAndGetAsMap(viewName: String, id: Long) = {
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map("id" -> id))
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, view).head
+    }
     def getAsMap(queryString: String, viewName: String) =
       qe.toCompatibleSeqOfMaps(Query(queryString, Map.empty), qe.viewDef(viewName)).head
 
@@ -1049,6 +1055,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // expand to array of primitives and unwrap
     getAsMap("""{'[33]' id, 'name' name}""", "person_and_car_12") shouldBe Map(
       "id" -> 33, "name" -> "name", "cars" -> List(), "car_ids" -> List())
+
+    val org = new OrganizationWithAccountsAndKey
+    org.name = "name"
+    val id = qe.save(org)
+
+    // build query and expand to map
+    buildQueryAndGetAsMap("organization_child_expand_test", id) shouldBe Map(
+      "name" -> "name", "accounts" -> List(Map("number" -> 42)))
 
     /* TODO expand primitive types for dto.fill?
     val o1 = new OrganizationWithAccounts

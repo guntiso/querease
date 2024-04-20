@@ -45,6 +45,22 @@ fields:
     - number
 
 
+name:   organization_child_expand_test
+table:
+joins: >-
+  to_be_expanded(# *) {
+    organization[id = :id] {name, '{"number": 42}' accounts}
+  }
+  to_be_expanded
+fields:
+- name
+- accounts * :
+    table:
+    fields:
+    - number
+    - balance
+
+
 name:   organization_joins_key_test_code
 table:
 key:    name
