@@ -4,7 +4,7 @@ resolvers ++= Seq(
 
 libraryDependencies ++= Seq(
   "org.mojoz"  %% "mojoz"  % "5.2.0-SNAPSHOT",
- ("org.tresql" %% "tresql" % "12.0.0-RC2-SNAPSHOT").exclude(
+ ("org.tresql" %% "tresql" % "12.0.0-RC3-SNAPSHOT").exclude(
   "org.scala-lang.modules",   "scala-parser-combinators_2.12"),
 )
 
