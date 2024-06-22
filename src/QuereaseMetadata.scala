@@ -79,6 +79,8 @@ trait QuereaseMetadata {
     nameToViewDef.map { case (name, viewDef) => (name, keyFields(viewDef)) }
   lazy val viewNameToKeyFieldNames: Map[String, Seq[String]] =
     viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.fieldName)) }
+  lazy val viewNameToKeyFieldTypes: Map[String, Seq[Type]] =
+    viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.type_)) }
   lazy val viewNameToKeyColNames: Map[String, Seq[String]] =
     viewNameToKeyFields.map { case (name, fields) => (name, fields.map(_.name)) }
   lazy val viewNameToKeyColNameForGetById: Map[String, String] =
