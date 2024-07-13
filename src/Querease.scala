@@ -29,7 +29,8 @@ trait QuereaseIteratorResult[+B] extends Iterator[B] with AutoCloseable {
 }
 
 trait FieldFilter {
-  def shouldQuery(field: String): Boolean
+  /** If field is optional and this method returns false then the field is excluded from query */
+  def shouldInclude(field: String): Boolean
   def childFilter(field: String): FieldFilter
 }
 
@@ -1004,7 +1005,7 @@ trait QueryStringBuilder {
       .filter(f => !f.isCollection ||
         !f.type_.isComplexType     ||
         (f.type_.isComplexType && !countAll && !f.isExpression))
-      .filter(f => fieldFilter == null || !isOptionalField(f) || fieldFilter.shouldQuery(f.fieldName))
+      .filter(f => fieldFilter == null || !isOptionalField(f) || fieldFilter.shouldInclude(f.fieldName))
       .map(f => queryColExpression(view, f, pathToAlias, fieldFilter)
         + Option(queryColAlias(f)).map(" " + _).getOrElse(""))
       .mkString(" {", ", ", "}")

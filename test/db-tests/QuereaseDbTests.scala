@@ -1266,7 +1266,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   if (isDbAvailable) it should s"support optional fields when using $dbName" in {
     val v  = qe.viewDef("organization_account_optional_fields_test")
     val noOptionalFields: FieldFilter = new FieldFilter {
-      override def shouldQuery(field: String) = false
+      override def shouldInclude(field: String) = false
       override def childFilter(field: String) = this
     }
 
