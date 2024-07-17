@@ -152,9 +152,10 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val data = Map(
       ("currencies", (1 to (1024 * 16)).map(i => Map("code" -> s"c$i", "name" -> s"n$i")).toList)
     )
-    val tresql = "[build_cursors(currency, :currencies)] currencies{count(*)}"
-    val res = Query.build(tresql, data).sql
-    res.length should be > 0
+    Query.build("[build_cursors(currency, :currencies)] currencies{count(*)}", data).sql.length should be > 0
+    Query.build("cmin(# min){currencies{min(code) min}}," +
+      "cmax(# max) {currencies{max(code) max}}, ccount(# count) {currencies{count(code) count}} " +
+      "[build_cursors(currency, :currencies)] cmax[]cmin[]ccount{max, min, count}", data).sql.length should be > 0
   }
 
   it should "compile cursors" in {
