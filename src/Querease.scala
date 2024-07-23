@@ -4,11 +4,14 @@ import org.mojoz.metadata.Type
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
+import org.snakeyaml.engine.v2.api.Load
+import org.snakeyaml.engine.v2.api.LoadSettings
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
+import scala.jdk.CollectionConverters._
 import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
@@ -132,6 +135,25 @@ class Querease extends QueryStringBuilder
     }
   }
 
+  private def getAsString(row: RowLike, index: Int) =
+    row(index) match {
+      case s: String  => s
+      case null       => null
+      case unknown    => unknown.toString
+    }
+
+  private def parseColumnValue(value: String, index: Int, view: ViewDef): Any = {
+    def toScala(v: Any): Any = v match {
+      case m: java.util.Map[_, _]    => m.asScala.map { case (k, v) => (k, toScala(v)) }.toMap
+      case a: java.util.ArrayList[_] => a.asScala.map(toScala).toList
+      case x => x
+    }
+    val loaderSettings = LoadSettings.builder()
+      .setLabel(s"${view.name}[$index]")
+      .build()
+    toScala((new Load(loaderSettings)).loadFromString(value))
+  }
+
   protected lazy val typeNameToScalaTypeName =
     typeDefs
       .map(td => td.name -> td.targetNames.get("scala").orNull)
@@ -145,12 +167,33 @@ class Querease extends QueryStringBuilder
   protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
     List(typedValue(row, index, type_))
 
-  /** Override this method to add support for other types (string, json, xml, ...) of values from db */
-  protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = ???
+  /** Supports json and yaml - override to add support for other types (xml, ...) of values from db */
+  protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = {
+    val vs = getAsString(row, index)
+    if (vs == null || vs == "[]")
+      null
+    else parseColumnValue(vs, index, view) match {
+      case null => null
+      case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
+      case q: Seq[_] => unwrapSeq(q) match {
+        case null => null
+        case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
+      }
+    }
+  }
 
-  /** Override this method to add support for collections parsed from other types (string, json, xml, ...) of values from db */
-  protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] =
-    List(toCompatibleMap(row, index, view))
+  /** Supports json and yaml - override to add support for collections parsed from other types (xml, ...) of values from db */
+  protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] = {
+    val vs = getAsString(row, index)
+    if (vs == null)
+      null
+    else parseColumnValue(vs, index, view) match {
+      case m: Map[String @unchecked, _] => List(toCompatibleMap(m, view))
+      case q: Seq[_] => q.map {
+        case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
+      }
+    }
+  }
 
   protected def mapSqlArray[T](arr: java.sql.Array, f: (RowLike, Int) => T): Iterator[T] = {
     import org.tresql._
@@ -224,6 +267,43 @@ class Querease extends QueryStringBuilder
       case c if c.name != null =>
         typed(c.name, i).foreach(value => compatibleMap += (c.name -> value))
       case _ =>
+    }
+    compatibleMap
+  }
+
+  def toCompatibleMap(map: Map[String, Any], view: ViewDef): Map[String, Any] = {
+    var compatibleMap = viewNameToMapZero(view.name)
+    def typed(name: String, value: Any) = view.fieldOpt(name).map { field =>
+      try {
+        if (field.type_.isComplexType) {
+          val childView = viewDef(field.type_.name)
+          value match {
+            case null => null
+            case m: Map[String @unchecked, _] =>
+              val cm = toCompatibleMap(m, childView)
+              if (field.isCollection) List(cm) else cm
+            case q: Seq[_] =>
+              val childSeq = q.map {
+                case m: Map[String @unchecked, _] =>
+                  toCompatibleMap(m, childView)
+              }
+              if  (field.isCollection)
+                   childSeq
+              else unwrapSeq(childSeq)
+          }
+        } else value match { // simple type
+          case q: Seq[_] =>
+            if (field.isCollection) q else unwrapSeq(q)
+          case x =>
+            if (field.isCollection) List(x) else x
+        }
+      } catch {
+        case util.control.NonFatal(ex) =>
+          throw new RuntimeException(s"Incompatible map for field ${view.name}.${field.fieldName}", ex)
+      }
+    }
+    map.foreach { case (k, v) =>
+      typed(k, v).foreach(value => compatibleMap += (k -> value))
     }
     compatibleMap
   }

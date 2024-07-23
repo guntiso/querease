@@ -1034,19 +1034,19 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // expand to map
     getAsMap("""{'name' name, '{"number": 42}' main_account}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> Map("number" -> 42), "accounts" -> List())
+      "name" -> "name", "main_account" -> Map("number" -> 42, "balance" -> null), "accounts" -> List())
 
     // expand to map and wrap
     getAsMap("""{'name' name, '{"number": 42}' accounts}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42)))
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42, "balance" -> null)))
 
     // expand to array of maps
     getAsMap("""{'name' name, '[{"number": 42}, {"number": 44}]' accounts}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42), Map("number" -> 44)))
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42, "balance" -> null), Map("number" -> 44, "balance" -> null)))
 
     // expand to array of maps and unwrap
     getAsMap("""{'name' name, '[{"number": 42}]' main_account}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> Map("number" -> 42), "accounts" -> List())
+      "name" -> "name", "main_account" -> Map("number" -> 42, "balance" -> null), "accounts" -> List())
 
     // expand to array of primitives
     getAsMap("""{'name' name, '[42, 44]' car_ids}""", "person_and_car_12") shouldBe Map(
@@ -1062,7 +1062,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // build query and expand to map
     buildQueryAndGetAsMap("organization_child_expand_test", id) shouldBe Map(
-      "name" -> "name", "accounts" -> List(Map("number" -> 42)))
+      "name" -> "name", "accounts" -> List(Map("number" -> 42, "balance" -> null)))
 
     /* TODO expand primitive types for dto.fill?
     val o1 = new OrganizationWithAccounts

@@ -779,17 +779,6 @@ object QuereaseTests {
          case """[42, 44]""" => List(42, 44)
          case _ => super.typedSeqOfValues(row, index, type_)
        }
-     override protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] =
-       row(index) match {
-         case """{"number": 42}""" => Map("number" -> 42)
-         case """[{"number": 42}]""" => unwrapSeq(List(Map("number" -> 42))).asInstanceOf[Map[String, Any]]
-         case x => sys.error(s"TestQuerease has no idea how to convert $x to compatible map")
-       }
-     override protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] =
-       row(index) match {
-         case """[{"number": 42}, {"number": 44}]""" => List(Map("number" -> 42), Map("number" -> 44))
-         case x => super.toCompatibleSeqOfMaps(row, index, view)
-       }
    }
   implicit val qe: TestQuerease.type = TestQuerease
   implicit val qio: QuereaseIo[Dto] = new ScalaDtoQuereaseIo[Dto](TestQuerease)
