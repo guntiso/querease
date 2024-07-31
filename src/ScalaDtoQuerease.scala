@@ -15,7 +15,7 @@ import org.tresql.CoreTypes
 import org.tresql.RowLike
 
 
-class ScalaDtoQuereaseIo[-DTO <: Dto](qe: QuereaseMetadata with QuereaseResolvers) extends QuereaseIo[DTO] {
+class ScalaDtoQuereaseIo[-DTO <: Dto](qe: QuereaseMetadata with QuereaseResolvers with ValueTransformer) extends QuereaseIo[DTO] {
   override def convertRow[B <: DTO](row: RowLike)(implicit mf: Manifest[B]): B =
     rowLikeToDto(row, mf)
   override def toMap[B <: DTO](dto: B): Map[String, Any] =
@@ -131,7 +131,7 @@ trait Dto { self =>
   protected type QDto >: Null <: Dto
 
   // populate from RowLike
-  def fill(r: RowLike)(implicit qe: QuereaseMetadata): this.type = {
+  def fill(r: RowLike)(implicit qe: QuereaseMetadata with ValueTransformer): this.type = {
     for (i <- 0 until r.columnCount) r.column(i) match {
       case c if c.name != null => set(c.name, c.isResult, r)
       case _ =>
@@ -140,8 +140,10 @@ trait Dto { self =>
   }
 
   protected def setters = DtoReflection.setters(this)
-  protected def set(dbName: String, isResult: Boolean, r: RowLike)(implicit qe: QuereaseMetadata) =
+  protected def set(dbName: String, isResult: Boolean, r: RowLike)(implicit qe: QuereaseMetadata with ValueTransformer) =
     (for (s <- setters.get(dbToPropName(dbName))) yield {
+      def newDto(mDto: Manifest[_ <: Dto]): QDto =
+        mDto.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[QDto]
       //declare local converter
       def conv[A <: QDto]: CoreTypes.Converter[A] =
         (r, m) => m.runtimeClass.getDeclaredConstructor().newInstance().asInstanceOf[A].fill(r)
@@ -150,8 +152,16 @@ trait Dto { self =>
           case (null, null) =>
             r.typed(dbName)(s.mfOth).asInstanceOf[Object]
           case (null, mDto) =>
-            val childResult = r.result(dbName)
-            childResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).headOption.orNull.asInstanceOf[Object]
+            if (isResult) {
+              val childResult = r.result(dbName)
+              childResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).headOption.orNull.asInstanceOf[Object]
+            } else {
+              val view = qe.viewDefFromMf(mDto)
+              qe.toCompatibleMap(r(dbName), view, dbName) match {
+                case null => null
+                case map  => newDto(mDto).fill(map)
+              }
+            }
           case (mSeq, null) =>
             if (isResult)
               r.result(dbName).map(_.typed(0)(s.mfOth)).toList.asInstanceOf[Object]
@@ -168,8 +178,19 @@ trait Dto { self =>
                   List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
               }
           case (mSeq, mDto) =>
-            val childrenResult = r.result(dbName)
-            childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]
+            if (isResult) {
+              val childrenResult = r.result(dbName)
+              childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]
+            } else {
+              val view = qe.viewDefFromMf(mDto)
+              qe.toCompatibleSeqOfMaps(r(dbName), view, dbName) match {
+                case null => null
+                case maps =>
+                  maps.map { map =>
+                    newDto(mDto).fill(map)
+                  }
+              }
+            }
         }
       if  (s.mfOpt == null)
            s.method.invoke(this, value)
@@ -252,8 +273,8 @@ trait Dto { self =>
   }
 
   //creating dto from Map[String, Any]
-  def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata): this.type = fill(values, emptyStringsToNull = true)(qe)
-  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata): this.type = {
+  def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata with ValueTransformer): this.type = fill(values, emptyStringsToNull = true)(qe)
+  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata with ValueTransformer): this.type = {
     values foreach { case (name, value) =>
       setters.get(name).map { case DtoSetter(_, met, mOpt, mSeq, mDto, mOth) =>
         val converted = value match {
@@ -277,7 +298,13 @@ trait Dto { self =>
               } else s
             } else
               throwUnsupportedConversion(value, Option(mDto).getOrElse(mOth), name)
+          case null => null
+          // TODO more conversions!
+          // TODO support seqs of primitives
+          // TODO wrap, unwrap seqs!
+          case i: java.lang.Integer if mOth != null && mOth.runtimeClass == classOf[java.lang.Long] => i.toLong
           case x => x
+
         }
         val convertedObj =
           if  (mOpt == null) converted else Some(converted)

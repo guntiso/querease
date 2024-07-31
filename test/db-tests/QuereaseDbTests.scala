@@ -1023,10 +1023,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   if (isDbAvailable) it should s"expand primitive types $dbName" in {
-    def buildQueryAndGetAsMap(viewName: String, id: Long) = {
+    def buildQueryAndGetResult(viewName: String, id: Long) = {
       val view = qe.viewDef(viewName)
       val (q, p) = qe.queryStringAndParams(view, Map("id" -> id))
       val result = Query(q, p)
+      result
+    }
+    def buildQueryAndGetAsMap(viewName: String, id: Long) = {
+      val view = qe.viewDef(viewName)
+      val result = buildQueryAndGetResult(viewName, id)
       qe.toCompatibleSeqOfMaps(result, view).head
     }
     def getAsMap(queryString: String, viewName: String) =
@@ -1062,15 +1067,16 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // build query and expand to map
     buildQueryAndGetAsMap("organization_child_expand_test", id) shouldBe Map(
-      "name" -> "name", "accounts" -> List(Map("number" -> 42, "balance" -> null)))
+      "id" -> id, "name" -> "name", "accounts" -> List(Map("id" -> 69, "number" -> "42", "balance" -> null)))
 
-    /* TODO expand primitive types for dto.fill?
     val o1 = new OrganizationWithAccounts
-    o1.fill(result1.head)
+    o1.fill(buildQueryAndGetResult("organization_child_expand_test", id).head)
+    o1.id   shouldBe id
+    o1.name shouldBe "name"
     o1.accounts.size shouldBe 1
-    o1.accounts(0).number shouldBe 42
-    ...
-    */
+    o1.accounts(0).id     shouldBe  69
+    o1.accounts(0).number shouldBe "42"
+    o1.accounts(0).balance shouldBe null
   }
 
   if (isDbAvailable) it should s"support array types for $dbName" in {

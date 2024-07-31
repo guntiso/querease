@@ -37,121 +37,18 @@ trait FieldFilter {
   def childFilter(field: String): FieldFilter
 }
 
-class Querease extends QueryStringBuilder
-  with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
+trait ValueTransformer { this: QuereaseMetadata =>
 
-  private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
-  private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
-  private def tablesToSaveTo(viewDef: ViewDef) =
-    if (viewDef.saveTo == null || viewDef.saveTo.isEmpty)
-      Option(viewDef.table).filter(_ != "")
-        .map(t => Seq(ortDbPrefix(viewDef.db) + t + ortAliasSuffix(viewDef.tableAlias)))
-        .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
-    else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
-
-  protected def idToLong(id: Any): Long = id match {
-    case id: Long   => id
-    case id: Int    => id
-    case id: Short  => id
-    case xx         => 0L
-  }
-
-  // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
-  def save[B <: AnyRef](
-    pojo: B,
-    extraPropsToSave: Map[String, Any] = null,
-    forceInsert: Boolean = false,
-    filter: String = null,
-    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
-    val pojoPropMap = qio.toMap(pojo)
-    val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
-    val method = if (forceInsert) Insert else Save
-    save(view, pojoPropMap, extraPropsToSave, method, filter, params)
-  }
-
-  def save[B <: AnyRef](
-    view:   ViewDef,
-    data:   Map[String, Any],
-    extraPropsToSave: Map[String, Any],
-    method: SaveMethod,
-    filter: String,
-    params: Map[String, Any],
-  )(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
-    validate(view, data, Option(params).getOrElse(Map()))
-    val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
-      else Map()) ++ Option(params).getOrElse(Map())
-    val keyFields = viewNameToKeyFields(view.name)
-    lazy val id = viewNameToIdFieldName.get(view.name).flatMap(propMap.get).filter(_ != null)
-    val resolvedMethod =
-      if  (method == Save)
-        if (keyFields.forall(f => propMap.get(f.fieldName).orNull == null)) Insert else Update
-      else method
-    resolvedMethod match {
-      case Insert =>
-        insert(view, propMap, filter, extraPropsToSave)
-      case Update =>
-        update(view, propMap, filter, extraPropsToSave)
-        Try(id.get.toString.toLong) getOrElse 0L
-      case Upsert =>
-        upsert(view, propMap, filter, extraPropsToSave) match {
-          case (Insert, insertedId) =>
-            insertedId
-          case (Update, _)          =>
-            Try(id.get.toString.toLong) getOrElse 0L
-        }
-    }
-  }
-
-  private def mergeFilters(filterOpt: Option[String], extraFilter: String): Option[String] = {
-    if   (extraFilter == null)  filterOpt
-    else if (filterOpt.isEmpty) Option(extraFilter)
-    else filterOpt.map { f => Seq(f, extraFilter).map(a => s"($a)").mkString(" & ") }
-  }
-
-  private def addExtraPropsToMetadata(metadata: OrtMetadata.View, extraPropsToSave: Map[String, Any]): OrtMetadata.View = {
-    if (extraPropsToSave == null || extraPropsToSave.isEmpty) {
-      metadata
-    } else {
-      val mdCols  = metadata.properties.map(_.col).toSet
-      val xpCols  = extraPropsToSave.keySet
-      val missing = xpCols -- mdCols
-      if (missing.isEmpty) {
-        metadata
-      } else {
-        metadata.copy(
-          properties = metadata.properties ++ missing.map { col =>
-            OrtMetadata.Property(
-              col   = col,
-              value = OrtMetadata.TresqlValue(
-                tresql    = s":$col",
-              ),
-              optional  = false,
-              forInsert = true,
-              forUpdate = true,
-            )
-          }
-        )
-      }
-    }
-  }
-
-  private def getAsString(row: RowLike, index: Int) =
-    row(index) match {
-      case s: String  => s
-      case null       => null
-      case unknown    => unknown.toString
-    }
-
-  private def parseColumnValue(value: String, index: Int, view: ViewDef): Any = {
+  private def parseColumnValue(value: Any, view: ViewDef, nameOrIndex: String): Any = {
     def toScala(v: Any): Any = v match {
       case m: java.util.Map[_, _]    => m.asScala.map { case (k, v) => (k, toScala(v)) }.toMap
       case a: java.util.ArrayList[_] => a.asScala.map(toScala).toList
       case x => x
     }
     val loaderSettings = LoadSettings.builder()
-      .setLabel(s"${view.name}[$index]")
+      .setLabel(s"${view.name}[$nameOrIndex]")
       .build()
-    toScala((new Load(loaderSettings)).loadFromString(value))
+    toScala((new Load(loaderSettings)).loadFromString(s"$value"))
   }
 
   protected lazy val typeNameToScalaTypeName =
@@ -167,12 +64,19 @@ class Querease extends QueryStringBuilder
   protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
     List(typedValue(row, index, type_))
 
+  private def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = {
+    val nameOrIndex =
+      row.column(index).name match {
+        case null => s"$index"
+        case name => name
+      }
+    toCompatibleMap(row(index), view, nameOrIndex)
+  }
   /** Supports json and yaml - override to add support for other types (xml, ...) of values from db */
-  protected def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = {
-    val vs = getAsString(row, index)
-    if (vs == null || vs == "[]")
+  def toCompatibleMap(value: Any, view: ViewDef, nameOrIndex: String): Map[String, Any] = {
+    if (value == null || value == "[]")
       null
-    else parseColumnValue(vs, index, view) match {
+    else parseColumnValue(value, view, nameOrIndex: String) match {
       case null => null
       case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
       case q: Seq[_] => unwrapSeq(q) match {
@@ -182,12 +86,19 @@ class Querease extends QueryStringBuilder
     }
   }
 
+  private def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] = {
+    val nameOrIndex =
+      row.column(index).name match {
+        case null => s"$index"
+        case name => name
+      }
+    toCompatibleSeqOfMaps(row(index), view, nameOrIndex)
+  }
   /** Supports json and yaml - override to add support for collections parsed from other types (xml, ...) of values from db */
-  protected def toCompatibleSeqOfMaps(row: RowLike, index: Int, view: ViewDef): Seq[Map[String, Any]] = {
-    val vs = getAsString(row, index)
-    if (vs == null)
+  def toCompatibleSeqOfMaps(value: Any, view: ViewDef, nameOrIndex: String): Seq[Map[String, Any]] = {
+    if (value == null)
       null
-    else parseColumnValue(vs, index, view) match {
+    else parseColumnValue(value, view, nameOrIndex) match {
       case m: Map[String @unchecked, _] => List(toCompatibleMap(m, view))
       case q: Seq[_] => q.map {
         case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
@@ -328,6 +239,105 @@ class Querease extends QueryStringBuilder
           case m: Map[String, Any]@unchecked => toSaveableMap(m, viewDef(f.type_.name))
           case x => x
         }))
+  }
+}
+
+class Querease extends QueryStringBuilder with ValueTransformer
+  with FilterTransformer with QuereaseExpressions with QuereaseMetadata with QuereaseResolvers {
+
+  private def ortDbPrefix(db: String): String       = Option(db).map(db => s"@$db:") getOrElse ""
+  private def ortAliasSuffix(alias: String): String = Option(alias).map(" " + _) getOrElse ""
+  private def tablesToSaveTo(viewDef: ViewDef) =
+    if (viewDef.saveTo == null || viewDef.saveTo.isEmpty)
+      Option(viewDef.table).filter(_ != "")
+        .map(t => Seq(ortDbPrefix(viewDef.db) + t + ortAliasSuffix(viewDef.tableAlias)))
+        .getOrElse(throw new RuntimeException(s"Unable to save - target table name for view ${viewDef.name} is not known"))
+    else viewDef.saveTo.map(t => if (t startsWith "@") t else ortDbPrefix(viewDef.db) + t)
+
+  protected def idToLong(id: Any): Long = id match {
+    case id: Long   => id
+    case id: Int    => id
+    case id: Short  => id
+    case xx         => 0L
+  }
+
+  // extraPropsToSave allows to specify additional columns to be saved that are not present in pojo.
+  def save[B <: AnyRef](
+    pojo: B,
+    extraPropsToSave: Map[String, Any] = null,
+    forceInsert: Boolean = false,
+    filter: String = null,
+    params: Map[String, Any] = null)(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
+    val pojoPropMap = qio.toMap(pojo)
+    val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
+    val method = if (forceInsert) Insert else Save
+    save(view, pojoPropMap, extraPropsToSave, method, filter, params)
+  }
+
+  def save[B <: AnyRef](
+    view:   ViewDef,
+    data:   Map[String, Any],
+    extraPropsToSave: Map[String, Any],
+    method: SaveMethod,
+    filter: String,
+    params: Map[String, Any],
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Long = {
+    validate(view, data, Option(params).getOrElse(Map()))
+    val propMap = data ++ (if (extraPropsToSave != null) extraPropsToSave
+      else Map()) ++ Option(params).getOrElse(Map())
+    val keyFields = viewNameToKeyFields(view.name)
+    lazy val id = viewNameToIdFieldName.get(view.name).flatMap(propMap.get).filter(_ != null)
+    val resolvedMethod =
+      if  (method == Save)
+        if (keyFields.forall(f => propMap.get(f.fieldName).orNull == null)) Insert else Update
+      else method
+    resolvedMethod match {
+      case Insert =>
+        insert(view, propMap, filter, extraPropsToSave)
+      case Update =>
+        update(view, propMap, filter, extraPropsToSave)
+        Try(id.get.toString.toLong) getOrElse 0L
+      case Upsert =>
+        upsert(view, propMap, filter, extraPropsToSave) match {
+          case (Insert, insertedId) =>
+            insertedId
+          case (Update, _)          =>
+            Try(id.get.toString.toLong) getOrElse 0L
+        }
+    }
+  }
+
+  private def mergeFilters(filterOpt: Option[String], extraFilter: String): Option[String] = {
+    if   (extraFilter == null)  filterOpt
+    else if (filterOpt.isEmpty) Option(extraFilter)
+    else filterOpt.map { f => Seq(f, extraFilter).map(a => s"($a)").mkString(" & ") }
+  }
+
+  private def addExtraPropsToMetadata(metadata: OrtMetadata.View, extraPropsToSave: Map[String, Any]): OrtMetadata.View = {
+    if (extraPropsToSave == null || extraPropsToSave.isEmpty) {
+      metadata
+    } else {
+      val mdCols  = metadata.properties.map(_.col).toSet
+      val xpCols  = extraPropsToSave.keySet
+      val missing = xpCols -- mdCols
+      if (missing.isEmpty) {
+        metadata
+      } else {
+        metadata.copy(
+          properties = metadata.properties ++ missing.map { col =>
+            OrtMetadata.Property(
+              col   = col,
+              value = OrtMetadata.TresqlValue(
+                tresql    = s":$col",
+              ),
+              optional  = false,
+              forInsert = true,
+              forUpdate = true,
+            )
+          }
+        )
+      }
+    }
   }
 
   protected def insert(
