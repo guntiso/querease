@@ -23,18 +23,11 @@ object QuereaseHsqldbTests {
   )
   Thread.sleep(50) // allow property to be set for sure (fix unstable hsqldb tests)
 
-  val hsqlDialect: CoreTypes.Dialect = HSQLDialect orElse {
-    case c: QueryBuilder#CastExpr => c.typ match {
-      case "bigint" | "long" | "int" => s"convert(${c.exp.sql}, BIGINT)"
-      case "text" => s"convert(${c.exp.sql}, VARCHAR(2000))"
-      case _ => c.exp.sql
-    }
-  }
   def getHsqldbConnection(db: String) = db match {
     case MainDb   => DriverManager.getConnection("jdbc:hsqldb:mem:my-main-memdb", "SA", "")
     case ExtraDb  => DriverManager.getConnection("jdbc:hsqldb:mem:my-xtra-memdb", "SA", "")
   }
-  def setHsqldbEnv(db: String) = setEnv(db, hsqlDialect, getHsqldbConnection(db))
+  def setHsqldbEnv(db: String) = setEnv(db, HSQLDialect, getHsqldbConnection(db))
   val hsqldb_custom_functions_statements = Seq(
     """create function array_length(sql_array bigint array) returns int
        language java deterministic no sql

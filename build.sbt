@@ -122,7 +122,6 @@ Test / sourceGenerators += Def.task {
         "import org.mojoz.querease.QuereaseMetadata",
         "import org.tresql._",
         "import test.{ Dto, DtoWithId }",
-        "import test.QuereaseDbTests.Env",
         "",
       ),
       plainViewDefs,

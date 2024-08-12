@@ -179,8 +179,12 @@ trait QuereaseMetadata {
       field.resolver != null
       ||
       !field.isExpression         &&
-      !field.type_.isComplexType  &&
       field.table != null         &&
+      (!field.type_.isComplexType ||
+        viewDefOption(field.type_.name).exists { childView =>
+          childView.table == null && (childView.joins == null || childView.joins == Nil)
+        }
+      ) &&
       (
         !saveToMulti                &&
         field.table == view.table   &&
@@ -257,6 +261,15 @@ trait QuereaseMetadata {
     Option(view.keyFieldNames)
       .filter(_.nonEmpty)
       .isDefined
+  }
+  protected def persistenceMetadataTypeCast(view: ViewDef, field: FieldDef): String = {
+    val type_ =
+      if  (field.type_.isComplexType)
+           tableMetadata.columnDefOption(view, field).map(_.type_).getOrElse(field.type_)
+      else field.type_
+    if (field.isCollection) s"::'${type_.name}[]'"
+    else if (type_.name == "json") "::json"
+    else ""
   }
   def oldKeyParamName = "old key"
   private lazy val oldKeyRef = Variable(oldKeyParamName, Nil, opt = false).tresql
@@ -405,7 +418,7 @@ trait QuereaseMetadata {
         lazy val forUpdate = isFieldForUpdate(f) && !isPk
         if (isSaveableField_(f)) {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
-          def typeCast  = if (f.isCollection && !f.type_.isComplexType) s"::'${f.type_.name}[]'" else ""
+          def typeCast  = persistenceMetadataTypeCast(view, f)
           val valueTresql =
             if (f.saveTo == null && f.resolver == null)
               s":${fieldName}${if (isOptionalField(f)) "?" else ""}${typeCast}"

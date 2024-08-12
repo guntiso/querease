@@ -43,6 +43,12 @@ columns:
 - name_eng             ! 100           : Valūtas nosaukums angliski.
 - name_rus             ! 100           : Valūtas nosaukums krieviski.
 
+table:   json_io_test
+columns:
+- id
+- value                  json
+- values_array         * json
+
 table:   person
 columns:
 - id

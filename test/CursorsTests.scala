@@ -4,6 +4,7 @@ import org.mojoz.querease.QuereaseMacros
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.BeforeAndAfterAll
+import org.tresql.dialects.HSQLDialect
 import org.tresql.{MacroResourcesImpl, Query, QueryCompiler, Resources}
 
 import java.sql.{Connection, DriverManager}
@@ -20,7 +21,7 @@ class CursorsTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       .withConn(conn)
       .withMacros(new QuereaseMacros)
       .withMetadata(QuereaseTests.qe.tresqlMetadata)
-      .withDialect(QuereaseHsqldbTests.hsqlDialect)
+      .withDialect(HSQLDialect)
       .withLogger(QuereaseDbTests.TresqlLogger)
   }
 

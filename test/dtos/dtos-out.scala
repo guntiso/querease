@@ -324,6 +324,41 @@ class generated_scala_traits_test_bank_1 extends Dto {
   var id: java.lang.Integer = null
   var code: String = null
 }
+class json_test_any extends DtoWithId {
+  var id: java.lang.Long = null
+  var value: String = null
+}
+class json_test_types extends DtoWithId {
+  var id: java.lang.Long = null
+  var child: json_test_types_child = null
+}
+class json_test_types_child extends DtoWithId {
+  var id: java.lang.Long = null
+  var long: java.lang.Long = null
+  var string: String = null
+  var date: java.time.LocalDate = null
+  var time: java.time.LocalTime = null
+  var date_time: java.time.LocalDateTime = null
+  var int: java.lang.Integer = null
+  var bigint: scala.math.BigInt = null
+  var double: java.lang.Double = null
+  var decimal: scala.math.BigDecimal = null
+  var boolean: java.lang.Boolean = null
+  var bytes: Array[Byte] = null
+  var json: String = null
+  var long_arr: List[java.lang.Long] = Nil
+  var string_arr: List[String] = Nil
+  var date_arr: List[java.time.LocalDate] = Nil
+  var time_arr: List[java.time.LocalTime] = Nil
+  var date_time_arr: List[java.time.LocalDateTime] = Nil
+  var int_arr: List[java.lang.Integer] = Nil
+  var bigint_arr: List[scala.math.BigInt] = Nil
+  var double_arr: List[java.lang.Double] = Nil
+  var decimal_arr: List[scala.math.BigDecimal] = Nil
+  var boolean_arr: List[java.lang.Boolean] = Nil
+  var child: types_test_child = null
+  var children: List[types_test_child] = Nil
+}
 class mother extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
@@ -423,6 +458,11 @@ class organization_account_optional_fields_test extends DtoWithId {
 }
 class organization_account_optional_fields_test_organization extends Dto {
   var name: String = null
+}
+class organization_child_collapse_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var accounts: String = null
 }
 class organization_child_expand_test extends DtoWithId {
   var id: java.lang.Long = null

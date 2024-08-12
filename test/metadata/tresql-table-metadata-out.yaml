@@ -74,6 +74,13 @@ columns:
 - name_rus ! string
 pk: code
 
+table: json_io_test
+columns:
+- id ! long
+- value json
+- values_array * json
+pk: id
+
 table: noid_test
 columns:
 - noid_id ! long

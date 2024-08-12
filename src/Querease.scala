@@ -4,11 +4,13 @@ import org.mojoz.metadata.Type
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
-import org.snakeyaml.engine.v2.api.Load
-import org.snakeyaml.engine.v2.api.LoadSettings
+import org.snakeyaml.engine.v2.api.{Dump, DumpSettings}
+import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
+import org.snakeyaml.engine.v2.common.{FlowStyle, ScalarStyle}
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
+import java.lang.StringBuilder
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
 import scala.jdk.CollectionConverters._
@@ -203,6 +205,8 @@ trait ValueTransformer { this: QuereaseMetadata =>
               else unwrapSeq(childSeq)
           }
         } else value match { // simple type
+          case m: Map[String @unchecked, _] =>
+            if (field.isCollection) List(m) else m
           case q: Seq[_] =>
             if (field.isCollection) q else unwrapSeq(q)
           case x =>
@@ -219,25 +223,195 @@ trait ValueTransformer { this: QuereaseMetadata =>
     compatibleMap
   }
 
-  /** Provides missing fields, override to convert types to compatible with your jdbc driver */
-  protected def toSaveableMap(map: Map[String, Any], view: ViewDef): Map[String, Any] = {
+  private def mapToJavaMap(map: Map[String, _]): java.util.Map[String, _] = {
+    val result = map.map { (entry: (String, _)) =>
+      (entry._1,
+        entry._2 match {
+          case l: Seq[_] => seqToJavaList(l)
+          case m: Map[String @unchecked, _] => mapToJavaMap(m)
+          case r => r
+        }
+      )
+    }
+    result.asInstanceOf[Map[String, _]].asJava
+  }
+
+  private def seqToJavaList(seq: Seq[_]): java.util.List[_] = {
+    val result = seq.toList.map {
+      case l: Seq[_] => seqToJavaList(l)
+      case m: Map[String @unchecked, _] => mapToJavaMap(m)
+      case r => r
+    }
+    result.asJava
+  }
+
+  private val jsonDumpSettings =
+    DumpSettings.builder()
+      .setDefaultFlowStyle(FlowStyle.FLOW)
+      // .setDefaultScalarStyle(ScalarStyle.JSON_SCALAR_STYLE) // TODO waiting for latest snakeyaml-engine
+      .setWidth(Integer.MAX_VALUE)
+      .build()
+
+  private val yamlDumpSettings =
+    DumpSettings.builder()
+      .setMultiLineFlow(true)
+      .setDefaultFlowStyle(FlowStyle.BLOCK)
+      .build()
+
+  /** Converts value to be compatible with your jdbc driver, according to type.
+    * Default implementation converts Map and Seq to yaml string or json string */
+  def toSaveableValue(value: Any, type_ : Type): Any = {
+    def javaValue = value match {
+      case seq: Seq[_]                    => seqToJavaList(seq)
+      case map: Map[String @unchecked, _] => mapToJavaMap(map)
+    }
+    def dump(dumpSettings: DumpSettings) =
+      new Dump(dumpSettings).dumpToString(javaValue)
+    def dumpJson(value: Any, sb: StringBuilder): Unit = value match {
+      case m: Map[String @unchecked, _] =>
+        sb.append('{')
+        printSeq(m, sb.append(',')) { m =>
+          printString(m._1, sb)
+          sb.append(':')
+          dumpJson(m._2, sb)
+        }
+        sb.append('}')
+      case seq: Seq[_] =>
+        sb.append('[')
+        printSeq(seq, sb.append(','))(dumpJson(_, sb))
+        sb.append(']')
+      case d:  java.sql.Date           => sb.append(s""""$d"""")
+      case t:  java.sql.Time           => sb.append(s""""$t"""")
+      case dt: java.sql.Timestamp      => sb.append(s""""$dt"""")
+      case d:  java.time.LocalDate     => sb.append(s""""$d"""")
+      case t:  java.time.LocalTime     => sb.append(s""""$t"""")
+      case dt: java.time.LocalDateTime => sb.append(s""""$dt"""")
+      case s: String => printString(s, sb)
+      case x => sb.append(s"$x")
+    }
+    // copied from spray.json.JsonPrinter to avoid dependency while waiting for latest snakeyaml-engine
+    def printString(s: String, sb: StringBuilder): Unit = {
+      @tailrec def firstToBeEncoded(ix: Int = 0): Int =
+        if (ix == s.length) -1 else if (requiresEncoding(s.charAt(ix))) ix else firstToBeEncoded(ix + 1)
+      sb.append('"')
+      firstToBeEncoded() match {
+        case -1 => sb.append(s)
+        case first =>
+          sb.append(s, 0, first)
+          @tailrec def append(ix: Int): Unit =
+            if (ix < s.length) {
+              s.charAt(ix) match {
+                case c if !requiresEncoding(c) => sb.append(c)
+                case  '"' => sb.append("\\\"")
+                case '\\' => sb.append("\\\\")
+                case '\b' => sb.append("\\b")
+                case '\f' => sb.append("\\f")
+                case '\n' => sb.append("\\n")
+                case '\r' => sb.append("\\r")
+                case '\t' => sb.append("\\t")
+                case x if x <= 0xF => sb.append("\\u000").append(Integer.toHexString(x))
+                case x if x <= 0xFF => sb.append("\\u00").append(Integer.toHexString(x))
+                case x if x <= 0xFFF => sb.append("\\u0").append(Integer.toHexString(x))
+                case x => sb.append("\\u").append(Integer.toHexString(x))
+              }
+              append(ix + 1)
+            }
+          append(first)
+      }
+      sb.append('"')
+    }
+    def printSeq[A](iterable: Iterable[A], printSeparator: => Unit)(f: A => Unit): Unit = {
+      var first = true
+      iterable.foreach { a =>
+        if (first) first = false else printSeparator
+        f(a)
+      }
+    }
+    def requiresEncoding(c: Char): Boolean =
+      c match {
+        case '"'  => true
+        case '\\' => true
+        case c    => c < 0x20
+      }
+
+    def dumpToString =
+      type_.name match {
+        case "yaml" => dump(yamlDumpSettings)
+        case  json  =>
+          val sb = new StringBuilder
+          dumpJson(value, sb)
+          sb.toString
+      }
+    value match {
+      case _: Map[String @unchecked, _] =>
+        dumpToString
+      case _: Seq[_] =>
+        dumpToString
+      case x => x
+    }
+  }
+
+  /** Provides missing fields, uses [[toSaveableValue]] to convert values */
+  def toSaveableMap(map: Map[String, scala.Any], view: ViewDef): Map[String, Any] = {
     (if  (view.fields.forall(f => map.contains(f.fieldName) || isOptionalField(f)))
           map
      else viewNameToMapZero(view.name) ++ map
     ) ++
       view.fields
-        .filter(_.type_.isComplexType)
         .filter(f => map.contains(f.fieldName) || !isOptionalField(f))
-        .map(f => f.fieldName -> (map.getOrElse(f.fieldName, null) match {
-          case null if f.isCollection => Nil
-          case null => null
-          case Nil  => Nil
-          case seq: Seq[_] => seq map {
-            case m: Map[String, Any]@unchecked => toSaveableMap(m, viewDef(f.type_.name))
-            case x => x
+        .map(f => f.fieldName -> (try {
+          lazy val valueType = tableMetadata.columnDefOption(view, f).map(_.type_).getOrElse(f.type_)
+          lazy val childView = viewDef(f.type_.name)
+          lazy val shouldSaveAsValue = !f.type_.isComplexType ||
+            childView.table == null && (childView.joins == null || childView.joins == Nil)
+          def toSaveableMapOrValue(value: Any) = value match {
+            case null => null
+            case m: Map[String @unchecked, _] =>
+              if (shouldSaveAsValue) {
+                if (f.type_.isComplexType)
+                  toSaveableValue(toCompatibleMap(m, childView), valueType)
+                else
+                  toSaveableValue(m, valueType)
+              } else
+                toSaveableMap(m, childView)
+            case x =>
+              if (shouldSaveAsValue) {
+                if (f.type_.isComplexType)
+                  toSaveableValue(toCompatibleMap(x, childView, f.fieldName), valueType)
+                else
+                  toSaveableValue(x, valueType)
+              } else
+                toSaveableMap(toCompatibleMap(x, childView, f.fieldName), childView)
           }
-          case m: Map[String, Any]@unchecked => toSaveableMap(m, viewDef(f.type_.name))
-          case x => x
+          map.getOrElse(f.fieldName, null) match {
+            case null if f.isCollection => Nil
+            case null => null
+            case Nil  if f.isCollection => Nil
+            case Nil  => null
+            case m: Map[String @unchecked, _] =>
+              if (f.isCollection)
+                List(toSaveableMapOrValue(m))
+              else
+                toSaveableMapOrValue(m)
+            case seq: Seq[_] =>
+              if (f.isCollection)
+                seq.map(toSaveableMapOrValue)
+              else if (shouldSaveAsValue && !f.type_.isComplexType)
+                toSaveableValue(seq, valueType)
+              else
+                toSaveableMapOrValue(unwrapSeq(seq))
+            case x =>
+              if (shouldSaveAsValue)
+                toSaveableMapOrValue(x)
+              else if (f.isCollection)
+                toCompatibleSeqOfMaps(x, childView, f.fieldName)
+                  .map(toSaveableMap(_, childView))
+              else
+                toSaveableMap(toCompatibleMap(x, childView, f.fieldName), childView)
+          }
+        } catch {
+          case util.control.NonFatal(ex) =>
+            throw new RuntimeException(s"Failed to convert field ${view.name}.${f.fieldName} to saveable map or value", ex)
         }))
   }
 }
@@ -490,7 +664,7 @@ class Querease extends QueryStringBuilder with ValueTransformer
           def maybeAddParent(m: Map[String, Any]) =
             if(!m.contains("__parent")) m + ("__parent" -> obj) else m
           obj.get(n).map {
-            case m: Map[String, _]@unchecked =>
+            case m: Map[String @unchecked, _] =>
               validateViewAndSubviews(n :: path, vd, maybeAddParent(m), r)
             case l: List[Map[String, _]@unchecked] =>
               val p = n :: path
@@ -909,7 +1083,6 @@ trait QueryStringBuilder {
     val (q1, limitOffsetPars) =
       limitOffset(dbPrefix + from + where + cols + groupBy + having + order, countAll, limit, offset)
     val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
-    // Env log q
     // TODO param name?
     (q, values ++ extraParams ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
   }
@@ -1006,7 +1179,7 @@ trait QueryStringBuilder {
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
       val childFieldFilter = if (fieldFilter == null) null else fieldFilter.childFilter(f.fieldName)
-      val joinToParent = Option(f.joinToParent).orElse {
+      def joinToParent = Option(f.joinToParent).orElse {
         if (view.table != null && childViewDef.table != null) {
           val t1 = Option(view.tableAlias).getOrElse(view.table)
           val t2 = Option(childViewDef.tableAlias).getOrElse(childViewDef.table)
@@ -1022,7 +1195,7 @@ trait QueryStringBuilder {
         }
         else None
       }.getOrElse("")
-      val sortDetails = Option(f.orderBy match {
+      def sortDetails = Option(f.orderBy match {
         case null => childViewDef.orderBy match {
           case null | Nil =>
             val prefix = baseFieldsQualifier(childViewDef) match {
@@ -1056,7 +1229,7 @@ trait QueryStringBuilder {
         }
       */
       if (childViewDef.table == null && (childViewDef.joins == null || childViewDef.joins == Nil))
-       if (view.table == null)
+       if (view.table == null || f.table != null)
         qName
        else
         s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation

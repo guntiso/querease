@@ -1022,7 +1022,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     pco2.cars       shouldBe List("Prius", "Tesla")
   }
 
-  if (isDbAvailable) it should s"expand primitive types $dbName" in {
+  if (isDbAvailable) it should s"expand from and collapse to primitive types $dbName" in {
     def buildQueryAndGetResult(viewName: String, id: Long) = {
       val view = qe.viewDef(viewName)
       val (q, p) = qe.queryStringAndParams(view, Map("id" -> id))
@@ -1077,6 +1077,26 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     o1.accounts(0).id     shouldBe  69
     o1.accounts(0).number shouldBe "42"
     o1.accounts(0).balance shouldBe null
+
+    val o2 = qe.get[OrganizationChildExpandTest](id).get
+    o2.id   shouldBe id
+    o2.name shouldBe "name"
+    o2.accounts.size shouldBe 1
+    o2.accounts(0).id     shouldBe  69
+    o2.accounts(0).number shouldBe "42"
+    o2.accounts(0).balance shouldBe null
+
+    val o3 = new OrganizationWithAccounts
+    o3.fill(buildQueryAndGetAsMap("organization_child_expand_test", id))
+    o3.id   shouldBe id
+    o3.name shouldBe "name"
+    o3.accounts.size shouldBe 1
+    o3.accounts(0).id     shouldBe  69
+    o3.accounts(0).number shouldBe "42"
+    o3.accounts(0).balance shouldBe null
+
+    qe.toSaveableMap(o2.toMap, qe.viewDef("organization_child_collapse_test")) shouldBe Map(
+      "id" -> id, "name" -> "name", "accounts" -> """[{"id":69,"number":"42","balance":null}]""")
   }
 
   if (isDbAvailable) it should s"support array types for $dbName" in {
@@ -1142,6 +1162,202 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     a1.id = id
     qe.delete(a1)
+  }
+
+  if (isDbAvailable) it should s"save and get any json to/from $dbName" in {
+    def getAsMap(viewName: String, id: Long): Map[String, Any] = {
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map.empty, extraFilter = s"id = $id")
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, view).head
+    }
+
+    val j1 = new JsonTestAny
+    val id = qe.save(j1)
+    j1.id  = id
+
+    val jsons = Seq(
+      null,
+      s"""{}""",
+      s"""[]""",
+      s"""{"db": "$dbName"}""",
+      s"""["db", "$dbName"]""",
+      s"""{"a": [1, "a", {}, [], [42]], "x": 1, "y": 2, "z": "3", "db": "$dbName"}""",
+    )
+    for (value <- jsons) yield {
+      j1.value = value
+      qe.save(j1)
+      val j2 = qe.get[JsonTestAny](id).get
+      j2.id             shouldBe    id
+      j2.value          shouldBe j1.value
+    }
+
+    val bytesR = "Rūķīši".getBytes("UTF-8")
+    def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes
+    def childMap(map: Map[String, Any]): Map[String, Any] =
+      Option(map("child")).map(_.asInstanceOf[Map[String, _]]).orNull
+    def comparable(map: Map[String, Any]): Map[String, Any] = map.updated("child", childMap(map)
+     .updated("bytes",     Option(childMap(map)("bytes")).map(_.asInstanceOf[Array[Byte]]).map(normalizeBytes).orNull)
+     // dates and times from json are not typed
+     .updated("date",      Option(childMap(map)("date"     )).map(_.toString).map(LocalDate    .parse).orNull)
+     .updated("time",      Option(childMap(map)("time"     )).map(_.toString).map(LocalTime    .parse).orNull)
+     .updated("date_time", Option(childMap(map)("date_time")).map(_.toString).map(LocalDateTime.parse).orNull)
+     .updated("child",     Option(childMap(map)).flatMap { cm => Option(childMap(cm)) }.map { ccm =>
+        ccm.updated("date",      Option(ccm("date"     )).map(_.toString).map(LocalDate    .parse).orNull)
+           .updated("date_time", Option(ccm("date_time")).map(_.toString).map(LocalDateTime.parse).orNull)
+      }.orNull)
+    )
+    val typesTestView = qe.viewDef("json_test_types")
+    def toCompatibleMapFromDb(obj: JsonTestTypes, viewName: String = "json_test_types"): Map[String, Any] = {
+      val id = qe.save(obj)
+      val view = qe.viewDef(viewName)
+      val (q, p) = qe.queryStringAndParams(view, Map("id" -> id))
+      val result = Query(q, p)
+      qe.toCompatibleSeqOfMaps(result, typesTestView).head
+    }
+    def dtoDbRoundtrip(obj: JsonTestTypes): JsonTestTypes = {
+      val id = qe.save(obj)
+      qe.get[JsonTestTypes](id).get
+    }
+    // empty
+    val obj = new JsonTestTypes
+    obj.id  = id
+    dtoDbRoundtrip(obj).toMap  shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+    val child = new JsonTestTypesChild
+    obj.child = child
+
+    // strings
+    child.string = "Rūķīši-X-123"
+    dtoDbRoundtrip(obj).toMap  shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+
+    // dates and times
+    child.date = LocalDate.parse("2021-12-21") // java.sql.Date.valueOf("2021-12-21")
+    child.time = LocalTime.parse("10:42:15")   // java.sql.Time.valueOf("10:42:15")
+    child.date_time =                          // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+    child.date = null
+    child.time = null
+    child.date_time = null
+
+    // negatives
+    child.long = Long.MinValue
+    child.int = Integer.MIN_VALUE
+    child.bigint = BigInt(Long.MinValue) - 1
+    child.double = Double.MinValue
+    // child.decimal = BigDecimal(Long.MinValue, 2) // FIXME handle json io decimal   
+    child.boolean = false
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    // toCompatibleMapFromDb(obj) shouldBe obj.toMap   
+
+    // positives
+    child.long = Long.MaxValue
+    child.int = Integer.MAX_VALUE
+    child.bigint = BigInt(Long.MaxValue) + 1
+    child.double = Double.MaxValue
+    // child.decimal = BigDecimal(Long.MaxValue, 2) // FIXME handle json io decimal   
+    child.boolean = true
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    // toCompatibleMapFromDb(obj) shouldBe obj.toMap   
+
+    // zeroes
+    child.long   = 0L
+    child.int    = 0
+    child.bigint = BigInt(0)
+    child.double = 0
+    child.decimal = BigDecimal(0, 2)
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
+
+    // bytes
+    // child.bytes = bytesR // TODO handle json io bytes   
+    // comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+
+    for (value <- jsons) yield {
+      child.json = value
+      qe.save(j1)
+      dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+      toCompatibleMapFromDb(obj) shouldBe obj.toMap
+    }
+
+    // child view
+    child.child = new TypesTestChild
+    child.child.name = "CHILD-1"
+    child.child.date = LocalDate.parse("2021-11-08")  // java.sql.Date.valueOf("2021-11-08")
+    child.child.date_time =                           // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+
+    // children
+    child.children = List(new TypesTestChild, new TypesTestChild)
+    child.children(0).name = "CHILD-2"
+    child.children(1).name = "CHILD-3"
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+
+    child.long_arr = List(Long.MinValue, 0, 42, Long.MaxValue)
+    child.string_arr = List("one", "two", "three")
+    child.date_arr    = List(
+      LocalDate.parse("2021-11-08"),
+      LocalDate.parse("2024-04-16"),
+    )
+    child.time_arr = List(
+      LocalTime.parse("10:42:15"),
+      LocalTime.parse("17:06:45"),
+    )
+    child.date_time_arr = List(
+      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+      LocalDateTime.parse("2024-01-16 13:09:10.2".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+    )
+    child.int_arr      = List(Int.MinValue, 0, 42, Int.MaxValue)
+    child.bigint_arr   = List(BigInt(0), BigInt(Long.MaxValue) + 1)
+    child.double_arr   = List(0, Double.MaxValue)
+    // child.decimal_arr  = List(0, BigDecimal(Long.MaxValue, 2)) // FIXME handle json io decimal   
+    child.boolean_arr  = List(true, false)
+    dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
+
+    val c2 = qe.get[JsonTestTypes](id).get.child
+    c2.long           shouldBe child.long
+    c2.string         shouldBe child.string
+    c2.date           shouldBe child.date
+    c2.time           shouldBe child.time
+    c2.date_time      shouldBe child.date_time
+    c2.int            shouldBe child.int
+    c2.bigint         shouldBe child.bigint
+    c2.double         shouldBe child.double
+    c2.decimal        shouldBe child.decimal
+    c2.boolean        shouldBe child.boolean
+    c2.bytes          shouldBe child.bytes
+    c2.json           shouldBe child.json
+    c2.long_arr       shouldBe child.long_arr
+    c2.string_arr     shouldBe child.string_arr
+    c2.date_arr       shouldBe child.date_arr
+    c2.time_arr       shouldBe child.time_arr
+    c2.date_time_arr  shouldBe child.date_time_arr
+    c2.int_arr        shouldBe child.int_arr
+    c2.bigint_arr     shouldBe child.bigint_arr
+    c2.double_arr     shouldBe child.double_arr
+    c2.decimal_arr    shouldBe child.decimal_arr
+    c2.boolean_arr    shouldBe child.boolean_arr
+
+    val m2 = comparable(getAsMap("json_test_types", id))("child").asInstanceOf[Map[String @unchecked, _]]
+    m2("long_arr")      shouldBe child.long_arr
+    m2("string_arr")    shouldBe child.string_arr
+    m2("date_arr")      shouldBe child.date_arr.map(_.toString)
+    m2("time_arr")      shouldBe child.time_arr.map(_.toString)
+    m2("date_time_arr") shouldBe child.date_time_arr.map(_.toString)
+    m2("int_arr")       shouldBe child.int_arr
+    // m2("bigint_arr")    shouldBe child.bigint_arr   
+    // m2("double_arr")    shouldBe child.double_arr   
+    m2("decimal_arr")   shouldBe child.decimal_arr
+    m2("boolean_arr")   shouldBe child.boolean_arr
+
+    j1.id = id
+    qe.delete(j1)
   }
 
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {

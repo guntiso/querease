@@ -1,0 +1,39 @@
+name:   json_test_any
+table:  json_io_test
+fields:
+- id
+- value
+# - values_array
+
+name:   json_test_types
+table:  json_io_test
+fields:
+- id
+- child = value :
+    table:
+    fields:
+    - id
+    - long              long
+    - string            string
+    - date              date
+    - time              time
+    - date_time         dateTime
+    - int               int
+    - bigint            integer
+    - double            double
+    - decimal           decimal  20 2
+    - boolean           boolean
+    - bytes             bytes
+    - json              json
+    - long_arr        * long
+    - string_arr      * string   4096
+    - date_arr        * date
+    - time_arr        * time
+    - date_time_arr   * dateTime
+    - int_arr         * int
+    - bigint_arr      * integer
+    - double_arr      * double
+    - decimal_arr     * decimal  20 2
+    - boolean_arr     * boolean
+    - child             types_test_child
+    - children        * types_test_child
