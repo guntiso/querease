@@ -689,6 +689,10 @@ class person_from_multiple_db_1 extends DtoWithId {
   var name: String = null
   var surname: String = null
   var other_db_person: person_from_multiple_db_1_other_db_person = null
+  var distraction: List[person_from_multiple_db_1_distraction] = Nil
+}
+class person_from_multiple_db_1_distraction extends Dto {
+  var any: String = null
 }
 class person_from_multiple_db_1_other_db_person extends Dto {
   var full_name: String = null

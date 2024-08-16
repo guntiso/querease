@@ -196,6 +196,10 @@ fields:
     - full_name
   - filter:
     - p2.full_name ~ '%o%'
+- distraction * = :
+  - table:
+  - fields:
+    - any
 filter:
 - id < 2000
 
