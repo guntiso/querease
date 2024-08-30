@@ -1210,16 +1210,6 @@ trait QueryStringBuilder {
           case ord => ord mkString ", "
         }
         case ord =>
-          // TODO unwrap in mojoz, clean up here
-          def unbra(s: String) =
-            if (s.startsWith("(") && s.endsWith(")"))
-                 s.substring(1, s.length - 1).trim
-            else s.trim
-          if (ord startsWith "~#")
-            s"~${unbra(ord.substring(2).trim)}"
-          else if (ord startsWith "#")
-            unbra(ord.substring(1).trim)
-          else
             ord.trim
       }) /* TODO ? .map(Naming.dbNameToXsdName) */ .orNull
       /*
