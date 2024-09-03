@@ -387,6 +387,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
             case null if f.isCollection => Nil
             case null => null
             case Nil  if f.isCollection => Nil
+            case Nil  if f.type_.name == "json" || f.type_.name == "yaml" => "[]"
             case Nil  => null
             case m: Map[String @unchecked, _] =>
               if (f.isCollection)

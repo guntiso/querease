@@ -1178,8 +1178,11 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val jsons = Seq(
       null,
+      s"""0""",
+      s""""0"""",
       s"""{}""",
       s"""[]""",
+      s"""null""",
       s"""{"db": "$dbName"}""",
       s"""["db", "$dbName"]""",
       s"""{"a": [1, "a", {}, [], [42]], "x": 1, "y": 2, "z": "3", "db": "$dbName"}""",
@@ -1191,6 +1194,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       j2.id             shouldBe    id
       j2.value          shouldBe j1.value
     }
+
+    qe.toSaveableMap(Map("id" -> 0, "value" -> Nil), qe.viewDef("json_test_any")) shouldBe Map("id" -> 0, "value" -> "[]")
 
     val bytesR = "Rūķīši".getBytes("UTF-8")
     def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes
