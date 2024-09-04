@@ -603,7 +603,10 @@ trait QuereaseMetadata {
     val startTime = System.currentTimeMillis
     val dbToCompiler = compilationUnits.map(_.db).toSet.map { (db: String) => db -> new org.tresql.compiling.Compiler {
       override val metadata = if (db == null) tresqlMetadata else tresqlMetadata.extraDbToMetadata(db)
-      override val extraMetadata = tresqlMetadata.extraDbToMetadata
+      override val extraMetadata =
+        if  (db == null)                      tresqlMetadata.extraDbToMetadata
+        // This does no help. TODO Key for default db access?
+        else Map((null: String, metadata)) ++ tresqlMetadata.extraDbToMetadata
       override protected val macros =
         new MacroResourcesImpl(Option(macrosClass).map(_.getDeclaredConstructor().newInstance()).orNull, tresqlMetadata)
     }}.toMap

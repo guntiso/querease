@@ -47,6 +47,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     try commit catch { case util.control.NonFatal(_) => } finally clearEnv
   }
 
+  if (isDbAvailable) "querease" should s"compile all queries for $dbName" in {
+    qe.compileAllQueries(Set.empty, true, s => (println(s)))
+  }
+
   if (isDbAvailable) "querease" should s"interact with $dbName database properly" in {
     val bank = new BankListRow
     bank.code = "b1"

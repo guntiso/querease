@@ -203,6 +203,8 @@ fields:
 filter:
 - id < 2000
 
+
+# TODO compile person_from_multiple_db_2
 name:     person_from_multiple_db_2
 db:       querease2
 table:    person p

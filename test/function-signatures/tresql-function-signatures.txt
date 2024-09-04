@@ -10,3 +10,6 @@ convert(value::any, typeName::string)::any
 array(query::any)::any
 concat_ws(sep::string, str::'any*')::string
 nullif(a::integer, b::integer)::integer
+
+// macro
+no_args_macro()::any
