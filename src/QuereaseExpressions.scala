@@ -6,7 +6,7 @@ import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.Type
 import org.tresql.{Cache, SimpleCache}
 import org.tresql.parsing.{ExpTransformer, QueryParsers}
-import org.tresql.ast.{Exp, Ident, Variable}
+import org.tresql.ast.{Exp, Ident, Ord, Variable}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
@@ -52,6 +52,9 @@ object QuereaseExpressions {
         case Success(r, _) => r
         case x => sys.error(x.toString)
       }
+    }
+    def colAndOrd: MemParser[(Exp, Ord)] = opt(expr) ~ opt(order) ^^ {
+      case e ~ o => (e.orNull, o.orNull)
     }
   }
   class DefaultParser(val cache: Option[Cache]) extends Parser {
