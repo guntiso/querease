@@ -779,6 +779,8 @@ object QuereaseMetadata {
   def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
     mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
 
+  private val orderByParser: QuereaseExpressions.DefaultParser = new QuereaseExpressions.DefaultParser(None)
+
   def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
     import scala.jdk.CollectionConverters._
     val Initial = "initial"
@@ -813,9 +815,19 @@ object QuereaseMetadata {
         case Some(null) => Seq("")
         case Some(x) => Seq(x)
       }
-    val qeFields = viewDef.fields map { f =>
+    val qeFields = viewDef.fields.map { f =>
       val initial = getExtraOpt(f, Initial).orNull
       f.updateExtras(_ => QuereaseFieldDef(initial))
+    }.map { f =>
+      if (f.expression != null && f.expression.indexOf("#") > 0) {
+        val (exp, ord) = orderByParser.parseWithParser(orderByParser.colAndOrd)(f.expression)
+        if (ord != null)
+          f.copy(
+            expression = exp.tresql,
+            orderBy    = (Option(f.orderBy).toSeq ++ ord.cols.map(_.tresql)).mkString(", "),
+          )
+        else f
+      } else f
     }
     val rawKey = getStringSeq(Key, viewDef.extras).flatMap(Option(_).toList).mkString(",")
     val keyFieldNames =

@@ -484,6 +484,10 @@ class QuereaseTests extends FlatSpec with Matchers {
     //      for single (implied lookup) and multiple children
   }
 
+  "querease" should "parse field order-by" in {
+    qe.viewDef("field_order_by_test").field("nm").orderBy shouldBe "name, noid_id"
+  }
+
   "querease" should "build correct query" in {
     qe.queryStringAndParams(qe.viewDef("noid_test"), Map.empty)._1 should be(
       "noid_test {noid_test.noid_id id, noid_test.name nm}#(id)"

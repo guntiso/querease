@@ -284,6 +284,10 @@ class father_tree extends DtoWithId {
   var name: String = null
   var sons: List[father_tree] = Nil
 }
+class field_order_by_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var nm: String = null
+}
 class filter_with_field_ref_test_1 extends Dto {
   var full_name: String = null
 }
