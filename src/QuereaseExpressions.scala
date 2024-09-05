@@ -54,6 +54,7 @@ object QuereaseExpressions {
       }
     }
     def colAndOrd: MemParser[(Exp, Ord)] = opt(expr) ~ opt(order) ^^ {
+      case Some(q: org.tresql.ast.Query) ~ None if q.order != null => (q.copy(order = null), q.order)
       case e ~ o => (e.orNull, o.orNull)
     }
   }
