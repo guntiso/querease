@@ -1659,7 +1659,7 @@ object QuereaseDbTests {
     case ExtraDb => Env2
   }
   def setEnv(db: String, dialect: CoreTypes.Dialect, conn: Connection) = {
-    Env.extraResources = Map(ExtraDb -> Env2)
+    Env.extraResources = Map("" -> Env, ExtraDb -> Env2)
     val env = getEnv(db)
     conn.setAutoCommit(false)
     env.dialect = dialect

@@ -40,7 +40,10 @@ class TresqlMetadata(
       s"$CursorsSchemaName.$vn" -> Table(s"$CursorsSchemaName.$vn", cols, Key(Nil), Map())
     } else cursorDefs
   val dbToAlias: Map[String, Set[String]] =
-    (dbSet.map(db => (db, db)) ++ aliasToDb)
+    (dbSet.flatMap {
+      case null => Seq(("", null), (null, null))
+      case db   => Seq((db, db))
+    } ++ aliasToDb)
       .groupBy(_._2)
       .transform { case (_, set) => set.map(_._1) }
   val extraDbToMetadata: Map[String, TresqlMetadata] =

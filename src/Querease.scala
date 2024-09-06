@@ -1239,7 +1239,8 @@ trait QueryStringBuilder {
         val (tresqlQueryString, _) =
           queryStringAndParams(childViewDef, null, 0, 0, sortDetails,
             fieldFilter = childFieldFilter, includeDbPrefix = false)
-        val childDbPrefix = Option(childViewDef.db).map(_ + ":").getOrElse("")
+        val isNamedDb = view.db != null // FIXME more levels
+        val childDbPrefix = Option(childViewDef.db).orElse(Some("").filter(_ => isNamedDb)).map(_ + ":").getOrElse("")
         "|" + childDbPrefix + joinToParent + tresqlQueryString
       }
     } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
