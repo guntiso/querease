@@ -59,6 +59,31 @@ trait QuereaseMetadata {
   lazy val tresqlMetadata =
     TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, nameToViewDef)
 
+  protected lazy val viewNameToChildViewNames: Map[String, Set[String]] =
+    nameToViewDef.collect {
+      case (k, v) => k -> v.fields.filter(_.type_.isComplexType).map(_.type_.name).toSet
+    }
+  protected lazy val childViewNames: Set[String] = viewNameToChildViewNames.values.flatMap(identity).toSet
+  protected lazy val viewNameToParentViewNames: Map[String, Set[String]] =
+    viewNameToChildViewNames.toSeq.flatMap {
+      case (vn, cvnSet) => cvnSet.map(_ -> vn)
+    }.groupBy(_._1)
+     .map { case (cvn, cvnVnSeq) => cvn -> cvnVnSeq.map(_._2).toSet }
+  private[querease] lazy val childViewNameToAncestorDbNames: Map[String, Set[String]] =
+    childViewNames.map { childName =>
+      val namesQ   = collection.mutable.Queue[String]()
+      val namesSet = collection.mutable.Set[String]()
+      namesQ ++= viewNameToParentViewNames(childName)
+      while (namesQ.nonEmpty) {
+        val name = namesQ.dequeue()
+        if (!namesSet.contains(name)) {
+          namesSet += name
+          viewNameToParentViewNames.get(name).foreach(namesQ.++=)
+        }
+      }
+      childName -> namesSet.map(nameToViewDef).map(_.db).toSet
+    }.toMap
+
   // TODO merge all extra metadata, attach to view: ordering, persistence metadata, key fields, ...
   protected lazy val viewNameToFieldOrdering = nameToViewDef.map(kv => (kv._1, FieldOrdering(kv._2)))
   protected lazy val persistenceMetadataMaxDepth: Int = -1
@@ -577,11 +602,9 @@ trait QuereaseMetadata {
   } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit("validations", viewDef.name, viewDef.db, vq))
 
   protected def generateQueriesForCompilation(log: => String => Unit): Seq[CompilationUnit] = {
-    val childViews =
-      nameToViewDef.values.flatMap(_.fields.filter(_.type_.isComplexType)).map(_.type_.name).toSet
     val viewsToCompile =
       nameToViewDef.values.toList
-      .filter(viewDef => !childViews.contains(viewDef.name)) // compile only top-level views
+      .filter(viewDef => !childViewNames.contains(viewDef.name)) // compile only top-level views
       .sortBy(_.name)
     log(s"Generating queries to be compiled for ${viewsToCompile.size} top-level views" +
         s" (${nameToViewDef.size} views total)")

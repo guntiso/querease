@@ -1164,6 +1164,12 @@ trait QueryStringBuilder {
         else Ident(pathToAlias(i dropRight 1) :: (i takeRight 1))
     })
   }
+  protected def childDbPrefix(childViewDef: ViewDef): String = {
+    lazy val hasNamedDbAncestor =
+      childViewNameToAncestorDbNames.get(childViewDef.name)
+        .exists(_.exists(_ != null))
+    Option(childViewDef.db).orElse(Some("").filter(_ => hasNamedDbAncestor)).map(_ + ":").getOrElse("")
+  }
   def queryColExpression(view: ViewDef, f: FieldDef,
       pathToAlias: Map[List[String], String],
       fieldFilter: FieldFilter,
@@ -1239,9 +1245,7 @@ trait QueryStringBuilder {
         val (tresqlQueryString, _) =
           queryStringAndParams(childViewDef, null, 0, 0, sortDetails,
             fieldFilter = childFieldFilter, includeDbPrefix = false)
-        val isNamedDb = view.db != null // FIXME more levels
-        val childDbPrefix = Option(childViewDef.db).orElse(Some("").filter(_ => isNamedDb)).map(_ + ":").getOrElse("")
-        "|" + childDbPrefix + joinToParent + tresqlQueryString
+        "|" + childDbPrefix(childViewDef) + joinToParent + tresqlQueryString
       }
     } // TODO? else if (isI18n(f)) getI18nColumnExpression(qName)
     else qName
