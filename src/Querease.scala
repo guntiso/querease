@@ -842,17 +842,19 @@ class Querease extends QueryStringBuilder with ValueTransformer
   )(implicit resources: Resources): RowLike = {
     import QuereaseMetadata.AugmentedQuereaseFieldDef
     import view.name
+    val rootDbPrefix  = Option(view.db).map(db => s"|$db:").getOrElse("")
+    val childDbPrefix = Option(view.db).map(db =>  s"$db:").getOrElse("")
     val q =
         view.fields.map { f =>
           val expr =
             if (f.initial != null)
               f.initial
             else if (view.table != null && f.type_ != null && f.type_.isComplexType)
-              s"|[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
+              s"|$childDbPrefix[false]${view.table}[false]{0}" // XXX FIXME providing child result - expected by current QuereaseIo implementation
             else
               "null"
           expr + " " + f.fieldName
-        }.mkString("{", ", ", "}")
+        }.mkString(s"$rootDbPrefix{", ", ", "}")
     try Query(q, params).uniqueOption.get catch {
       case ex: org.tresql.MissingBindVariableException  => throw ex
       case ex: org.tresql.TresqlException               => throw ex

@@ -17,6 +17,20 @@ fields:
   - initial: "'Name Surname'"
 - notes = no_args_macro()
 
+name:   person_2_ch
+db:     querease2
+table:  person
+fields:
+- id
+- full_name:
+  - initial: "'Name Surname'"
+- children [false] :
+    db:     querease2
+    table:  person
+    fields:
+    - id
+    - full_name
+
 name:   person_accounts_2
 db:     querease2
 table:  person
