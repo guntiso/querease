@@ -1107,6 +1107,15 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       row.close
       p
     }.get.toMap shouldBe p2.toMap
+    val p3 = new Person2Ch
+    p3.full_name = "Name Surname"
+    qe.create[Person2Ch](Map.empty).toMap shouldBe p3.toMap
+    Option(qe.create(qe.viewDef("person_2_ch"), Map.empty)).map { row =>
+      val p = new Person2Ch
+      p.fill(row)
+      row.close
+      p
+    }.get.toMap shouldBe p3.toMap
   }
 
   if (isDbAvailable) it should s"return id on insert and save to $dbName" in {

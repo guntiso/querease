@@ -491,6 +491,15 @@ class person_2 extends DtoWithId {
   var full_name: String = null
   var notes: String = null
 }
+class person_2_ch extends DtoWithId {
+  var id: java.lang.Long = null
+  var full_name: String = null
+  var children: person_2_ch_children = null
+}
+class person_2_ch_children extends DtoWithId {
+  var id: java.lang.Long = null
+  var full_name: String = null
+}
 class person_accounts_2 extends DtoWithId {
   var id: java.lang.Long = null
   var accounts: List[person_accounts_2_accounts] = Nil
