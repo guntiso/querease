@@ -271,6 +271,42 @@ class QuereaseTests extends FlatSpec with Matchers {
       null,
     )
 
+    qe.persistenceMetadata("person_with_parents_1") shouldBe View(
+      List(SaveTo("person", Set(), List())),
+      Some(Filters(None, None, None)),
+      "p",
+      List(
+        Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+        Property("name", TresqlValue(":name"), false, true, true),
+        Property("surname", TresqlValue(":surname"), false, true, true),
+        Property("sex", TresqlValue(":sex"), false, true, true),
+        Property("mother_id", LookupViewValue("mother", View(
+          List(SaveTo("person", Set(), List())),
+          Some(Filters(None, None, None)),
+          "m",
+          List(
+            Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+            Property("name", TresqlValue(":name"), false, true, true),
+            Property("surname", TresqlValue(":surname"), false, true, true),
+            Property("sex", TresqlValue("(coalesce(:sex, 'F'))"), false, true, true)
+          ),
+          null
+        )), false, true, true),
+        Property("father_id", LookupViewValue("father", View(
+          List(SaveTo("person", Set(), List())),
+          Some(Filters(None, None, None)),
+          "f",
+          List(
+            Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+            Property("name", TresqlValue(":name"), false, true, true),
+            Property("surname", TresqlValue(":surname"), false, true, true),
+            Property("sex", TresqlValue("(coalesce(:sex, 'M'))"), false, true, true)),
+          null
+        )), false, true, true)
+      ),
+      null
+    )
+
     qe.persistenceMetadata("organization_ref_only_update_test") shouldBe View(
       List(SaveTo("organization",Set(),List("name"))),
       Some(Filters(None,None,None)),
