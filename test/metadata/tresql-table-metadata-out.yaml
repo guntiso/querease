@@ -16,6 +16,12 @@ refs:
 - account_id -> account(id)
 - currency_code -> currency(code)
 
+table: address
+columns:
+- id ! long
+- name ! string
+pk: id
+
 table: array_types_test
 columns:
 - id ! long
@@ -92,8 +98,10 @@ columns:
 - id ! long
 - name ! string
 - main_account_id long
+- legal_address_id long
 pk: id
 refs:
+- legal_address_id -> address(id)
 - main_account_id -> organization_account(id)
 
 table: organization_account
@@ -104,6 +112,17 @@ columns:
 - organization_id long
 pk: id
 refs:
+- organization_id -> organization(id)
+
+table: organization_facts
+columns:
+- id ! long
+- organization_id ! long
+- name ! string
+- actual_address_id long
+pk: id
+refs:
+- actual_address_id -> address(id)
 - organization_id -> organization(id)
 
 table: passport

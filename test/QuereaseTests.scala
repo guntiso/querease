@@ -250,25 +250,22 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
 
     qe.persistenceMetadata("person_father_save") shouldBe View(
-      List(SaveTo("person",Set(),List())),
-      Some(Filters(None,None,None)),
+      List(SaveTo("person", Set(), List())),
+      Some(Filters(None, None, None)),
       "p",
       List(
-        Property("name",TresqlValue(":name"),false,true,true),
-        Property("sponsor",ViewValue(
-          View(
-            List(SaveTo("person",Set("father_id"),List())),
-            Some(Filters(None,None,None)),
-            "f",
-            List(
-              Property("name",TresqlValue(":name"),false,true,true),
-            ),
-            null,
-          ),
-          SaveOptions(true,false,true),
-        ), false, true, true),
-      ),
-      null,
+        Property("name", TresqlValue(":name"), false, true, true),
+        Property("sex", TresqlValue(":sex"), false, true, true),
+        Property("father_id", LookupViewValue("sponsor", View(
+          List(SaveTo("person", Set("father_id"), List())),
+          Some(Filters(None, None, None)),
+          "f",
+          List(
+            Property("name", TresqlValue(":name"), false, true, true),
+            Property("sex", TresqlValue(":sex"), false, true, true)
+          ), null
+        )), false, true, true)
+      ), null
     )
 
     qe.persistenceMetadata("person_with_parents_1") shouldBe View(
@@ -305,6 +302,34 @@ class QuereaseTests extends FlatSpec with Matchers {
         )), false, true, true)
       ),
       null
+    )
+
+    qe.persistenceMetadata("organization_with_facts") shouldBe View(
+      List(SaveTo("organization", Set(), List()), SaveTo("organization_facts", Set("organization_id", "id"), List())),
+      Some(Filters(None, None, None)),
+      "o",
+      List(
+        Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+        Property("name", TresqlValue(":name"), false, true, true),
+        Property("actual_address_id", LookupViewValue("actual_address", View(
+          List(SaveTo("address", Set(), List())),
+          Some(Filters(None, None, None)),
+          "a",
+          List(
+            Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+            Property("name", TresqlValue(":name"), false, true, true)
+          ), null
+        )), false, true, true),
+        Property("legal_address_id", LookupViewValue("legal_address", View(
+          List(SaveTo("address", Set(), List())),
+          Some(Filters(None, None, None)),
+          "a",
+          List(
+            Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+            Property("name", TresqlValue(":name"), false, true, true)
+          ), null
+        )), false, true, true)
+      ), null
     )
 
     qe.persistenceMetadata("organization_ref_only_update_test") shouldBe View(

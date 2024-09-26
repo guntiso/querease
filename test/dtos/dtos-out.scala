@@ -54,6 +54,10 @@ class account_with_bank_bank extends DtoWithId {
   var code: String = null
   var country_code: String = null
 }
+class address extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+}
 class ambiguity_resolver_test_person_1 extends Dto {
   var this_name: String = null
   var fath_name: String = null
@@ -570,6 +574,12 @@ class organization_with_accounts_and_key_accounts extends DtoWithId {
   var number: String = null
   var balance: scala.math.BigDecimal = null
 }
+class organization_with_facts extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var actual_address: address = null
+  var legal_address: address = null
+}
 class person extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
@@ -692,10 +702,12 @@ class person_choice_without_resolver extends Dto {
 }
 class person_father_save extends Dto {
   var name: String = null
+  var sex: String = null
   var sponsor: person_father_save_sponsor = null
 }
 class person_father_save_sponsor extends Dto {
   var name: String = null
+  var sex: String = null
 }
 class person_from_multiple_db_1 extends DtoWithId {
   var id: java.lang.Long = null

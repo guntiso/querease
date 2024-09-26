@@ -394,21 +394,12 @@ trait QuereaseMetadata {
           // TODO searh also reverse refs to avoid runtime exceptions
           // TODO raise more ambiguities, refs search too liberal and thus unstable when db structure changes
           if  (f.isCollection) Nil
-          else tables
-            .sorted( // sort is stable
-              Ordering.by((table: org.mojoz.metadata.TableDef) =>
-                if (table.name == f.table) 0 else 1))
-            .find { table => table.refs.exists(_.refTable == childTableName) }
-            .map { table => table -> table.refs.count(_.refTable == childTableName) }
-            .map {
-              case (table, 1) =>
-                table.refs.find(_.refTable == childTableName).toSeq
-              case (table, n) =>
-                table.refs.find { t => t.refTable == childTableName &&
-                  t.defaultRefTableAlias == fieldName
-                }.toSeq
-            }
-            .getOrElse(Nil)
+          else {
+            val refs     = tables.flatMap(_.refs.filter(_.refTable == childTableName))
+            val bestRefs = refs.filter(r => f.saveTo != null && f.saveTo == s"${r.refTable}:${r.cols.head}")
+            val goodRefs = if (bestRefs.isEmpty) refs.filter(_.defaultRefTableAlias == fieldName) else Nil
+            (if (bestRefs.nonEmpty) bestRefs else if (goodRefs.nonEmpty) goodRefs else refs).toSeq
+          }
         }
         def persistencePropertyValue(valueTresql: String) = {
           val tresqlValue = TresqlValue(

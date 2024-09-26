@@ -1393,6 +1393,40 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     m_saved.daughters(0).sex  shouldBe "F"
     m_saved.daughters(1).name shouldBe d2.name
     m_saved.daughters(1).sex  shouldBe "F"
+
+    val child = new PersonFatherSave
+    child.name = "child-of-sponsor"
+    child.sex  = "F"
+    child.sponsor = new PersonFatherSaveSponsor
+    child.sponsor.name = "sponsor"
+    child.sponsor.sex  = "M"
+    val childId = qe.save(child)
+
+    var c_saved: PersonFatherSave = null
+    c_saved = qe.get[PersonFatherSave](childId).orNull
+    c_saved.name shouldBe "child-of-sponsor"
+    c_saved.sponsor.name shouldBe "sponsor"
+
+    val pChild = qe.get[Person](childId).get
+    val pSponsor = qe.get[Person](pChild.father_id).get
+    pChild.father_id = null
+    qe.save(pChild)
+
+    c_saved = qe.get[PersonFatherSave](childId).orNull
+    c_saved.name shouldBe "child-of-sponsor"
+    c_saved.sponsor shouldBe null
+
+    qe.save(c_saved)
+    c_saved = qe.get[PersonFatherSave](childId).orNull
+    c_saved.name shouldBe "child-of-sponsor"
+    c_saved.sponsor shouldBe null
+
+    qe.delete(pChild)
+    c_saved = qe.get[PersonFatherSave](childId).orNull
+    c_saved shouldBe null
+
+    qe.delete(pSponsor)
+    qe.get[Person](pSponsor.id).orNull shouldBe null
   }
 
   if (isDbAvailable) it should s"convert result to compatible map for view from $dbName" in {

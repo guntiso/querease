@@ -1,3 +1,12 @@
+name:  address
+table: address a
+api:
+portal:
+fields:
+- id
+- name
+
+
 name: organization_with_accounts
 table: organization
 fields:
@@ -25,6 +34,20 @@ fields:
     - id
     - number
     - balance
+
+
+name:     organization_with_facts
+table:    organization o
+save-to:
+- organization
+- organization_facts
+joins:
+- o/[o.id = f_.id]organization_facts f_
+fields:
+- id
+- name
+- actual_address  [a.id = f_.actual_address_id] address
+- legal_address   [a.id = o.legal_address_id]   address
 
 
 name:   organization_key_test
