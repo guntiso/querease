@@ -18,12 +18,12 @@ ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 // scalacOptions ++= (if (scalaVersion.value startsWith "3") Seq("-explain") else Nil)
 
-javacOptions ++= Seq("-source", "1.8", "-target", "1.8", "-Xlint")
+javacOptions ++= Seq("-source", "11", "-target", "11", "-Xlint")
 initialize := {
   val _ = initialize.value
   val javaVersion = sys.props("java.specification.version")
-  if (javaVersion != "1.8")
-    sys.error("Java 1.8 is required for this project. Found " + javaVersion + " instead")
+  if (javaVersion != "11")
+    sys.error("Java 11 is required for this project. Found " + javaVersion + " instead")
 }
 
 val mojozV  = "5.2.3"
@@ -33,7 +33,7 @@ libraryDependencies ++= Seq(
   "org.tresql"    %% "tresql"     % tresqlV,
   "com.typesafe"   % "config"     % "1.4.3",
   // test
-  "org.hsqldb"     % "hsqldb"     % "2.7.3"  % "test" classifier "jdk8",
+  "org.hsqldb"     % "hsqldb"     % "2.7.3"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.19" % "test",
   "org.postgresql" % "postgresql" % "42.7.4" % "test",
 )
