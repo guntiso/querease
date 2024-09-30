@@ -41,14 +41,14 @@ trait FieldFilter {
 
 trait ValueTransformer { this: QuereaseMetadata =>
 
-  private def parseColumnValue(value: Any, view: ViewDef, nameOrIndex: String): Any = {
+  private def parseColumnValue(value: Any, label: String): Any = {
     def toScala(v: Any): Any = v match {
       case m: java.util.Map[_, _]    => m.asScala.map { case (k, v) => (k, toScala(v)) }.toMap
       case a: java.util.ArrayList[_] => a.asScala.map(toScala).toList
       case x => x
     }
     val loaderSettings = LoadSettings.builder()
-      .setLabel(s"${view.name}[$nameOrIndex]")
+      .setLabel(label)
       .build()
     toScala((new Load(loaderSettings)).loadFromString(s"$value"))
   }
@@ -59,12 +59,25 @@ trait ValueTransformer { this: QuereaseMetadata =>
       .filter(_._2 != null)
       .toMap
 
-  protected def typedValue(row: RowLike, index: Int, type_ : Type): Any =
-    row.typed(index, typeNameToScalaTypeName.get(type_.name).orNull)
+  protected def typedValue(row: RowLike, index: Int, type_ : Type): Any = {
+    val stn = typeNameToScalaTypeName.get(type_.name).orNull
+    row(index) match {
+      case arrayString: String if arrayString startsWith "[" =>
+        if  (stn == "java.lang.String")
+             arrayString
+        else unwrapSeq(parseColumnValue(arrayString, s"columns[$index]").asInstanceOf[Seq[_]])
+      case _ =>
+        row.typed(index, stn)
+    }
+  }
 
   /** Override this method to add support for collections parsed from other types (string, json, xml, ...) of values from db */
   protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
-    List(typedValue(row, index, type_))
+    row(index) match {
+      case arrayString: String if arrayString startsWith "[" =>
+        parseColumnValue(arrayString, s"columns[$index]").asInstanceOf[Seq[_]]
+      case _ => List(typedValue(row, index, type_))
+    }
 
   private def toCompatibleMap(row: RowLike, index: Int, view: ViewDef): Map[String, Any] = {
     val nameOrIndex =
@@ -78,7 +91,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
   def toCompatibleMap(value: Any, view: ViewDef, nameOrIndex: String): Map[String, Any] = {
     if (value == null || value == "[]")
       null
-    else parseColumnValue(value, view, nameOrIndex: String) match {
+    else parseColumnValue(value, s"${view.name}[$nameOrIndex]") match {
       case null => null
       case m: Map[String @unchecked, _] => toCompatibleMap(m, view)
       case q: Seq[_] => unwrapSeq(q) match {
@@ -100,7 +113,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
   def toCompatibleSeqOfMaps(value: Any, view: ViewDef, nameOrIndex: String): Seq[Map[String, Any]] = {
     if (value == null)
       null
-    else parseColumnValue(value, view, nameOrIndex) match {
+    else parseColumnValue(value, s"${view.name}[$nameOrIndex]") match {
       case m: Map[String @unchecked, _] => List(toCompatibleMap(m, view))
       case q: Seq[_] => q.map {
         case m: Map[String @unchecked, _] => toCompatibleMap(m, view)

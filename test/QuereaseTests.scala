@@ -833,17 +833,6 @@ object QuereaseTests {
        persistenceMetadata(nameToViewDef(viewName), data)
      override protected def resolvableCastToText(typeOpt: Option[Type]) =
        "::text" // always cast - for hsqldb since v2.3.4
-
-     override protected def typedValue(row: RowLike, index: Int, type_ : Type): Any =
-       row(index) match {
-         case """[33]""" => unwrapSeq(List(33))
-         case _ => super.typedValue(row, index, type_)
-       }
-     override protected def typedSeqOfValues(row: RowLike, index: Int, type_ : Type): Seq[Any] =
-       row(index) match {
-         case """[42, 44]""" => List(42, 44)
-         case _ => super.typedSeqOfValues(row, index, type_)
-       }
    }
   implicit val qe: TestQuerease.type = TestQuerease
   implicit val qio: QuereaseIo[Dto] = new ScalaDtoQuereaseIo[Dto](TestQuerease)
