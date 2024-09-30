@@ -248,7 +248,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
   private val jsonDumpSettings =
     DumpSettings.builder()
       .setDefaultFlowStyle(FlowStyle.FLOW)
-      // .setDefaultScalarStyle(ScalarStyle.JSON_SCALAR_STYLE) // TODO waiting for latest snakeyaml-engine
+      .setDefaultScalarStyle(ScalarStyle.JSON_SCALAR_STYLE)
       .setWidth(Integer.MAX_VALUE)
       .build()
 
@@ -289,7 +289,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
       case s: String => printString(s, sb)
       case x => sb.append(s"$x")
     }
-    // copied from spray.json.JsonPrinter to avoid dependency while waiting for latest snakeyaml-engine
+    // copied from spray.json.JsonPrinter to avoid dependency
     def printString(s: String, sb: StringBuilder): Unit = {
       @tailrec def firstToBeEncoded(ix: Int = 0): Int =
         if (ix == s.length) -1 else if (requiresEncoding(s.charAt(ix))) ix else firstToBeEncoded(ix + 1)
