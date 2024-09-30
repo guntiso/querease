@@ -18,6 +18,12 @@ fields:
     - date              date
     - time              time
     - date_time         dateTime
+    - sql_date          sql_date
+    - sql_time          sql_time
+    - sql_date_time     sql_timestamp
+    - instant           instant
+    - offset_date_time  offset_date_time
+    - zoned_date_time   zoned_date_time
     - int               int
     - bigint            integer
     - double            double

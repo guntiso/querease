@@ -1,0 +1,64 @@
+type:       sql_date
+json name:  string
+scala name: java.sql.Date
+jdbc:
+- DATE
+yaml:
+- sql_date
+sql:
+- date
+
+
+type:       sql_time
+json name:  string
+scala name: java.sql.Time
+jdbc:
+- TIME
+yaml:
+- sql_time
+sql:
+- time
+
+
+type:       sql_timestamp
+json name:  string
+scala name: java.sql.Timestamp
+jdbc:
+- TIMESTAMP
+yaml:
+- sql_timestamp
+sql:
+- timestamp
+
+
+type:       instant
+json name:  string
+scala name: java.time.Instant
+jdbc:
+- TIMESTAMP
+yaml:
+- instant
+sql:
+- timestamp
+
+
+type:       offset_date_time
+json name:  string
+scala name: java.time.OffsetDateTime
+jdbc:
+- TIMESTAMP
+yaml:
+- offset_date_time
+sql:
+- timestamp
+
+
+type:       zoned_date_time
+json name:  string
+scala name: java.time.ZonedDateTime
+jdbc:
+- TIMESTAMP
+yaml:
+- zoned_date_time
+sql:
+- timestamp

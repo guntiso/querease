@@ -2,7 +2,7 @@ package test
 
 import com.typesafe.config.ConfigFactory
 
-import java.sql.Connection
+import java.sql.{Connection, Timestamp}
 import java.text.SimpleDateFormat
 import java.time.format.DateTimeFormatter
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -1208,12 +1208,18 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     def comparable(map: Map[String, Any]): Map[String, Any] = map.updated("child", childMap(map)
      .updated("bytes",     Option(childMap(map)("bytes")).map(_.asInstanceOf[Array[Byte]]).map(normalizeBytes).orNull)
      // dates and times from json are not typed
-     .updated("date",      Option(childMap(map)("date"     )).map(_.toString).map(LocalDate    .parse).orNull)
-     .updated("time",      Option(childMap(map)("time"     )).map(_.toString).map(LocalTime    .parse).orNull)
-     .updated("date_time", Option(childMap(map)("date_time")).map(_.toString).map(LocalDateTime.parse).orNull)
+     .updated("date",      Option(childMap(map)("date"     )).map(_.toString).map(LocalDate.parse).orNull)
+     .updated("time",      Option(childMap(map)("time"     )).map(_.toString).map(LocalTime.parse).orNull)
+     .updated("date_time", Option(childMap(map)("date_time")).map(_.toString).map(Timestamp.valueOf).map(_.toLocalDateTime).orNull)
+     .updated("sql_date",      Option(childMap(map)("sql_date"     )).map(_.toString).map(java.sql.Date     .valueOf).orNull)
+     .updated("sql_time",      Option(childMap(map)("sql_time"     )).map(_.toString).map(java.sql.Time     .valueOf).orNull)
+     .updated("sql_date_time", Option(childMap(map)("sql_date_time")).map(_.toString).map(java.sql.Timestamp.valueOf).orNull)
+     .updated("instant",          Option(childMap(map)("instant"         )).map(_.toString).map(java.time.Instant       .parse).orNull)
+     .updated("offset_date_time", Option(childMap(map)("offset_date_time")).map(_.toString).map(java.time.OffsetDateTime.parse).orNull)
+     .updated("zoned_date_time",  Option(childMap(map)("zoned_date_time" )).map(_.toString).map(java.time.ZonedDateTime .parse).orNull)
      .updated("child",     Option(childMap(map)).flatMap { cm => Option(childMap(cm)) }.map { ccm =>
-        ccm.updated("date",      Option(ccm("date"     )).map(_.toString).map(LocalDate    .parse).orNull)
-           .updated("date_time", Option(ccm("date_time")).map(_.toString).map(LocalDateTime.parse).orNull)
+        ccm.updated("date",      Option(ccm("date"     )).map(_.toString).map(LocalDate.parse).orNull)
+           .updated("date_time", Option(ccm("date_time")).map(_.toString).map(Timestamp.valueOf).map(_.toLocalDateTime).orNull)
       }.orNull)
     )
     val typesTestView = qe.viewDef("json_test_types")
@@ -1242,15 +1248,27 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     // dates and times
-    child.date = LocalDate.parse("2021-12-21") // java.sql.Date.valueOf("2021-12-21")
-    child.time = LocalTime.parse("10:42:15")   // java.sql.Time.valueOf("10:42:15")
-    child.date_time =                          // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
+    child.date = LocalDate.parse("2021-12-21")
+    child.time = LocalTime.parse("10:42:15")
+    child.date_time =
       LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+    child.sql_date         = java.sql.Date.valueOf("2022-12-21")
+    child.sql_time         = java.sql.Time.valueOf("10:42:17")
+    child.sql_date_time    = java.sql.Timestamp.valueOf("2022-12-26 23:57:14.0")
+    child.instant          = java.time.Instant.parse("2024-09-30T22:09:24.300Z")
+    child.offset_date_time = java.time.OffsetDateTime.parse("2024-10-01T01:10:31.222+03:00")
+    child.zoned_date_time  = java.time.ZonedDateTime.parse("2024-10-01T01:11:40.443+03:00[Europe/Riga]")
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
     comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
     child.date = null
     child.time = null
     child.date_time = null
+    child.sql_date      = null
+    child.sql_time      = null
+    child.sql_date_time = null
+    child.instant          = null
+    child.offset_date_time = null
+    child.zoned_date_time  = null
 
     // negatives
     child.long = Long.MinValue
@@ -1358,7 +1376,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     m2("string_arr")    shouldBe child.string_arr
     m2("date_arr")      shouldBe child.date_arr.map(_.toString)
     m2("time_arr")      shouldBe child.time_arr.map(_.toString)
-    m2("date_time_arr") shouldBe child.date_time_arr.map(_.toString)
+    m2("date_time_arr") shouldBe child.date_time_arr.map(Timestamp.valueOf).map(_.toString)
     m2("int_arr")       shouldBe child.int_arr
     // m2("bigint_arr")    shouldBe child.bigint_arr   
     // m2("double_arr")    shouldBe child.double_arr   

@@ -64,6 +64,7 @@ Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
   b / "test" / "data",
   b / "test" / "function-signatures",
   b / "test" / "tables",
+  b / "test" / "types",
   b / "test" / "views"
 )).value
 
@@ -100,11 +101,14 @@ Test / sourceGenerators += Def.task {
     import org.tresql.SimpleCache
     val yamlMd = resDirs.map(_.getAbsolutePath).flatMap(YamlMd.fromFiles(_)).toList
     val tableMd = new TableMetadata(new YamlTableDefLoader(yamlMd).tableDefs)
+    val typeDfs = TypeMetadata.mergeTypeDefs(TypeMetadata.defaultTypeDefs, new YamlTypeDefLoader(yamlMd).typeDefs)
     val viewDefLoader = YamlViewDefLoader(tableMd, yamlMd,
+      typeDefs = typeDfs, joinsParser =
       new TresqlJoinsParser(new TresqlMetadata(tableMd.tableDefs), _ => Some(new SimpleCache(-1, "TresqlJoinsParser cache"))))
     val plainViewDefs = viewDefLoader.plainViewDefs
     val xViewDefs = viewDefLoader.nameToViewDef
     val qe = new Querease {
+      override lazy val typeDefs = typeDfs
       override lazy val tableMetadata = tableMd
       override lazy val nameToViewDef = xViewDefs.asInstanceOf[Map[String, ViewDef]]
       override protected def resolvableCastToText(typeOpt: Option[Type]) =

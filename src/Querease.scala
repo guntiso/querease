@@ -11,6 +11,7 @@ import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
 import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import java.lang.StringBuilder
+import java.time.format.DateTimeFormatter
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
 import scala.jdk.CollectionConverters._
@@ -271,6 +272,20 @@ trait ValueTransformer { this: QuereaseMetadata =>
       .setDefaultFlowStyle(FlowStyle.BLOCK)
       .build()
 
+  /** Formats dates, times and datetimes for json */
+  protected def jsonStringValue(value: Any): Any = value match {
+    case x: java.sql.Date            => x.toString
+    case x: java.sql.Time            => x.toString
+    case x: java.sql.Timestamp       => x.toString
+    case x: java.time.LocalDate      => x.toString
+    case x: java.time.LocalTime      => x.toString
+    case x: java.time.LocalDateTime  => java.sql.Timestamp.valueOf(x).toString
+    case x: java.time.Instant        => x.toString
+    case x: java.time.OffsetDateTime => x.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+    case x: java.time.ZonedDateTime  => x.format(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+    case _ => value
+  }
+
   /** Converts value to be compatible with your jdbc driver, according to type.
     * Default implementation converts Map and Seq to yaml string or json string */
   def toSaveableValue(value: Any, type_ : Type): Any = {
@@ -293,14 +308,11 @@ trait ValueTransformer { this: QuereaseMetadata =>
         sb.append('[')
         printSeq(seq, sb.append(','))(dumpJson(_, sb))
         sb.append(']')
-      case d:  java.sql.Date           => sb.append(s""""$d"""")
-      case t:  java.sql.Time           => sb.append(s""""$t"""")
-      case dt: java.sql.Timestamp      => sb.append(s""""$dt"""")
-      case d:  java.time.LocalDate     => sb.append(s""""$d"""")
-      case t:  java.time.LocalTime     => sb.append(s""""$t"""")
-      case dt: java.time.LocalDateTime => sb.append(s""""$dt"""")
       case s: String => printString(s, sb)
-      case x => sb.append(s"$x")
+      case x => jsonStringValue(x) match {
+        case s: String => sb.append(s""""$s"""")
+        case x => sb.append(s"$x")
+      }
     }
     // copied from spray.json.JsonPrinter to avoid dependency
     def printString(s: String, sb: StringBuilder): Unit = {

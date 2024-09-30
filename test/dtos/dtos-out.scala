@@ -347,6 +347,12 @@ class json_test_types_child extends DtoWithId {
   var date: java.time.LocalDate = null
   var time: java.time.LocalTime = null
   var date_time: java.time.LocalDateTime = null
+  var sql_date: java.sql.Date = null
+  var sql_time: java.sql.Time = null
+  var sql_date_time: java.sql.Timestamp = null
+  var instant: java.time.Instant = null
+  var offset_date_time: java.time.OffsetDateTime = null
+  var zoned_date_time: java.time.ZonedDateTime = null
   var int: java.lang.Integer = null
   var bigint: scala.math.BigInt = null
   var double: java.lang.Double = null
