@@ -273,34 +273,6 @@ trait Dto { self =>
       s" to ${targetType.toString} - failed to populate ${getClass.getName}.$fieldName", cause)
   }
 
-  protected def convert(value: Any, targetClass: Class[_]) = value match {
-    case d: java.lang.Double      if targetClass == classOf[scala.math.BigDecimal]    => scala.math.BigDecimal(d)
-    case i: java.lang.Integer     if targetClass == classOf[java.lang.Long]           => i.toLong
-    case i: java.lang.Integer     if targetClass == classOf[scala.math.BigInt]        => scala.math.BigInt(i)
-    case i: java.math.BigInteger  if targetClass == classOf[java.lang.Double]         => i.doubleValue()
-    case i: java.math.BigInteger  if targetClass == classOf[scala.math.BigInt]        => scala.math.BigInt(i)
-    case s: java.lang.String      if targetClass == classOf[java.time.Instant]        => java.time.Instant.parse(s)
-    case s: java.lang.String      if targetClass == classOf[java.time.LocalDate]      => java.time.LocalDate.parse(s)
-    case s: java.lang.String      if targetClass == classOf[java.time.LocalDateTime]  => java.time.LocalDateTime.parse(s.replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
-    case s: java.lang.String      if targetClass == classOf[java.time.LocalTime]      => java.time.LocalTime.parse(s)
-    case s: java.lang.String      if targetClass == classOf[java.time.OffsetDateTime] => java.time.OffsetDateTime.parse(s.replace(' ', 'T'))
-    case s: java.lang.String      if targetClass == classOf[java.time.ZonedDateTime]  => java.time.ZonedDateTime.parse(s.replace(' ', 'T'))
-    case s: java.lang.String      if targetClass == classOf[java.sql.Date]            => java.sql.Date.valueOf(s)
-    case s: java.lang.String      if targetClass == classOf[java.sql.Time]            => java.sql.Time.valueOf(s)
-    case s: java.lang.String      if targetClass == classOf[java.sql.Timestamp]       => java.sql.Timestamp.valueOf(s.replace('T', ' '))
-    case s: java.lang.String      if targetClass == classOf[java.lang.Long    ]       => if (s == "") null else s.toLong
-    case s: java.lang.String      if targetClass == classOf[java.lang.Integer ]       => if (s == "") null else s.toInt
-    case s: java.lang.String      if targetClass == classOf[java.lang.Double  ]       => if (s == "") null else s.toDouble
-    case s: java.lang.String      if targetClass == classOf[scala.math.BigDecimal]    => if (s == "") null else scala.math.BigDecimal(s)
-    case s: java.lang.String      if targetClass == classOf[scala.math.BigInt]        => if (s == "") null else scala.math.BigInt(s)
-    case s: java.lang.String      if targetClass == classOf[java.lang.Boolean]        => s.toBoolean
-    case s: java.lang.String      if targetClass == classOf[Long]                     => if (s == "") null else s.toLong
-    case s: java.lang.String      if targetClass == classOf[Int]                      => if (s == "") null else s.toInt
-    case s: java.lang.String      if targetClass == classOf[Double]                   => if (s == "") null else s.toDouble
-    case s: java.lang.String      if targetClass == classOf[Boolean]                  => s.toBoolean
-    case x => x
-  }
-
   //creating dto from Map[String, Any]
   def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata with ValueTransformer): this.type = fill(values, emptyStringsToNull = true)(qe)
   def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata with ValueTransformer): this.type = {
@@ -327,13 +299,13 @@ trait Dto { self =>
                 if (isList) res.toList else res
               } else {
                 if  (s.nonEmpty && mOth != null)
-                     s.map(convert(_, mOth.runtimeClass))
+                     s.map(qe.convertToType(_, mOth.runtimeClass))
                 else s
               }
             } else
               throwUnsupportedConversion(value, Option(mDto).getOrElse(mOth), name)
           case null => null
-          case x if mOth != null => convert(x, mOth.runtimeClass)
+          case x if mOth != null => qe.convertToType(x, mOth.runtimeClass)
           case x => x
         }
         val convertedObj =

@@ -12,6 +12,8 @@ import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resourc
 
 import java.lang.StringBuilder
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime, ZoneId}
+import java.util.Base64
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
 import scala.jdk.CollectionConverters._
@@ -40,7 +42,178 @@ trait FieldFilter {
   def childFilter(field: String): FieldFilter
 }
 
+object ValueTransformer {
+
+  val ClassOfJavaLangBoolean        = classOf[java.lang.Boolean]
+  val ClassOfJavaLangDouble         = classOf[java.lang.Double]
+  val ClassOfJavaLangInteger        = classOf[java.lang.Integer]
+  val ClassOfJavaLangLong           = classOf[java.lang.Long]
+  val ClassOfJavaMathBigDecimal     = classOf[java.math.BigDecimal]
+  val ClassOfJavaMathBigInteger     = classOf[java.math.BigInteger]
+  val ClassOfJavaSqlDate            = classOf[java.sql.Date]
+  val ClassOfJavaSqlTime            = classOf[java.sql.Time]
+  val ClassOfJavaSqlTimestamp       = classOf[java.sql.Timestamp]
+  val ClassOfJavaTimeInstant        = classOf[Instant]
+  val ClassOfJavaTimeLocalDate      = classOf[LocalDate]
+  val ClassOfJavaTimeLocalDateTime  = classOf[LocalDateTime]
+  val ClassOfJavaTimeLocalTime      = classOf[LocalTime]
+  val ClassOfJavaTimeOffsetDateTime = classOf[OffsetDateTime]
+  val ClassOfJavaTimeZonedDateTime  = classOf[ZonedDateTime]
+  val ClassOfJavaUtilDate           = classOf[java.util.Date]
+  val ClassOfScalaMathBigDecimal    = classOf[scala.math.BigDecimal]
+  val ClassOfScalaMathBigInt        = classOf[scala.math.BigInt]
+  val ClassOfString                 = classOf[java.lang.String]
+
+  val ClassOfBoolean                = classOf[Boolean]
+  val ClassOfDouble                 = classOf[Double]
+  val ClassOfInt                    = classOf[Int]
+  val ClassOfLong                   = classOf[Long]
+  val ClassOfShort                  = classOf[Short]
+
+  val ClassOfByteArray              = classOf[Array[Byte]]
+
+  val supportedClassNameToClass: Map[String, Class[_]] =
+    Map(
+      ClassOfJavaLangBoolean         .getName -> ClassOfJavaLangBoolean,
+      ClassOfJavaLangDouble          .getName -> ClassOfJavaLangDouble,
+      ClassOfJavaLangInteger         .getName -> ClassOfJavaLangInteger,
+      ClassOfJavaLangLong            .getName -> ClassOfJavaLangLong,
+      ClassOfJavaMathBigDecimal      .getName -> ClassOfJavaMathBigDecimal,
+      ClassOfJavaMathBigInteger      .getName -> ClassOfJavaMathBigInteger,
+      ClassOfJavaSqlDate             .getName -> ClassOfJavaSqlDate,
+      ClassOfJavaSqlTime             .getName -> ClassOfJavaSqlTime,
+      ClassOfJavaSqlTimestamp        .getName -> ClassOfJavaSqlTimestamp,
+      ClassOfJavaTimeInstant         .getName -> ClassOfJavaTimeInstant,
+      ClassOfJavaTimeLocalDate       .getName -> ClassOfJavaTimeLocalDate,
+      ClassOfJavaTimeLocalDateTime   .getName -> ClassOfJavaTimeLocalDateTime,
+      ClassOfJavaTimeLocalTime       .getName -> ClassOfJavaTimeLocalTime,
+      ClassOfJavaTimeOffsetDateTime  .getName -> ClassOfJavaTimeOffsetDateTime,
+      ClassOfJavaTimeZonedDateTime   .getName -> ClassOfJavaTimeZonedDateTime,
+      ClassOfJavaUtilDate            .getName -> ClassOfJavaUtilDate,
+      ClassOfScalaMathBigDecimal     .getName -> ClassOfScalaMathBigDecimal,
+      ClassOfScalaMathBigInt         .getName -> ClassOfScalaMathBigInt,
+      ClassOfString                  .getName -> ClassOfString,
+      //
+      ClassOfBoolean                 .getName -> ClassOfBoolean,
+      ClassOfDouble                  .getName -> ClassOfDouble,
+      ClassOfInt                     .getName -> ClassOfInt,
+      ClassOfLong                    .getName -> ClassOfLong,
+      ClassOfShort                   .getName -> ClassOfShort,
+      //
+      ClassOfByteArray               .getName -> ClassOfByteArray,
+      //
+      "String"                                -> ClassOfString,
+      "Boolean"                               -> ClassOfBoolean,
+      "Double"                                -> ClassOfDouble,
+      "Int"                                   -> ClassOfInt,
+      "Long"                                  -> ClassOfLong,
+      "Short"                                 -> ClassOfShort,
+      "Array[Byte]"                           -> ClassOfByteArray,
+    )
+}
+
 trait ValueTransformer { this: QuereaseMetadata =>
+  import ValueTransformer._
+  protected def throwUnsupportedConversion(value: Any, targetClass: Class[_]): Unit =
+    throw new RuntimeException(
+      s"Unsupported type conversion from ${
+        Option(value).map(_.getClass.getName).orNull} to ${Option(targetClass).map(_.getName).orNull}")
+
+  /* Converts primitive values */
+  def convertToType(value: Any, targetClass: Class[_]): Any = value match {
+    case null                             => null
+    case x if x.getClass == targetClass   => value
+    case n: java.lang.Number          => targetClass match {
+      case ClassOfDouble                  => n.doubleValue
+      case ClassOfInt                     => n.intValue
+      case ClassOfJavaLangDouble          => n.doubleValue
+      case ClassOfJavaLangInteger         => n.intValue
+      case ClassOfJavaLangLong            => n.longValue
+      case ClassOfJavaMathBigDecimal      => new java.math.BigDecimal(n.toString) // TODO optimize?
+      case ClassOfJavaMathBigInteger      => new java.math.BigInteger(n.toString) // TODO optimize?
+      case ClassOfLong                    => n.longValue
+      case ClassOfScalaMathBigDecimal     => scala.math.BigDecimal(n.toString)    // TODO optimize?
+      case ClassOfScalaMathBigInt         => scala.math.BigInt(n.toString)        // TODO optimize?
+      case ClassOfShort                   => n.shortValue
+      case ClassOfString                  => n.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case s: java.lang.String          => targetClass match {
+      case ClassOfBoolean                 => s.toBoolean
+      case ClassOfByteArray               => Base64.getDecoder.decode(s)
+      case ClassOfDouble                  => if (s == "") null else s.toDouble
+      case ClassOfInt                     => if (s == "") null else s.toInt
+      case ClassOfJavaLangBoolean         => s.toBoolean
+      case ClassOfJavaLangDouble          => if (s == "") null else s.toDouble
+      case ClassOfJavaLangInteger         => if (s == "") null else s.toInt
+      case ClassOfJavaLangLong            => if (s == "") null else s.toLong
+      case ClassOfJavaMathBigDecimal      => new java.math.BigDecimal(s)
+      case ClassOfJavaSqlDate             => java.sql.Date.valueOf(s)
+      case ClassOfJavaSqlTime             => java.sql.Time.valueOf(java.time.LocalTime.parse(s))
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(s.replace('T', ' '))
+      case ClassOfJavaTimeInstant         => Instant.parse(s)
+      case ClassOfJavaTimeLocalDate       => LocalDate.parse(s)
+      case ClassOfJavaTimeLocalDateTime   => LocalDateTime.parse(s.replace(' ', 'T'))
+      case ClassOfJavaTimeLocalTime       => LocalTime.parse(s)
+      case ClassOfJavaTimeOffsetDateTime  => OffsetDateTime.parse(s.replace(' ', 'T'))
+      case ClassOfJavaTimeZonedDateTime   => ZonedDateTime.parse(s.replace(' ', 'T'))
+      case ClassOfJavaUtilDate            => java.util.Date.from(LocalDate.parse(s).atStartOfDay(ZoneId.systemDefault()).toInstant())
+      case ClassOfLong                    => if (s == "") null else s.toLong
+      case ClassOfScalaMathBigDecimal     => if (s == "") null else scala.math.BigDecimal(s)
+      case ClassOfScalaMathBigInt         => if (s == "") null else scala.math.BigInt(s)
+      case ClassOfShort                   => if (s == "") null else s.toLong
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case a: Array[Byte]               => targetClass match {
+      case ClassOfString                  => Base64.getEncoder.encodeToString(a)
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.sql.Date             => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.sql.Time             => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.sql.Timestamp        => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.LocalDate       => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.LocalTime       => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.LocalDateTime   => targetClass match {
+      case ClassOfString                  => java.sql.Timestamp.valueOf(x).toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.Instant         => targetClass match {
+      case ClassOfString                  => x.toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.OffsetDateTime  => targetClass match {
+      case ClassOfString                  => x.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.time.ZonedDateTime   => targetClass match {
+      case ClassOfString                  => x.format(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.util.Date            => targetClass match {
+      case ClassOfString                  => new java.sql.Timestamp(x.getTime).toString
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case _ => throwUnsupportedConversion(value, targetClass)
+  }
+
+  def convertToType(value: Any, type_ : Type): Any = {
+    convertToType(value, typeNameToClass(type_.name))
+  }
 
   private def parseColumnValue(value: Any, label: String): Any = {
     def toScala(v: Any): Any = v match {
@@ -57,6 +230,12 @@ trait ValueTransformer { this: QuereaseMetadata =>
   protected lazy val typeNameToScalaTypeName =
     typeDefs
       .map(td => td.name -> td.targetNames.get("scala").orNull)
+      .filter(_._2 != null)
+      .toMap
+
+  protected lazy val typeNameToClass: Map[String, Class[_]] =
+    typeNameToScalaTypeName
+      .map { case (tn, stn) => tn -> supportedClassNameToClass.getOrElse(stn, null) }
       .filter(_._2 != null)
       .toMap
 
@@ -272,17 +451,10 @@ trait ValueTransformer { this: QuereaseMetadata =>
       .setDefaultFlowStyle(FlowStyle.BLOCK)
       .build()
 
-  /** Formats dates, times and datetimes for json */
+  /** Formats values, represented as strings in json (dates, times, datetimes), passes all other values */
   protected def jsonStringValue(value: Any): Any = value match {
-    case x: java.sql.Date            => x.toString
-    case x: java.sql.Time            => x.toString
-    case x: java.sql.Timestamp       => x.toString
-    case x: java.time.LocalDate      => x.toString
-    case x: java.time.LocalTime      => x.toString
-    case x: java.time.LocalDateTime  => java.sql.Timestamp.valueOf(x).toString
-    case x: java.time.Instant        => x.toString
-    case x: java.time.OffsetDateTime => x.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
-    case x: java.time.ZonedDateTime  => x.format(DateTimeFormatter.ISO_ZONED_DATE_TIME)
+    case _: java.time.temporal.Temporal => convertToType(value, ClassOfString)
+    case _: java.util.Date              => convertToType(value, ClassOfString)
     case _ => value
   }
 
