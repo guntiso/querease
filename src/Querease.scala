@@ -48,6 +48,7 @@ object ValueTransformer {
   val ClassOfJavaLangDouble         = classOf[java.lang.Double]
   val ClassOfJavaLangInteger        = classOf[java.lang.Integer]
   val ClassOfJavaLangLong           = classOf[java.lang.Long]
+  val ClassOfJavaLangObject         = classOf[java.lang.Object]
   val ClassOfJavaMathBigDecimal     = classOf[java.math.BigDecimal]
   val ClassOfJavaMathBigInteger     = classOf[java.math.BigInteger]
   val ClassOfJavaSqlDate            = classOf[java.sql.Date]
@@ -78,6 +79,7 @@ object ValueTransformer {
       ClassOfJavaLangDouble          .getName -> ClassOfJavaLangDouble,
       ClassOfJavaLangInteger         .getName -> ClassOfJavaLangInteger,
       ClassOfJavaLangLong            .getName -> ClassOfJavaLangLong,
+      ClassOfJavaLangObject          .getName -> ClassOfJavaLangObject,
       ClassOfJavaMathBigDecimal      .getName -> ClassOfJavaMathBigDecimal,
       ClassOfJavaMathBigInteger      .getName -> ClassOfJavaMathBigInteger,
       ClassOfJavaSqlDate             .getName -> ClassOfJavaSqlDate,
@@ -122,7 +124,8 @@ trait ValueTransformer { this: QuereaseMetadata =>
   /* Converts primitive values */
   def convertToType(value: Any, targetClass: Class[_]): Any = value match {
     case null                             => null
-    case x if x.getClass == targetClass   => value
+    case x if targetClass == ClassOfJavaLangObject ||
+              targetClass == x.getClass   => value
     case n: java.lang.Number          => targetClass match {
       case ClassOfDouble                  => n.doubleValue
       case ClassOfInt                     => n.intValue
