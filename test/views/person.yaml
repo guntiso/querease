@@ -163,7 +163,7 @@ table: person
 fields:
 - id
 - name
-- sons * [:1(id) = father_id] father_tree
+- sons * [^1.id = father_id] father_tree
 filter:
 - father_id = null # first filter is for selecting roots, it is dropped for child queries!
 - sex = 'M'
@@ -173,7 +173,7 @@ order:
 
 
 # FIXME eliminate father_id field from main query
-# FIXME eliminate technical ref :1(..) to parent query
+# FIXME eliminate technical ref ^1... to parent query
 name:  with_forefathers
 table: person p
 fields:
@@ -183,7 +183,7 @@ fields:
     table:
     joins:
     - t(level, name, surname, father_id) {
-        person f [f.id = :1(father_id)]   {1   level, name, surname, father_id}
+        person f [f.id = ^1.father_id]   {1   level, name, surname, father_id}
         +
         t [t.father_id = ff.id] person ff {1 + level, ff.name, ff.surname, ff.father_id}
       }
@@ -648,7 +648,7 @@ fields:
 - surname
 - sex
 # TODO support save and get with implied join to parent, add clean test
-- mother [(person[:1(id) = id]{mother_id}) = id] person_recursive_test_1
+- mother [(person[^1.id = id]{mother_id}) = id] person_recursive_test_1
 
 
 name:    person_recursive_test_2
@@ -659,4 +659,4 @@ fields:
 - name
 - surname
 - sex
-- children * [:1(id) = mother_id] person_recursive_test_2
+- children * [^1.id = mother_id] person_recursive_test_2
