@@ -1,5 +1,6 @@
 package org.mojoz.querease
 
+import com.typesafe.config.{Config, ConfigFactory}
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
@@ -121,6 +122,13 @@ trait ValueTransformer { this: QuereaseMetadata =>
       s"Unsupported type conversion from ${
         Option(value).map(_.getClass.getName).orNull} to ${Option(targetClass).map(_.getName).orNull}")
 
+  protected lazy val config: Config = ConfigFactory.load
+
+  protected lazy val zoneId: ZoneId =
+    if (config.hasPath("data.timezone"))
+         ZoneId.of(config.getString("data.timezone"))
+    else ZoneId.systemDefault
+
   /* Converts primitive values */
   def convertToType(value: Any, targetClass: Class[_]): Any = value match {
     case null                             => null
@@ -172,42 +180,107 @@ trait ValueTransformer { this: QuereaseMetadata =>
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.sql.Date             => targetClass match {
+      case ClassOfJavaTimeLocalDate       => x.toLocalDate
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.toLocalDate.atStartOfDay.atZone(zoneId).toInstant)
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.sql.Time             => targetClass match {
+      case ClassOfJavaTimeLocalTime       => x.toLocalTime
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.sql.Timestamp        => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date.valueOf(x.toLocalDateTime.toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time.valueOf(x.toLocalDateTime.toLocalTime)
+      case ClassOfJavaTimeInstant         => x.toLocalDateTime.atZone(zoneId).toInstant
+      case ClassOfJavaTimeLocalDate       => x.toLocalDateTime.toLocalDate
+      case ClassOfJavaTimeLocalDateTime   => x.toLocalDateTime
+      case ClassOfJavaTimeLocalTime       => x.toLocalDateTime.toLocalTime
+      case ClassOfJavaTimeOffsetDateTime  => x.toLocalDateTime.atZone(zoneId).toOffsetDateTime
+      case ClassOfJavaTimeZonedDateTime   => x.toLocalDateTime.atZone(zoneId)
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.toLocalDateTime.atZone(zoneId).toInstant)
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.LocalDate       => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x.atStartOfDay)
+      case ClassOfJavaTimeInstant         => x.atStartOfDay.atZone(zoneId).toInstant
+      case ClassOfJavaTimeLocalDateTime   => x.atStartOfDay
+      case ClassOfJavaTimeOffsetDateTime  => x.atStartOfDay.atZone(zoneId).toOffsetDateTime
+      case ClassOfJavaTimeZonedDateTime   => x.atStartOfDay.atZone(zoneId)
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.atStartOfDay.atZone(zoneId).toInstant)
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.LocalTime       => targetClass match {
+      case ClassOfJavaSqlTime             => java.sql.Time.valueOf(x)
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.LocalDateTime   => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x.toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time     .valueOf(x.toLocalTime)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x)
+      case ClassOfJavaTimeInstant         => x.atZone(zoneId).toInstant
+      case ClassOfJavaTimeLocalDate       => x.toLocalDate
+      case ClassOfJavaTimeLocalTime       => x.toLocalTime
+      case ClassOfJavaTimeOffsetDateTime  => x.atZone(zoneId).toOffsetDateTime
+      case ClassOfJavaTimeZonedDateTime   => x.atZone(zoneId)
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.atZone(zoneId).toInstant)
       case ClassOfString                  => java.sql.Timestamp.valueOf(x).toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.Instant         => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x.atZone(zoneId).toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time     .valueOf(x.atZone(zoneId).toLocalTime)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x.atZone(zoneId).toLocalDateTime)
+      case ClassOfJavaTimeLocalDate       => x.atZone(zoneId).toLocalDate
+      case ClassOfJavaTimeLocalDateTime   => x.atZone(zoneId).toLocalDateTime
+      case ClassOfJavaTimeLocalTime       => x.atZone(zoneId).toLocalTime
+      case ClassOfJavaTimeOffsetDateTime  => x.atZone(zoneId).toOffsetDateTime
+      case ClassOfJavaTimeZonedDateTime   => x.atZone(zoneId)
+      case ClassOfJavaUtilDate            => java.util.Date.from(x)
       case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.OffsetDateTime  => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x.toInstant.atZone(zoneId).toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time     .valueOf(x.toInstant.atZone(zoneId).toLocalTime)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x.toInstant.atZone(zoneId).toLocalDateTime)
+      case ClassOfJavaTimeInstant         => x.toInstant
+      case ClassOfJavaTimeLocalDate       => x.toInstant.atZone(zoneId).toLocalDate
+      case ClassOfJavaTimeLocalDateTime   => x.toInstant.atZone(zoneId).toLocalDateTime
+      case ClassOfJavaTimeLocalTime       => x.toInstant.atZone(zoneId).toLocalTime
+      case ClassOfJavaTimeZonedDateTime   => x.toInstant.atZone(zoneId)
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.toInstant)
       case ClassOfString                  => x.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.ZonedDateTime   => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x.toInstant.atZone(zoneId).toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time     .valueOf(x.toInstant.atZone(zoneId).toLocalTime)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x.toInstant.atZone(zoneId).toLocalDateTime)
+      case ClassOfJavaTimeInstant         => x.toInstant
+      case ClassOfJavaTimeLocalDate       => x.toInstant.atZone(zoneId).toLocalDate
+      case ClassOfJavaTimeLocalDateTime   => x.toInstant.atZone(zoneId).toLocalDateTime
+      case ClassOfJavaTimeLocalTime       => x.toInstant.atZone(zoneId).toLocalTime
+      case ClassOfJavaTimeOffsetDateTime  => x.toOffsetDateTime
+      case ClassOfJavaUtilDate            => java.util.Date.from(x.toInstant)
       case ClassOfString                  => x.format(DateTimeFormatter.ISO_ZONED_DATE_TIME)
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.util.Date            => targetClass match {
+      case ClassOfJavaSqlDate             => java.sql.Date     .valueOf(x.toInstant.atZone(zoneId).toLocalDate)
+      case ClassOfJavaSqlTime             => java.sql.Time     .valueOf(x.toInstant.atZone(zoneId).toLocalTime)
+      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(x.toInstant.atZone(zoneId).toLocalDateTime)
+      case ClassOfJavaTimeInstant         => x.toInstant
+      case ClassOfJavaTimeLocalDate       => x.toInstant.atZone(zoneId).toLocalDate
+      case ClassOfJavaTimeLocalDateTime   => x.toInstant.atZone(zoneId).toLocalDateTime
+      case ClassOfJavaTimeLocalTime       => x.toInstant.atZone(zoneId).toLocalTime
+      case ClassOfJavaTimeOffsetDateTime  => x.toInstant.atZone(zoneId).toOffsetDateTime
+      case ClassOfJavaTimeZonedDateTime   => x.toInstant.atZone(zoneId)
       case ClassOfString                  => new java.sql.Timestamp(x.getTime).toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
