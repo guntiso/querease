@@ -43,7 +43,7 @@ trait FieldFilter {
   def childFilter(field: String): FieldFilter
 }
 
-object ValueTransformer {
+object ValueConverter {
 
   val ClassOfJavaLangBoolean        = classOf[java.lang.Boolean]
   val ClassOfJavaLangDouble         = classOf[java.lang.Double]
@@ -115,8 +115,8 @@ object ValueTransformer {
     )
 }
 
-trait ValueTransformer { this: QuereaseMetadata =>
-  import ValueTransformer._
+trait ValueConverter {
+  import ValueConverter._
   protected def throwUnsupportedConversion(value: Any, targetClass: Class[_]): Unit =
     throw new RuntimeException(
       s"Unsupported type conversion from ${
@@ -296,7 +296,10 @@ trait ValueTransformer { this: QuereaseMetadata =>
     }
     case _ => throwUnsupportedConversion(value, targetClass)
   }
+}
 
+trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
+  import ValueConverter.{supportedClassNameToClass, ClassOfString}
   def convertToType(value: Any, type_ : Type): Any = {
     convertToType(value, typeNameToClass(type_.name))
   }
@@ -321,7 +324,7 @@ trait ValueTransformer { this: QuereaseMetadata =>
 
   protected lazy val typeNameToClass: Map[String, Class[_]] =
     typeNameToScalaTypeName
-      .map { case (tn, stn) => tn -> supportedClassNameToClass.getOrElse(stn, null) }
+      .map { case (tn, stn) => tn -> ValueConverter.supportedClassNameToClass.getOrElse(stn, null) }
       .filter(_._2 != null)
       .toMap
 

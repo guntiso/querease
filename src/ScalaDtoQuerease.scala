@@ -274,8 +274,8 @@ trait Dto { self =>
   }
 
   //creating dto from Map[String, Any]
-  def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata with ValueTransformer): this.type = fill(values, emptyStringsToNull = true)(qe)
-  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata with ValueTransformer): this.type = {
+  def fill(values: Map[String, Any])(implicit qe: QuereaseMetadata with ValueConverter): this.type = fill(values, emptyStringsToNull = true)(qe)
+  def fill(values: Map[String, Any], emptyStringsToNull: Boolean)(implicit qe: QuereaseMetadata with ValueConverter): this.type = {
     values foreach { case (name, value) =>
       setters.get(name).map { case DtoSetter(_, met, mOpt, mSeq, mDto, mOth) =>
         val converted = value match {
