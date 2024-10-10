@@ -296,6 +296,11 @@ trait ValueConverter {
     }
     case _ => throwUnsupportedConversion(value, targetClass)
   }
+
+  def convertToString(value: Any): String = value match {
+    case null => null
+    case _    => convertToType(value, ClassOfString).toString
+  }
 }
 
 trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
