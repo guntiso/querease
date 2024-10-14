@@ -59,9 +59,10 @@ object QuereaseExpressions {
     }
   }
   class DefaultParser(val cache: Option[Cache]) extends Parser {
-    override def ident: MemParser[String] = opt("^") ~ super.ident ^^ {
-      case Some(s) ~ ident => s + ident
-      case None ~ ident => ident
+    override def ident: MemParser[String] = (opt("^") ~ super.ident | "^") ^^ {
+      case Some(s: String) ~ (ident: String) => s + ident
+      case None ~ (ident: String) => ident
+      case ident: String => ident
     }  named "^ident"
     override def parseExp(expr: String): Exp = {
       cache.flatMap(_.get(expr)).getOrElse {
