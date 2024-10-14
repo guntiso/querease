@@ -1337,7 +1337,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       LocalTime.parse("17:06:45"),
     )
     child.date_time_arr = List(
-      LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
+      LocalDateTime.parse("2021-12-26 23:57:14.1".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
       LocalDateTime.parse("2024-01-16 13:09:10.2".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
     )
     child.int_arr      = List(Int.MinValue, 0, 42, Int.MaxValue)

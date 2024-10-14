@@ -210,7 +210,10 @@ trait ValueConverter {
       case ClassOfJavaTimeOffsetDateTime  => x.toLocalDateTime.atZone(zoneId).toOffsetDateTime
       case ClassOfJavaTimeZonedDateTime   => x.toLocalDateTime.atZone(zoneId)
       case ClassOfJavaUtilDate            => java.util.Date.from(x.toLocalDateTime.atZone(zoneId).toInstant)
-      case ClassOfString                  => x.toString
+      case ClassOfString                  => x.toString match {
+                                              case s if s endsWith ".0" => s.substring(0, 19)
+                                              case s => s
+                                            }
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.LocalDate       => targetClass match {
@@ -239,7 +242,10 @@ trait ValueConverter {
       case ClassOfJavaTimeOffsetDateTime  => x.atZone(zoneId).toOffsetDateTime
       case ClassOfJavaTimeZonedDateTime   => x.atZone(zoneId)
       case ClassOfJavaUtilDate            => java.util.Date.from(x.atZone(zoneId).toInstant)
-      case ClassOfString                  => java.sql.Timestamp.valueOf(x).toString
+      case ClassOfString                  => java.sql.Timestamp.valueOf(x).toString match {
+                                              case s if s endsWith ".0" => s.substring(0, 19)
+                                              case s => s
+                                            }
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.Instant         => targetClass match {
@@ -291,7 +297,10 @@ trait ValueConverter {
       case ClassOfJavaTimeLocalTime       => x.toInstant.atZone(zoneId).toLocalTime
       case ClassOfJavaTimeOffsetDateTime  => x.toInstant.atZone(zoneId).toOffsetDateTime
       case ClassOfJavaTimeZonedDateTime   => x.toInstant.atZone(zoneId)
-      case ClassOfString                  => new java.sql.Timestamp(x.getTime).toString
+      case ClassOfString                  => java.sql.Timestamp.valueOf(x.toInstant.atZone(zoneId).toLocalDateTime).toString match {
+                                              case s if s endsWith ".0" => s.substring(0, 19)
+                                              case s => s
+                                            }
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case _ => throwUnsupportedConversion(value, targetClass)
