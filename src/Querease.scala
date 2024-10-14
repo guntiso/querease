@@ -229,7 +229,7 @@ trait ValueConverter {
     }
     case x: java.time.LocalTime       => targetClass match {
       case ClassOfJavaSqlTime             => java.sql.Time.valueOf(x)
-      case ClassOfString                  => x.toString
+      case ClassOfString                  => java.sql.Time.valueOf(x).toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case x: java.time.LocalDateTime   => targetClass match {
