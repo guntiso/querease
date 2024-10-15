@@ -459,6 +459,19 @@ fields:
 - mother    = ^person_choice_without_resolver.full_name -> father_id
 - ma        = ^person_choice_without_resolver.full_name -> mother_id
 
+# test filter include from referenced view
+name: filter_ref_test_1
+table: person p
+fields:
+- son_count      int = (  ^male[(father_id = p.id | mother_id = p.id) & ^]{count(*)})
+- daughter_count int = (^female[(father_id = p.id | mother_id = p.id) & ^]{count(*)})
+
+name: filter_ref_test_2
+table: person p
+fields:
+- global_male_count   int = (  ^male[^]{count(*)})
+- global_female_count int = (^female[^]{count(*)})
+
 # test resolver in resolver
 name: optional_params_resolver_test_1
 table: person p1
@@ -613,6 +626,24 @@ name:   save_extra_props_test_01
 table:  sys_user u
 fields:
 - id
+
+name:   male
+table:  person m
+fields:
+- id
+- name
+- sex -> = 'M'
+filter:
+- sex = 'M'
+
+name:   female
+table:  person m
+fields:
+- id
+- name
+- sex -> = 'F'
+filter:
+- sex = 'F'
 
 name:   mother
 table:  person m

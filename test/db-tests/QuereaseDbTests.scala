@@ -674,6 +674,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     motherRt2.children(1).sex     shouldBe "F"
   }
 
+  if (isDbAvailable) it should s"include filter from referenced view" in {
+    qe.get[FilterRefTest1](1127).get.son_count            shouldBe  0
+    qe.get[FilterRefTest1](1127).get.daughter_count       shouldBe  2
+    qe.get[FilterRefTest2](1127).get.global_male_count    shouldBe  24
+    qe.get[FilterRefTest2](1127).get.global_female_count  shouldBe  25
+    qe.countAll[Person](Map.empty)                        shouldBe (24 + 25)
+  }
+
   if (isDbAvailable) it should s"validate in $dbName properly" in {
     val dto = new ValidationsTest
 

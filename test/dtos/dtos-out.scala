@@ -288,9 +288,32 @@ class father_tree extends DtoWithId {
   var name: String = null
   var sons: List[father_tree] = Nil
 }
+class female extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var sex: String = null
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{'F'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object female {
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{'F'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
+}
 class field_order_by_test extends DtoWithId {
   var id: java.lang.Long = null
   var nm: String = null
+}
+class filter_ref_test_1 extends Dto {
+  var son_count: java.lang.Integer = null
+  var daughter_count: java.lang.Integer = null
+}
+class filter_ref_test_2 extends Dto {
+  var global_male_count: java.lang.Integer = null
+  var global_female_count: java.lang.Integer = null
 }
 class filter_with_field_ref_test_1 extends Dto {
   var full_name: String = null
@@ -372,6 +395,21 @@ class json_test_types_child extends DtoWithId {
   var boolean_arr: List[java.lang.Boolean] = Nil
   var child: types_test_child = null
   var children: List[types_test_child] = Nil
+}
+class male extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var sex: String = null
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{'M'}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object male {
+  def resolve_sex(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{'M'}"""(env.withParams(Map.empty))
+      .unique[String]
+  }
 }
 class mother extends DtoWithId {
   var id: java.lang.Long = null

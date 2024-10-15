@@ -466,6 +466,7 @@ trait QuereaseExpressions {
             val fieldRefs = traverser(fieldRefExtractor)(Nil)(q.filter).reverse
             val refFields = fieldRefs
               .map(_.substring(1))
+              .filter(_ != "")
               .map { refFieldName =>
                 refViewDef.fieldOpt(refFieldName)
                   .getOrElse {
@@ -512,6 +513,21 @@ trait QuereaseExpressions {
           parseExp("(" + resolvedQuery.tresql + ")")
         } else {
           resolvedQuery
+        }
+      case Ident(List(ident)) if ident == "^" =>
+        ctx.mdContext match {
+          case Filter =>
+            if (ctx.viewDef.filter == null || ctx.viewDef.filter.isEmpty)
+              parseExp("true")
+            else {
+              parseExp(
+                transformFilter(
+                  ctx.viewDef.filter.mkString("(", " & ", ")"),
+                  ctx.viewDef, ctx.baseTableAlias, ctx.pathToAlias)
+              )
+            }
+          case _ =>
+            sys.error(s"Ref for ${ctx.mdContext} not supported yet") // TODO?
         }
       case iexpr @ Ident(List(ident)) if ident.startsWith("^") =>
         val name = ident.substring(1)
