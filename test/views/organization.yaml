@@ -115,6 +115,13 @@ fields:
 - name
 
 
+name:   organization_no_field_key_test_1
+table:  organization
+key:    name
+fields:
+- main_account_id
+
+
 name:   organization_optional_fields_test
 table:  organization
 key:    name

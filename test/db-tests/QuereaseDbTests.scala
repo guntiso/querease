@@ -851,6 +851,22 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     org_jk.name shouldBe "org"
     qe.get[OrganizationJoinsKeyTestId](org_jk.id).get.name shouldBe "org"
 
+    // no-field-key test
+    var org_nfk = qe.get[OrganizationNoFieldKeyTest1]("org").get
+    val macc_id = org_nfk.main_account_id
+    (macc_id != null) shouldBe true
+    org_nfk.main_account_id = null
+    qe.save(org_nfk, params = Map("name" -> "org"))
+    org_nfk = null
+    org_nfk = qe.get[OrganizationNoFieldKeyTest1]("org").get
+    org_nfk.main_account_id shouldBe null
+    org_nfk.main_account_id = macc_id
+    qe.save(org_nfk, params = Map("name" -> "org"))
+    org_nfk = null
+    org_nfk = qe.get[OrganizationNoFieldKeyTest1]("org").get
+    org_nfk.main_account_id shouldBe macc_id
+    org_nfk.toMap shouldBe Map("main_account_id" -> macc_id)
+
     val a2 = new OrganizationKeyTestAccounts
     a2.number = "A2"
     a2.balance = 2

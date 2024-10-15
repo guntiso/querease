@@ -12,6 +12,7 @@ import java.io.{BufferedReader, InputStream, InputStreamReader}
 import scala.collection.immutable.{ListSet, Map, Seq, TreeMap}
 import scala.jdk.CollectionConverters._
 import scala.util.matching.Regex
+import scala.util.Try
 
 case class ViewNotFoundException(message: String) extends Exception(message)
 case class FieldOrderingNotFoundException(message: String) extends Exception(message)
@@ -136,7 +137,13 @@ trait QuereaseMetadata {
     Option(view.keyFieldNames)
       .filter(_.nonEmpty)
       .map(_.map { fieldName =>
-        view.fieldOpt(fieldName).getOrElse(sys.error(s"Custom key field $fieldName not found, view ${view.name}"))
+        view.fieldOpt(fieldName)
+          .orElse(
+            Option(view.table)
+              .flatMap(t => tableMetadata.col(t, fieldName, view.db))
+              .map(col => new FieldDef(fieldName, col.type_))
+          )
+          .getOrElse(sys.error(s"Custom key field or column $fieldName not found, view ${view.name}"))
       }) getOrElse
     Option(view.table)
       .map(tableMetadata.tableDef(_, view.db))

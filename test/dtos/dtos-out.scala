@@ -509,6 +509,9 @@ class organization_key_test_main_account extends Dto {
   var number: String = null
   var balance: scala.math.BigDecimal = null
 }
+class organization_no_field_key_test_1 extends Dto {
+  var main_account_id: java.lang.Long = null
+}
 class organization_optional_fields_test extends Dto {
   var name: String = null
   var accounts: Option[List[organization_optional_fields_test_accounts]] = None
