@@ -12,3 +12,8 @@ table: noid_test
 fields:
 - no_id  = noid_id
 - no_nm  = name
+
+
+name: fake_key_test
+table:
+key: id, sha_256

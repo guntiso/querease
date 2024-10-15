@@ -136,13 +136,26 @@ trait QuereaseMetadata {
     import QuereaseMetadata.AugmentedQuereaseViewDef
     Option(view.keyFieldNames)
       .filter(_.nonEmpty)
-      .map(_.map { fieldName =>
+      .map(_.map { fieldNameAndType =>
+        val (fieldName, fieldTypeOpt) =
+          fieldNameAndType.trim.split("::", 2).toList match {
+            case Seq(s)           => (s.trim, None)
+            case Seq(s, typeName) => (s.trim, Some(new Type(typeName.trim)))
+            case _ => sys.error(s"Failed to parse key for ${view.name}")
+          }
+        lazy val conventionsType = metadataConventions.typeFromExternal(fieldName, fieldTypeOpt)
         view.fieldOpt(fieldName)
-          .orElse(
-            Option(view.table)
-              .flatMap(t => tableMetadata.col(t, fieldName, view.db))
-              .map(col => new FieldDef(fieldName, col.type_))
-          )
+          .orElse(view.table match {
+            case null =>
+              Some(new FieldDef(fieldName, conventionsType))
+            case table =>
+              tableMetadata.col(table, fieldName, view.db)
+                .map(col => new FieldDef(fieldName, col.type_))
+          })
+          .map { field => fieldTypeOpt match {
+            case None    => field
+            case Some(_) => field.copy(type_ = conventionsType)
+          }}
           .getOrElse(sys.error(s"Custom key field or column $fieldName not found, view ${view.name}"))
       }) getOrElse
     Option(view.table)

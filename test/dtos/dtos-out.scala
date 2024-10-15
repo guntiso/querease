@@ -283,6 +283,8 @@ object currency {
       .unique[String]
   }
 }
+class fake_key_test extends Dto {
+}
 class father_tree extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
