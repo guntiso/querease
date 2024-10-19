@@ -18,11 +18,18 @@ class ValueConverterTests extends FlatSpec with Matchers {
     override lazy val zoneId = ZoneId.of("Brazil/Acre")
   }
 
+  "value converter" should "convert dates and times and datetimes" in {
+    converterPlus .convertToType(java.sql.Date.valueOf("2024-10-17"),    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T21:00:00Z"))
+    converterMinus.convertToType(java.sql.Date.valueOf("2024-10-17"),    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-17T05:00:00Z"))
+  }
+
   "value converter" should "parse date" in {
     converterPlus .convertToType("2024-10-17",    ClassOfJavaTimeLocalDate) shouldBe LocalDate.parse("2024-10-17")
     converterMinus.convertToType("2024-10-17",    ClassOfJavaTimeLocalDate) shouldBe LocalDate.parse("2024-10-17")
     converterPlus .convertToType("2024-10-17",    ClassOfJavaSqlDate)       shouldBe java.sql.Date.valueOf("2024-10-17")
     converterMinus.convertToType("2024-10-17",    ClassOfJavaSqlDate)       shouldBe java.sql.Date.valueOf("2024-10-17")
+    converterPlus .convertToType("2024-10-17",    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T21:00:00Z"))
+    converterMinus.convertToType("2024-10-17",    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-17T05:00:00Z"))
   }
 
   "value converter" should "parse time" in {

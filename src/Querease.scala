@@ -178,7 +178,7 @@ trait ValueConverter {
       case ClassOfJavaTimeLocalTime       => LocalTime.parse(s)
       case ClassOfJavaTimeOffsetDateTime  => OffsetDateTime.parse(s.replace(' ', 'T').replace('_', 'T'))
       case ClassOfJavaTimeZonedDateTime   => ZonedDateTime.parse(s.replace(' ', 'T').replace('_', 'T'))
-      case ClassOfJavaUtilDate            => java.util.Date.from(LocalDate.parse(s).atStartOfDay(ZoneId.systemDefault()).toInstant())
+      case ClassOfJavaUtilDate            => java.util.Date.from(LocalDate.parse(s).atStartOfDay(zoneId).toInstant())
       case ClassOfLong                    => if (s == "") null else s.toLong
       case ClassOfScalaMathBigDecimal     => if (s == "") null else scala.math.BigDecimal(s)
       case ClassOfScalaMathBigInt         => if (s == "") null else scala.math.BigInt(s)
