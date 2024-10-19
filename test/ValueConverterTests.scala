@@ -11,7 +11,7 @@ import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, 
 class ValueConverterTests extends FlatSpec with Matchers {
 
   val converterPlus = new ValueConverter {
-    override lazy val zoneId = ZoneId.of("Europe/Riga")
+    override lazy val zoneId = ZoneId.of("Asia/Tbilisi")
   }
 
   val converterMinus = new ValueConverter {
@@ -19,7 +19,7 @@ class ValueConverterTests extends FlatSpec with Matchers {
   }
 
   "value converter" should "convert dates and times and datetimes" in {
-    converterPlus .convertToType(java.sql.Date.valueOf("2024-10-17"),    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T21:00:00Z"))
+    converterPlus .convertToType(java.sql.Date.valueOf("2024-10-17"),    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T20:00:00Z"))
     converterMinus.convertToType(java.sql.Date.valueOf("2024-10-17"),    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-17T05:00:00Z"))
   }
 
@@ -28,7 +28,7 @@ class ValueConverterTests extends FlatSpec with Matchers {
     converterMinus.convertToType("2024-10-17",    ClassOfJavaTimeLocalDate) shouldBe LocalDate.parse("2024-10-17")
     converterPlus .convertToType("2024-10-17",    ClassOfJavaSqlDate)       shouldBe java.sql.Date.valueOf("2024-10-17")
     converterMinus.convertToType("2024-10-17",    ClassOfJavaSqlDate)       shouldBe java.sql.Date.valueOf("2024-10-17")
-    converterPlus .convertToType("2024-10-17",    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T21:00:00Z"))
+    converterPlus .convertToType("2024-10-17",    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-16T20:00:00Z"))
     converterMinus.convertToType("2024-10-17",    ClassOfJavaUtilDate)      shouldBe java.util.Date.from(Instant.parse("2024-10-17T05:00:00Z"))
   }
 
