@@ -129,6 +129,27 @@ trait ValueConverter {
          ZoneId.of(config.getString("data.timezone"))
     else ZoneId.systemDefault
 
+  private val timezoneRegex = """[+-]\d\d(:?\d\d)?$|[Zz]$""".r.unanchored
+  protected def parseDateTime(d: String): AnyRef = {
+    def normalized = d.charAt(10) match {
+      case ' ' => d.replace(" ", "T")
+      case '_' => d.replace("_", "T")
+      case  _  => d
+    }
+    if (d == null)
+      null
+    else if (d.length > 2 && d.charAt(2) == ':')
+      LocalTime.parse(d)
+    else if (d.length < 11)
+      LocalDate.parse(d)
+    else if (d endsWith "]")
+      ZonedDateTime.parse(normalized)
+    else if (timezoneRegex.findFirstIn(d).nonEmpty)
+      OffsetDateTime.parse(normalized)
+    else
+      LocalDateTime.parse(normalized)
+  }
+
   /* Converts primitive values */
   def convertToType(value: Any, targetClass: Class[_]): Any = value match {
     case null                             => null
@@ -169,16 +190,16 @@ trait ValueConverter {
       case ClassOfJavaLangInteger         => if (s == "") null else s.toInt
       case ClassOfJavaLangLong            => if (s == "") null else s.toLong
       case ClassOfJavaMathBigDecimal      => new java.math.BigDecimal(s)
-      case ClassOfJavaSqlDate             => java.sql.Date.valueOf(s)
-      case ClassOfJavaSqlTime             => java.sql.Time.valueOf(java.time.LocalTime.parse(s))
-      case ClassOfJavaSqlTimestamp        => java.sql.Timestamp.valueOf(s.replace('T', ' ').replace('_', ' '))
-      case ClassOfJavaTimeInstant         => Instant.parse(s.replace(' ', 'T').replace('_', 'T'))
-      case ClassOfJavaTimeLocalDate       => LocalDate.parse(s)
-      case ClassOfJavaTimeLocalDateTime   => LocalDateTime.parse(s.replace(' ', 'T').replace('_', 'T'))
-      case ClassOfJavaTimeLocalTime       => LocalTime.parse(s)
-      case ClassOfJavaTimeOffsetDateTime  => OffsetDateTime.parse(s.replace(' ', 'T').replace('_', 'T'))
-      case ClassOfJavaTimeZonedDateTime   => ZonedDateTime.parse(s.replace(' ', 'T').replace('_', 'T'))
-      case ClassOfJavaUtilDate            => java.util.Date.from(LocalDate.parse(s).atStartOfDay(zoneId).toInstant())
+      case ClassOfJavaSqlDate             => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaSqlTime             => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaSqlTimestamp        => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeInstant         => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeLocalDate       => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeLocalDateTime   => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeLocalTime       => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeOffsetDateTime  => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaTimeZonedDateTime   => convertToType(parseDateTime(s), targetClass)
+      case ClassOfJavaUtilDate            => convertToType(parseDateTime(s), targetClass)
       case ClassOfLong                    => if (s == "") null else s.toLong
       case ClassOfScalaMathBigDecimal     => if (s == "") null else scala.math.BigDecimal(s)
       case ClassOfScalaMathBigInt         => if (s == "") null else scala.math.BigInt(s)
