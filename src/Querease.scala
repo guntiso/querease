@@ -113,6 +113,7 @@ object ValueConverter {
       "Short"                                 -> ClassOfShort,
       "Array[Byte]"                           -> ClassOfByteArray,
     )
+  private val timezoneRegex = """^.{11,}?[^\d:\.]""".r
 }
 
 trait ValueConverter {
@@ -129,7 +130,6 @@ trait ValueConverter {
          ZoneId.of(config.getString("data.timezone"))
     else ZoneId.systemDefault
 
-  private val timezoneRegex = """[+-]\d\d(:?\d\d)?$|[Zz]$""".r.unanchored
   protected def parseDateTimeString(d: String): AnyRef = {
     def normalized = d.charAt(10) match {
       case ' ' => d.replace(" ", "T")
@@ -142,10 +142,8 @@ trait ValueConverter {
       LocalTime.parse(d)
     else if (d.length < 11)
       LocalDate.parse(d)
-    else if (d endsWith "]")
-      ZonedDateTime.parse(normalized)
     else if (timezoneRegex.findFirstIn(d).nonEmpty)
-      OffsetDateTime.parse(normalized)
+      ZonedDateTime.parse(normalized)
     else
       LocalDateTime.parse(normalized)
   }
@@ -290,7 +288,7 @@ trait ValueConverter {
       case ClassOfJavaTimeLocalDate       => x.toInstant.atZone(zoneId).toLocalDate
       case ClassOfJavaTimeLocalDateTime   => x.toInstant.atZone(zoneId).toLocalDateTime
       case ClassOfJavaTimeLocalTime       => x.toInstant.atZone(zoneId).toLocalTime
-      case ClassOfJavaTimeZonedDateTime   => x.toInstant.atZone(zoneId)
+      case ClassOfJavaTimeZonedDateTime   => x.toZonedDateTime
       case ClassOfJavaUtilDate            => java.util.Date.from(x.toInstant)
       case ClassOfString                  => x.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME)
       case _                              => throwUnsupportedConversion(value, targetClass)
