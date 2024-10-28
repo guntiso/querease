@@ -303,9 +303,7 @@ trait QuereaseMetadata {
   }
   protected def hasExplicitKey(view: ViewDef) = {
     import QuereaseMetadata.AugmentedQuereaseViewDef
-    Option(view.keyFieldNames)
-      .filter(_.nonEmpty)
-      .isDefined
+    Option(view.keyFieldNames).exists(_.nonEmpty)
   }
   protected def persistenceMetadataTypeCast(view: ViewDef, field: FieldDef): String = {
     val type_ =
