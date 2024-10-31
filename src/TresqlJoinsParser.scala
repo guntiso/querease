@@ -40,7 +40,7 @@ class TresqlJoinsParser(
     db -> (joinsParserCompiler, createCache(db))
   }.toMap
   def apply(db: String, baseTable: String, joins: Seq[String]) = if (joins == null || joins == Nil) List() else {
-    val (joinsParserCompiler, cache) = dbToCompilerAndCache(db)
+    val (joinsParserCompiler, cache) = dbToCompilerAndCache.getOrElse(db, sys.error(s"Db or db alias not found: $db"))
     import TresqlJoinsParser._
     import joinsParserCompiler.{ declaredTable, metadata }
     import CompilerAst.{ SelectDef, SelectDefBase, TableDef, TableAlias, WithSelectDef }
