@@ -618,7 +618,11 @@ trait QuereaseMetadata {
     log(s"Generating queries to be compiled for ${viewsToCompile.size} top-level views" +
         s" (${nameToViewDef.size} views total)")
     val startTime = System.currentTimeMillis
-    val result = viewsToCompile flatMap allQueryStrings
+    val result = viewsToCompile.flatMap { v =>
+      try allQueryStrings(v) catch { case util.control.NonFatal(ex) =>
+        throw new RuntimeException(s"Failed to generate queries for ${v.name}", ex)
+      }
+    }
     val endTime = System.currentTimeMillis
     log(s"Query generation done in ${endTime - startTime} ms, ${result.size} queries generated")
     result
