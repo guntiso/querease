@@ -1411,6 +1411,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.delete(j1)
   }
 
+  if (isDbAvailable) it should s"support references to parent fields $dbName" in {
+    qe.get[PersonParentRefTest1](1103).get.children(0).mother_full_name shouldBe("Marija Ozola")
+  }
+
   if (isDbAvailable) it should s"support ambiguous ref resolvers $dbName" in {
     val m = new Mother
     var m_saved: Mother = null

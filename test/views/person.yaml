@@ -691,3 +691,18 @@ fields:
 - surname
 - sex
 - children * [^1.id = mother_id] person_recursive_test_2
+
+
+name:    person_parent_ref_test_1
+table:   person
+save-to: person:mother_id[id]  # TODO extract this info from join to parent, add clean test
+fields:
+- id
+- name
+- surname
+- sex
+- children * [^1.id = mother_id]:
+  table: person
+  fields:
+  - name
+  - mother_full_name = concat(^1.name, ' ', ^1.surname)

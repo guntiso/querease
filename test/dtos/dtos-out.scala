@@ -854,6 +854,17 @@ class person_multitable_choice_resolver_implied_2 extends Dto {
 class person_name extends Dto {
   var name: String = null
 }
+class person_parent_ref_test_1 extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var children: List[person_parent_ref_test_1_children] = Nil
+}
+class person_parent_ref_test_1_children extends Dto {
+  var name: String = null
+  var mother_full_name: String = null
+}
 class person_recursive_test_1 extends DtoWithId {
   var id: java.lang.Long = null
   var name: String = null
