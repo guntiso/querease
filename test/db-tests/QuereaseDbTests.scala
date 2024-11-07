@@ -1214,6 +1214,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       s"""{"db": "$dbName"}""",
       s"""["db", "$dbName"]""",
       s"""{"a": [1, "a", {}, [], [42]], "x": 1, "y": 2, "z": "3", "db": "$dbName"}""",
+      s"""[{"id": 42, "string": "s_42"}]""",
     )
     for (value <- jsons) yield {
       j1.value = value
@@ -1224,6 +1225,36 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     }
 
     qe.toSaveableMap(Map("id" -> 0, "value" -> Nil), qe.viewDef("json_test_any")) shouldBe Map("id" -> 0, "value" -> "[]")
+
+    var jta: JsonTestArray  = null
+    jta = qe.get[JsonTestArray](id).get
+    jta.id                  shouldBe j1.id
+    jta.children.size       shouldBe     1
+    jta.children(0).id      shouldBe    42
+    jta.children(0).string  shouldBe "s_42"
+
+    j1.value = """[{"id": 42, "string": "s_42"}, {"id": 69, "string": "s_69"}]"""
+    qe.save(j1)
+    intercept[RuntimeException] {
+      qe.get[JsonTestTypes](j1.id)
+    }.getMessage shouldBe "Expected at most one row or element, got more - can not unwrap"
+
+    jta = qe.get[JsonTestArray](id).get
+    jta.id                  shouldBe j1.id
+    jta.children.size       shouldBe     2
+    jta.children(0).id      shouldBe    42
+    jta.children(0).string  shouldBe "s_42"
+    jta.children(1).id      shouldBe    69
+    jta.children(1).string  shouldBe "s_69"
+
+    jta.children(1).string  = "s_69_upd"
+    qe.toSaveableMap(jta.toMap, qe.viewDef("json_test_array")) shouldBe Map(
+      "id" -> id, "children" -> """[{"id":42,"string":"s_42"},{"id":69,"string":"s_69_upd"}]""")
+    qe.save(jta)
+    jta = qe.get[JsonTestArray](id).get
+    jta.children.size       shouldBe     2
+    jta.children(1).string  shouldBe "s_69_upd"
+
 
     val bytesR = "Rūķīši".getBytes("UTF-8")
     def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes

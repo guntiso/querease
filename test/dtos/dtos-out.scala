@@ -361,6 +361,14 @@ class json_test_any extends DtoWithId {
   var id: java.lang.Long = null
   var value: String = null
 }
+class json_test_array extends DtoWithId {
+  var id: java.lang.Long = null
+  var children: List[json_test_array_children] = Nil
+}
+class json_test_array_children extends DtoWithId {
+  var id: java.lang.Long = null
+  var string: String = null
+}
 class json_test_types extends DtoWithId {
   var id: java.lang.Long = null
   var child: json_test_types_child = null

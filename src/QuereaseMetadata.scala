@@ -310,8 +310,9 @@ trait QuereaseMetadata {
       if  (field.type_.isComplexType)
            tableMetadata.columnDefOption(view, field).map(_.type_).getOrElse(field.type_)
       else field.type_
-    if (field.isCollection) s"::'${type_.name}[]'"
-    else if (type_.name == "json") "::json"
+    if      (type_.name == "json") "::json"
+    else if (type_.name == "yaml") "::yaml"
+    else if (field.isCollection)  s"::'${type_.name}[]'"
     else ""
   }
   def oldKeyParamName = "old key"

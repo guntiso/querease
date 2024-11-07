@@ -105,6 +105,15 @@ class QuereaseTests extends FlatSpec with Matchers {
   "querease" should "build correct persistence metadata" in {
     import org.tresql.OrtMetadata._
     // TODO use json or some other strings for persistence metadata?
+    qe.persistenceMetadata("json_test_array") shouldBe View(
+      List(SaveTo("json_io_test", Set(), List())),
+      Some(Filters(None, None, None)),
+      null,
+      List(Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+        Property("value", TresqlValue(":children::json"), false, true, true)
+      ),
+      null
+    )
     qe.persistenceMetadata("organization_with_accounts") shouldBe View(
       List(SaveTo("organization",Set(),List())),
       Some(Filters(None,None,None)),

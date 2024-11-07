@@ -702,19 +702,24 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
               } else
                 toSaveableMap(toCompatibleMap(x, childView, f.fieldName), childView)
           }
+          lazy val isJson =
+            valueType.name == "json" || valueType.name == "yaml"
           map.getOrElse(f.fieldName, null) match {
+            case null if isJson         => null
             case null if f.isCollection => Nil
-            case null => null
+            case null                   => null
+            case Nil  if isJson         => "[]"
             case Nil  if f.isCollection => Nil
-            case Nil  if f.type_.name == "json" || f.type_.name == "yaml" => "[]"
-            case Nil  => null
+            case Nil                    => null
             case m: Map[String @unchecked, _] =>
               if (f.isCollection)
                 List(toSaveableMapOrValue(m))
               else
                 toSaveableMapOrValue(m)
             case seq: Seq[_] =>
-              if (f.isCollection)
+              if (isJson)
+                toSaveableValue(seq, valueType)
+              else if (f.isCollection)
                 seq.map(toSaveableMapOrValue)
               else if (shouldSaveAsValue && !f.type_.isComplexType)
                 toSaveableValue(seq, valueType)
