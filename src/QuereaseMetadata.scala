@@ -306,9 +306,11 @@ trait QuereaseMetadata {
     Option(view.keyFieldNames).exists(_.nonEmpty)
   }
   protected def persistenceMetadataTypeCast(view: ViewDef, field: FieldDef): String = {
+    val tableName = Option(field.table).getOrElse(view.table)
+    val colName   = Option(field.saveTo).getOrElse(field.name)
     val type_ =
       if  (field.type_.isComplexType)
-           tableMetadata.columnDefOption(view, field).map(_.type_).getOrElse(field.type_)
+           tableMetadata.col(tableName, colName, view.db).map(_.type_).getOrElse(field.type_)
       else field.type_
     if      (type_.name == "json") "::json"
     else if (type_.name == "yaml") "::yaml"
@@ -455,7 +457,8 @@ trait QuereaseMetadata {
           val saveTo    = Option(f.saveTo).getOrElse(f.name)
           def typeCast  = persistenceMetadataTypeCast(view, f)
           val valueTresql =
-            if (f.saveTo == null && f.resolver == null)
+            if (f.saveTo == null && f.resolver == null ||
+               (f.saveTo != null && (f.resolver == "_" || f.resolver == s":$fieldName")))
               s":${fieldName}${if (isOptionalField(f)) "?" else ""}${typeCast}"
             else {
               val resolvers = allResolvers(view, f)

@@ -369,6 +369,24 @@ class json_test_array_children extends DtoWithId {
   var id: java.lang.Long = null
   var string: String = null
 }
+class json_test_array_resolve extends DtoWithId {
+  var id: java.lang.Long = null
+  var children: List[json_test_array_resolve_children] = Nil
+  def resolve_value(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{:children}"""(env.withParams(this.toMap))
+      .unique[String]
+  }
+}
+object json_test_array_resolve {
+  def resolve_value(children: json_test_array_resolve_children)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
+    tresql"""{:children}"""(env.withParams(Map("children" -> Option(children).map(_.toMap).orNull)))
+      .unique[String]
+  }
+}
+class json_test_array_resolve_children extends DtoWithId {
+  var id: java.lang.Long = null
+  var string: String = null
+}
 class json_test_types extends DtoWithId {
   var id: java.lang.Long = null
   var child: json_test_types_child = null

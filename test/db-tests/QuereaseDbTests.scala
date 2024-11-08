@@ -1255,6 +1255,24 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     jta.children.size       shouldBe     2
     jta.children(1).string  shouldBe "s_69_upd"
 
+    var jtr: JsonTestArrayResolve  = null
+    jtr = qe.get[JsonTestArrayResolve](id).get
+    jtr.id                  shouldBe j1.id
+    jtr.children.size       shouldBe     0
+
+    jtr.children = jta.children.map { c =>
+      new dto.JsonTestArrayResolveChildren().fill(c.toMap)
+    }
+    jtr.children(1).string = "s_69_upd_2"
+    qe.save(jtr)
+
+    jta = qe.get[JsonTestArray](id).get
+    jta.id                  shouldBe j1.id
+    jta.children.size       shouldBe     2
+    jta.children(0).id      shouldBe    42
+    jta.children(0).string  shouldBe "s_42"
+    jta.children(1).id      shouldBe    69
+    jta.children(1).string  shouldBe "s_69_upd_2"
 
     val bytesR = "Rūķīši".getBytes("UTF-8")
     def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes

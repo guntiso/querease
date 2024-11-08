@@ -17,6 +17,17 @@ fields:
     - string
 
 
+name:   json_test_array_resolve
+table:  json_io_test
+fields:
+- id
+- children * = -> value = _:
+    table:
+    fields:
+    - id
+    - string
+
+
 name:   json_test_types
 table:  json_io_test
 fields:

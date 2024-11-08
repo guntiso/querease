@@ -679,7 +679,13 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
       view.fields
         .filter(f => map.contains(f.fieldName) || !isOptionalField(f))
         .map(f => f.fieldName -> (try {
-          lazy val valueType = tableMetadata.columnDefOption(view, f).map(_.type_).getOrElse(f.type_)
+          lazy val valueType =
+            if (f.type_.isComplexType) {
+              val tableName = if (f.table  != null) f.table  else view.table
+              val colName   = if (f.saveTo != null) f.saveTo else f.name
+              tableMetadata.col(tableName, colName, view.db).map(_.type_).getOrElse(f.type_)
+            } else
+              tableMetadata.columnDefOption(view, f).map(_.type_).getOrElse(f.type_)
           lazy val childView = viewDef(f.type_.name)
           lazy val shouldSaveAsValue = !f.type_.isComplexType ||
             childView.table == null && (childView.joins == null || childView.joins == Nil)

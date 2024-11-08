@@ -114,6 +114,15 @@ class QuereaseTests extends FlatSpec with Matchers {
       ),
       null
     )
+    qe.persistenceMetadata("json_test_array_resolve") shouldBe View(
+      List(SaveTo("json_io_test", Set(), List())),
+      Some(Filters(None, None, None)),
+      null,
+      List(Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+        Property("value", TresqlValue(":children::json"), false, true, true)
+      ),
+      null
+    )
     qe.persistenceMetadata("organization_with_accounts") shouldBe View(
       List(SaveTo("organization",Set(),List())),
       Some(Filters(None,None,None)),
@@ -365,9 +374,9 @@ class QuereaseTests extends FlatSpec with Matchers {
       "bk",
       List(
         Property("id",KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))),false,true,false),
-        Property("bank.code",TresqlValue("(:code)"),false,true,true),
-        Property("bank.name",TresqlValue("(:bk_name)"),false,true,true),
-        Property("country.name",TresqlValue("(:cr_name)"),false,true,true),
+        Property("bank.code",TresqlValue(":code"),false,true,true),
+        Property("bank.name",TresqlValue(":bk_name"),false,true,true),
+        Property("country.name",TresqlValue(":cr_name"),false,true,true),
       ),
       null,
     )
