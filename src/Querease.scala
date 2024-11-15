@@ -670,6 +670,16 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     }
   }
 
+  private def toJavaArray(seq: Seq[_], valueType: Type): AnyRef = {
+    val arr = java.lang.reflect.Array.newInstance(typeNameToClass(valueType.elementType), seq.size)
+    var i = 0
+    seq.foreach { v =>
+      java.lang.reflect.Array.set(arr, i, v)
+      i += 1
+    }
+    arr
+  }
+
   /** Provides missing fields, uses [[toSaveableValue]] to convert values */
   def toSaveableMap(map: Map[String, scala.Any], view: ViewDef): Map[String, Any] = {
     (if  (view.fields.forall(f => map.contains(f.fieldName) || isOptionalField(f)))
@@ -686,8 +696,9 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
               tableMetadata.col(tableName, colName, view.db).map(_.type_).getOrElse(f.type_)
             } else
               tableMetadata.columnDefOption(view, f).map(_.type_).getOrElse(f.type_)
+          lazy val isArr     = valueType.isArray
           lazy val childView = viewDef(f.type_.name)
-          lazy val shouldSaveAsValue = !f.type_.isComplexType ||
+          lazy val shouldSaveAsValue = !f.type_.isComplexType || isArr ||
             childView.table == null && (childView.joins == null || childView.joins == Nil)
           def toSaveableMapOrValue(value: Any) = value match {
             case null => null
@@ -711,19 +722,24 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           lazy val isJson =
             valueType.name == "json" || valueType.name == "yaml"
           map.getOrElse(f.fieldName, null) match {
-            case null if isJson         => null
+            case null if isArr || isJson=> null
             case null if f.isCollection => Nil
             case null                   => null
+            case Nil  if isArr          => toJavaArray(Nil, valueType)
             case Nil  if isJson         => "[]"
             case Nil  if f.isCollection => Nil
             case Nil                    => null
             case m: Map[String @unchecked, _] =>
-              if (f.isCollection)
+              if (isArr)
+                toJavaArray(List(toSaveableMapOrValue(m)), valueType)
+              else if (f.isCollection)
                 List(toSaveableMapOrValue(m))
               else
                 toSaveableMapOrValue(m)
             case seq: Seq[_] =>
-              if (isJson)
+              if (isArr)
+                toJavaArray(seq.map(toSaveableValue(_, valueType)), valueType)
+              else if (isJson)
                 toSaveableValue(seq, valueType)
               else if (f.isCollection)
                 seq.map(toSaveableMapOrValue)

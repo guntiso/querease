@@ -74,7 +74,7 @@ class QuereaseMacros extends Macros {
       b.SelectExpr(List(
         b.Table(b.ConstExpr(ast.Null), null, b.TableJoin(false, null, true, null), null, false, null)),
         filter, b.ColsExpr(cols, false, false, false),
-        false, null, null, null, null, Map(), None
+        null, null, null, null, null, Map(), None
       )
     }
     def addRow(name: String, path: List[String], table: metadata.Table, values: Map[String, Any],
@@ -186,7 +186,7 @@ class QuereaseMacros extends Macros {
       ast.Query(
         List(ast.Obj(ast.Null)),
         ast.Filters(List(ast.Arr(List(ast.BinOp("=", ast.IntConst(1), ast.IntConst(0)))))),
-        ast.Cols(false, vals)
+        ast.Cols(vals, null)
       )
     }
     def withQuery(q: Exp) = {
