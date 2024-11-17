@@ -1,0 +1,83 @@
+name:  distinct_empty
+table:  person
+fields:
+- surname
+distinct:
+
+
+name:  distinct_true
+table:  person
+fields:
+- surname
+distinct: true
+
+
+name:  distinct_false
+table:  person
+fields:
+- surname
+distinct: false
+
+
+name:  distinct_surname
+table:  person
+fields:
+- id
+- name
+- surname
+distinct: surname
+order:
+- surname
+- name
+- id
+
+
+name:  distinct_mother
+table:  person
+fields:
+- id
+- name
+- surname
+- sex
+- mother_id
+- father_id
+distinct:
+- mother_id
+order:
+- mother_id
+- father_id
+- id
+
+
+name:  distinct_mother_father
+table:  person
+fields:
+- id
+- name
+- surname
+- sex
+- mother_id
+- father_id
+distinct:
+- mother_id
+- father_id
+order:
+- mother_id
+- father_id
+- id
+
+
+name:  distinct_surname_father
+table:  person
+fields:
+- id
+- name
+- surname
+- sex
+- mother_id
+- father_id
+distinct: surname, father_id
+order:
+- surname
+- father_id
+- id

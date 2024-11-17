@@ -283,6 +283,44 @@ object currency {
       .unique[String]
   }
 }
+class distinct_empty extends Dto {
+  var surname: String = null
+}
+class distinct_false extends Dto {
+  var surname: String = null
+}
+class distinct_mother extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var mother_id: java.lang.Long = null
+  var father_id: java.lang.Long = null
+}
+class distinct_mother_father extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var mother_id: java.lang.Long = null
+  var father_id: java.lang.Long = null
+}
+class distinct_surname extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+}
+class distinct_surname_father extends DtoWithId {
+  var id: java.lang.Long = null
+  var name: String = null
+  var surname: String = null
+  var sex: String = null
+  var mother_id: java.lang.Long = null
+  var father_id: java.lang.Long = null
+}
+class distinct_true extends Dto {
+  var surname: String = null
+}
 class fake_key_test extends Dto {
 }
 class father_tree extends DtoWithId {

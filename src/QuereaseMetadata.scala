@@ -714,12 +714,14 @@ trait QuereaseMetadata {
 object QuereaseMetadata {
 
   trait QuereaseViewDefExtras {
+    val distinct: String
     val keyFieldNames: Seq[String]
     val minSearchKeyFieldCount: Int
     val validations: Seq[String]
   }
 
   private [querease] case class QuereaseViewDef(
+    distinct: String = null,
     keyFieldNames: Seq[String] = Nil,
     minSearchKeyFieldCount: Int = 0,
     validations: Seq[String] = Nil
@@ -752,6 +754,7 @@ object QuereaseMetadata {
   implicit class AugmentedQuereaseViewDef(viewDef: ViewDef) extends QuereaseViewDefExtras with ExtrasMap {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
+    override val distinct      = quereaseExtras.distinct
     override val keyFieldNames = quereaseExtras.keyFieldNames
     override val minSearchKeyFieldCount = quereaseExtras.minSearchKeyFieldCount
     override val validations = quereaseExtras.validations
@@ -820,6 +823,7 @@ object QuereaseMetadata {
 
   def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
     import scala.jdk.CollectionConverters._
+    val Distinct= "distinct"
     val Initial = "initial"
     val Key     = "key"
     val Validations = "validations"
@@ -866,6 +870,8 @@ object QuereaseMetadata {
         else f
       } else f
     }
+    val distinct =
+      Option(getStringSeq(Distinct, viewDef.extras)).filter(_.nonEmpty).map(_.mkString(",")).orNull
     val rawKey = getStringSeq(Key, viewDef.extras).flatMap(Option(_).toList).mkString(",")
     val keyFieldNames =
       rawKey.split("[,()]+").map(_.trim).filter(_ != "").toList
@@ -876,6 +882,6 @@ object QuereaseMetadata {
       }
     val validations = getStringSeq(Validations, viewDef.extras)
     viewDef.copy(fields = qeFields).updateExtras(_ =>
-      QuereaseViewDef(keyFieldNames, minSearchKeyFieldCount, validations))
+      QuereaseViewDef(distinct, keyFieldNames, minSearchKeyFieldCount, validations))
   }
 }

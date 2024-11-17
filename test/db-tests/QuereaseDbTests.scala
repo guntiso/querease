@@ -1608,6 +1608,33 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     comparable(toCompatibleMapFromDb(obj)) shouldBe comparable(obj.toMap)
   }
 
+  if (isDbAvailable) it should s"support distinct using $dbName" in {
+    qe.countAll[Person](Map[String, Any]())         shouldBe 53
+
+    qe.list[DistinctFalse](Map[String, Any]()).size shouldBe 53
+    qe.countAll[DistinctFalse](Map[String, Any]())  shouldBe 53
+
+    qe.list[DistinctTrue](Map[String, Any]()).size  shouldBe 25
+    qe.countAll[DistinctTrue](Map[String, Any]())   shouldBe 25
+
+    qe.list[DistinctEmpty](Map[String, Any]()).size shouldBe 25
+    qe.countAll[DistinctEmpty](Map[String, Any]())  shouldBe 25
+  }
+
+  if (isDbAvailable && dbName == "postgresql") it should s"support distinct on (...) using $dbName" in {
+    qe.list[DistinctSurname](Map[String, Any]()).size       shouldBe 25
+    qe.countAll[DistinctSurname](Map[String, Any]())        shouldBe 25
+
+    qe.list[DistinctMother](Map[String, Any]()).size        shouldBe 17
+    qe.countAll[DistinctMother](Map[String, Any]())         shouldBe 17
+
+    qe.list[DistinctMotherFather](Map[String, Any]()).size  shouldBe 20
+    qe.countAll[DistinctMotherFather](Map[String, Any]())   shouldBe 20
+
+    qe.list[DistinctSurnameFather](Map[String, Any]()).size shouldBe 40
+    qe.countAll[DistinctSurnameFather](Map[String, Any]())  shouldBe 40
+  }
+
   if (isDbAvailable) it should s"support ro lookup plus rw ref in $dbName" in {
     var nc_test = new RoChildRefClashTest
     val p = new Person

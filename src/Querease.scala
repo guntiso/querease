@@ -1421,16 +1421,24 @@ trait QueryStringBuilder {
   ): (String, Map[String, Any]) = {
     val (from, pathToAlias) = this.fromAndPathToAlias(view)
     val where = this.where(view, extraFilter, pathToAlias)
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    val distinct = view.distinct match {
+      case null    => ""
+      case "false" => ""
+      case "true"  => "#"
+      case ""      => "#"
+      case on      => s"#($on)"
+    }
     val groupBy = this.groupBy(view)
     val having = this.having(view)
-    val simpleCountAll = countAll && groupBy == "" && having == ""
+    val simpleCountAll = countAll && groupBy == "" && having == "" && distinct == ""
     val cols = this.cols(view, simpleCountAll, pathToAlias, fieldFilter)
     val order = this.order(view, orderBy)
     val values = Option(params) getOrElse Map[String, Any]() // TODO convert?
     val dbPrefix = if (includeDbPrefix) Option(view.db).map(db => s"|$db:").getOrElse("") else ""
 
     val (q1, limitOffsetPars) =
-      limitOffset(dbPrefix + from + where + cols + groupBy + having + order, countAll, limit, offset)
+      limitOffset(dbPrefix + from + where + distinct + cols + groupBy + having + order, countAll, limit, offset)
     val q = if (countAll && !simpleCountAll) s"($q1) a {count(*)}" else q1
     // TODO param name?
     (q, values ++ extraParams ++ limitOffsetPars.zipWithIndex.map(t => (t._2 + 1).toString -> t._1).toMap)
