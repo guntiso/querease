@@ -1139,20 +1139,50 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val id = qe.save(a1)
     a1.id  = id
 
-    def compare(a1: ArrayTypesTest, a2: ArrayTypesTest) = {
+    def compare_o(a1: ArrayTypesTest, a2: ArrayTypesTest) = {
       a2.id shouldBe id
       a2.long_arr       shouldBe a1.long_arr
       a2.string_arr     shouldBe a1.string_arr
       a2.date_arr       shouldBe a1.date_arr
       a2.time_arr       shouldBe a1.time_arr
-      a2.date_time_arr  shouldBe a2.date_time_arr
+      a2.date_time_arr  shouldBe a1.date_time_arr
       a2.int_arr        shouldBe a1.int_arr
       a2.bigint_arr     shouldBe a1.bigint_arr
       a2.double_arr     shouldBe a1.double_arr
       a2.decimal_arr    shouldBe a1.decimal_arr
       a2.boolean_arr    shouldBe a1.boolean_arr
     }
-    compare(a1, qe.get[ArrayTypesTest](id).get)
+
+    def compare_m(a1: ArrayTypesTest, m2: Map[String, Any]) = {
+      m2("id")            shouldBe id
+      m2("long_arr")      shouldBe a1.long_arr
+      m2("string_arr")    shouldBe a1.string_arr
+      m2("date_arr")      shouldBe a1.date_arr
+      m2("time_arr")      shouldBe a1.time_arr
+      m2("date_time_arr") shouldBe a1.date_time_arr
+      m2("int_arr")       shouldBe a1.int_arr
+      m2("bigint_arr")    shouldBe a1.bigint_arr
+      m2("double_arr")    shouldBe a1.double_arr
+      m2("decimal_arr")   shouldBe a1.decimal_arr
+      m2("boolean_arr")   shouldBe a1.boolean_arr
+    }
+
+    compare_o(a1, qe.get[ArrayTypesTest](id).get)
+    compare_m(a1, getAsMap("array_types_test", id))
+
+    a1.long_arr       = null
+    a1.string_arr     = null
+    a1.date_arr       = null
+    a1.time_arr       = null
+    a1.date_time_arr  = null
+    a1.int_arr        = null
+    a1.bigint_arr     = null
+    a1.double_arr     = null
+    a1.decimal_arr    = null
+    a1.boolean_arr    = null
+    qe.save(a1)
+    compare_o(a1, qe.get[ArrayTypesTest](id).get)
+    compare_m(a1, getAsMap("array_types_test", id))
 
     a1.long_arr       = Nil
     a1.string_arr     = Nil
@@ -1165,7 +1195,22 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     a1.decimal_arr    = Nil
     a1.boolean_arr    = Nil
     qe.save(a1)
-    compare(a1, qe.get[ArrayTypesTest](id).get)
+    compare_o(a1, qe.get[ArrayTypesTest](id).get)
+    compare_m(a1, getAsMap("array_types_test", id))
+
+    a1.long_arr       = List(null)
+    a1.string_arr     = List(null)
+    a1.date_arr       = List(null)
+    a1.time_arr       = List(null)
+    a1.date_time_arr  = List(null)
+    a1.int_arr        = List(null)
+    a1.bigint_arr     = List(null)
+    a1.double_arr     = List(null)
+    a1.decimal_arr    = List(null)
+    a1.boolean_arr    = List(null)
+    qe.save(a1)
+    compare_o(a1, qe.get[ArrayTypesTest](id).get)
+    compare_m(a1, getAsMap("array_types_test", id))
 
     a1.long_arr = List(Long.MinValue, 0, 42, Long.MaxValue)
     a1.string_arr = List("one", "two", "three")
@@ -1190,23 +1235,11 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     if (dbName == "hsqldb") // FIXME fix BigDecimal array for hsqldb!   
       a1.decimal_arr = a1.decimal_arr.map(_.round(new java.math.MathContext(17)).setScale(2))
-    compare(a1, qe.get[ArrayTypesTest](id).get)
-
     if (dbName == "hsqldb") // FIXME fix dateTime array for hsqldb!   
-      a1.date_time_arr = qe.get[ArrayTypesTest](id).get.date_time_arr
+      a1.date_time_arr = a1.date_time_arr.map(_.withNano(0))
 
-    val m2 = getAsMap("array_types_test", id)
-    m2("id")            shouldBe id
-    m2("long_arr")      shouldBe a1.long_arr
-    m2("string_arr")    shouldBe a1.string_arr
-    m2("date_arr")      shouldBe a1.date_arr
-    m2("time_arr")      shouldBe a1.time_arr
-    m2("date_time_arr") shouldBe a1.date_time_arr
-    m2("int_arr")       shouldBe a1.int_arr
-    m2("bigint_arr")    shouldBe a1.bigint_arr
-    m2("double_arr")    shouldBe a1.double_arr
-    m2("decimal_arr")   shouldBe a1.decimal_arr
-    m2("boolean_arr")   shouldBe a1.boolean_arr
+    compare_o(a1, qe.get[ArrayTypesTest](id).get)
+    compare_m(a1, getAsMap("array_types_test", id))
 
     a1.id = id
     qe.delete(a1)

@@ -378,6 +378,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     row(index) match {
       case arrayString: String if arrayString startsWith "[" =>
         parseColumnValue(arrayString, s"columns[$index]").asInstanceOf[Seq[_]]
+      case null => null
       case _ => List(typedValue(row, index, type_))
     }
 

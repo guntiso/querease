@@ -176,7 +176,10 @@ trait Dto { self =>
                   arr.free()
                   value
                 case x =>
-                  List(r.typed(dbName)(s.mfOth)).asInstanceOf[Object]
+                  r.typed(dbName)(s.mfOth) match {
+                    case null => null
+                    case x    => List(x).asInstanceOf[Object]
+                  }
               }
           case (mSeq, mDto) =>
             if (isResult) {
