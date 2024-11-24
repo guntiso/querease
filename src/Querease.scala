@@ -519,6 +519,11 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
               if  (field.isCollection)
                    childSeq
               else unwrapSeq(childSeq)
+            case x =>
+              if (field.isCollection)
+                toCompatibleSeqOfMaps(x, childView, s"${view.name}.${field.name}")
+              else
+                toCompatibleMap(x, childView, s"${view.name}.${field.name}")
           }
         } else value match { // simple type
           case m: Map[String @unchecked, _] =>
