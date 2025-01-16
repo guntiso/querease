@@ -26,7 +26,7 @@ initialize := {
     sys.error("Java 11 is required for this project. Found " + javaVersion + " instead")
 }
 
-val mojozV  = "5.3.3"
+val mojozV  = "5.4.0"
 val tresqlV = "12.0.1"
 libraryDependencies ++= Seq(
   "org.mojoz"     %% "mojoz"      % mojozV,
@@ -56,7 +56,7 @@ Compile / doc / scalacOptions ++= (
  }.value
 
 resolvers ++= Seq(
-  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  // "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
 Test / unmanagedResourceDirectories := baseDirectory(b => Seq(

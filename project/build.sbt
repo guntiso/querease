@@ -1,10 +1,10 @@
 resolvers ++= Seq(
-  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  // "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
 libraryDependencies ++= Seq(
   "com.typesafe"% "config" % "1.4.3",
-  "org.mojoz"  %% "mojoz"  % "5.3.3",
+  "org.mojoz"  %% "mojoz"  % "5.4.0",
  ("org.tresql" %% "tresql" % "12.0.1").exclude(
   "org.scala-lang.modules",   "scala-parser-combinators_2.12"),
 )
