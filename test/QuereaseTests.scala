@@ -1,6 +1,8 @@
 package test
 
 import java.io.PrintWriter
+import java.time.{LocalDate, LocalDateTime, LocalTime}
+import java.util.Base64
 import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import dto._
@@ -577,6 +579,61 @@ class QuereaseTests extends FlatSpec with Matchers {
     qe.viewNameToKeyFields("account_details").size shouldBe 2
     qe.viewNameToKeyFields("account_details")
       .map(_.fieldName).mkString(", ") shouldBe "bank_id, bank_code"
+  }
+
+  "querease" should "produce compatible map for view" in {
+    val m1: Map[String, String] = Map(
+      "id"        -> "1",
+      "long"      -> "2",
+      "string"    -> "s",
+      "date"      -> "2025-02-24",
+      "time"      -> "21:30",
+      "date_time" -> "2025-02-24 21:30",
+      "int"       -> "3",
+      "bigint"    -> "4",
+      "double"    -> "5.2",
+      "decimal"   -> "6.3",
+      "boolean"   -> "true",
+      "bytes"     -> "aQ==",
+    )
+    val expected = qe.viewNameToMapZero("types_test") ++ Map(
+      "id"        -> 1L,
+      "long"      -> 2L,
+      "string"    -> "s",
+      "date"      -> LocalDate.parse("2025-02-24"),
+      "time"      -> LocalTime.parse("21:30"),
+      "date_time" -> LocalDateTime.parse("2025-02-24T21:30"),
+      "int"       -> Integer.valueOf(3),
+      "bigint"    -> BigInt(4),
+      "double"    -> 5.2,
+      "decimal"   -> BigDecimal(6.3),
+      "boolean"   -> true,
+      "bytes"     -> Array[Byte](105),
+      "child"     -> null,
+      "children"  -> Nil,
+    )
+    val mc: Map[String, Map[String, String]] = Map(
+      "child"     -> Map("name" -> "n", "date" -> "2025-02-25", "date_time" -> "2025-02-25 14:00"),
+      "children"  -> Map("name" -> "X", "date" -> "2025-03-25", "date_time" -> "2025-03-25 14:05"),
+    )
+    val ec: Map[String, Any] = Map(
+      "child"     -> Map("name" -> "n", "date" -> LocalDate.parse("2025-02-25"), "date_time" -> LocalDateTime.parse("2025-02-25T14:00")),
+      "children"  -> List(Map("name" -> "X", "date" -> LocalDate.parse("2025-03-25"), "date_time" -> LocalDateTime.parse("2025-03-25T14:05"))),
+    )
+    def keyToClassName(kv: (String, Any)): (String, String) = kv match {
+      case (k, null) => k -> null
+      case (k, v)    => k -> v.getClass.getName
+    }
+    def bytesToString(kv: (String, Any)): (String, Any) = kv match {
+      case (k, b: Array[Byte]) => k -> Base64.getEncoder.encodeToString(b)
+      case x            => x
+    }
+    qe.toCompatibleMap(m1, qe.viewDef("types_test")).map(keyToClassName) shouldBe expected.map(keyToClassName)
+    qe.toCompatibleMap(m1, qe.viewDef("types_test")).map(bytesToString)  shouldBe expected.map(bytesToString)
+
+    val m2 = m1 ++ mc
+    val expectd2 = expected ++ ec
+    qe.toCompatibleMap(m2, qe.viewDef("types_test")).map(bytesToString)  shouldBe expectd2.map(bytesToString)
   }
 
   "querease" should "select referenced fields correctly" in {

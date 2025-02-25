@@ -531,7 +531,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           case q: Seq[_] =>
             if (field.isCollection) q else unwrapSeq(q)
           case x =>
-            if (field.isCollection) List(x) else x
+            if (field.isCollection) List(convertToType(x, field.type_)) else convertToType(x, field.type_)
         }
       } catch {
         case util.control.NonFatal(ex) =>

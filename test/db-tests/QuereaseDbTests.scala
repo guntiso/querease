@@ -1067,19 +1067,19 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // expand to map
     getAsMap("""{'name' name, '{"number": 42}' main_account}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> Map("number" -> 42, "balance" -> null), "accounts" -> List())
+      "name" -> "name", "main_account" -> Map("number" -> "42", "balance" -> null), "accounts" -> List())
 
     // expand to map and wrap
     getAsMap("""{'name' name, '{"number": 42}' accounts}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42, "balance" -> null)))
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> "42", "balance" -> null)))
 
     // expand to array of maps
     getAsMap("""{'name' name, '[{"number": 42}, {"number": 44}]' accounts}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> 42, "balance" -> null), Map("number" -> 44, "balance" -> null)))
+      "name" -> "name", "main_account" -> null, "accounts" -> List(Map("number" -> "42", "balance" -> null), Map("number" -> "44", "balance" -> null)))
 
     // expand to array of maps and unwrap
     getAsMap("""{'name' name, '[{"number": 42}]' main_account}""", "organization_key_test") shouldBe Map(
-      "name" -> "name", "main_account" -> Map("number" -> 42, "balance" -> null), "accounts" -> List())
+      "name" -> "name", "main_account" -> Map("number" -> "42", "balance" -> null), "accounts" -> List())
 
     // expand to array of primitives
     getAsMap("""{'name' name, '[42, 44]' car_ids}""", "person_and_car_12") shouldBe Map(
@@ -1329,25 +1329,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     val bytesR = "Rūķīši".getBytes("UTF-8")
     def normalizeBytes(bytes: Array[Byte]) = if (bytes.sameElements(bytesR)) bytesR else bytes
-    def childMap(map: Map[String, Any]): Map[String, Any] =
-      Option(map("child")).map(_.asInstanceOf[Map[String, _]]).orNull
-    def comparable(map: Map[String, Any]): Map[String, Any] = map.updated("child", childMap(map)
-     .updated("bytes",     Option(childMap(map)("bytes")).map(_.asInstanceOf[Array[Byte]]).map(normalizeBytes).orNull)
-     // dates and times from json are not typed
-     .updated("date",      Option(childMap(map)("date"     )).map(_.toString).map(LocalDate.parse).orNull)
-     .updated("time",      Option(childMap(map)("time"     )).map(_.toString).map(LocalTime.parse).orNull)
-     .updated("date_time", Option(childMap(map)("date_time")).map(_.toString).map(Timestamp.valueOf).map(_.toLocalDateTime).orNull)
-     .updated("sql_date",      Option(childMap(map)("sql_date"     )).map(_.toString).map(java.sql.Date     .valueOf).orNull)
-     .updated("sql_time",      Option(childMap(map)("sql_time"     )).map(_.toString).map(java.sql.Time     .valueOf).orNull)
-     .updated("sql_date_time", Option(childMap(map)("sql_date_time")).map(_.toString).map(java.sql.Timestamp.valueOf).orNull)
-     .updated("instant",          Option(childMap(map)("instant"         )).map(_.toString).map(java.time.Instant       .parse).orNull)
-     .updated("offset_date_time", Option(childMap(map)("offset_date_time")).map(_.toString).map(java.time.OffsetDateTime.parse).orNull)
-     .updated("zoned_date_time",  Option(childMap(map)("zoned_date_time" )).map(_.toString).map(java.time.ZonedDateTime .parse).orNull)
-     .updated("child",     Option(childMap(map)).flatMap { cm => Option(childMap(cm)) }.map { ccm =>
-        ccm.updated("date",      Option(ccm("date"     )).map(_.toString).map(LocalDate.parse).orNull)
-           .updated("date_time", Option(ccm("date_time")).map(_.toString).map(Timestamp.valueOf).map(_.toLocalDateTime).orNull)
-      }.orNull)
-    )
     val typesTestView = qe.viewDef("json_test_types")
     def toCompatibleMapFromDb(obj: JsonTestTypes, viewName: String = "json_test_types"): Map[String, Any] = {
       val id = qe.save(obj)
@@ -1385,7 +1366,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     child.offset_date_time = java.time.OffsetDateTime.parse("2024-10-01T01:10:31.222+03:00")
     child.zoned_date_time  = java.time.ZonedDateTime.parse("2024-10-01T01:11:40.443+03:00[Europe/Riga]")
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
-    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
     child.date = null
     child.time = null
     child.date_time = null
@@ -1443,14 +1424,14 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     child.child.date_time =                           // java.sql.Timestamp.valueOf("2021-12-26 23:57:14.0")
       LocalDateTime.parse("2021-12-26 23:57:14.0".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME)
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
-    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     // children
     child.children = List(new TypesTestChild, new TypesTestChild)
     child.children(0).name = "CHILD-2"
     child.children(1).name = "CHILD-3"
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
-    comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     child.long_arr = List(Long.MinValue, 0, 42, Long.MaxValue)
     child.string_arr = List("one", "two", "three")
@@ -1497,7 +1478,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     c2.decimal_arr    shouldBe child.decimal_arr
     c2.boolean_arr    shouldBe child.boolean_arr
 
-    val m2 = comparable(getAsMap("json_test_types", id))("child").asInstanceOf[Map[String @unchecked, _]]
+    val m2 =            getAsMap("json_test_types",  id)("child").asInstanceOf[Map[String @unchecked, _]]
     m2("long_arr")      shouldBe child.long_arr
     m2("string_arr")    shouldBe child.string_arr
     m2("date_arr")      shouldBe child.date_arr.map(_.toString)
