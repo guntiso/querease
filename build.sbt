@@ -27,7 +27,7 @@ initialize := {
 }
 
 val mojozV  = "5.4.0"
-val tresqlV = "12.0.1"
+val tresqlV = "13.0.0-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.mojoz"     %% "mojoz"      % mojozV,
   "org.tresql"    %% "tresql"     % tresqlV,
@@ -56,7 +56,7 @@ Compile / doc / scalacOptions ++= (
  }.value
 
 resolvers ++= Seq(
-  // "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
 )
 
 Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
