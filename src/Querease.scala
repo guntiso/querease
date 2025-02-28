@@ -529,7 +529,12 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           case m: Map[String @unchecked, _] =>
             if (field.isCollection) List(m) else m
           case q: Seq[_] =>
-            if (field.isCollection) q else unwrapSeq(q)
+            val qt = q.map {
+              case m: Map[String @unchecked, _] => m
+              case q: Seq[_] => q
+              case x => convertToType(x, field.type_)
+            }
+            if (field.isCollection) qt else unwrapSeq(qt)
           case x =>
             if (field.isCollection) List(convertToType(x, field.type_)) else convertToType(x, field.type_)
         }

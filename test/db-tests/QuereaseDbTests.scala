@@ -1385,7 +1385,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // child.decimal = BigDecimal(Long.MinValue, 2) // FIXME handle json io decimal   
     child.boolean = false
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
-    // toCompatibleMapFromDb(obj) shouldBe obj.toMap   
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     // positives
     child.long = Long.MaxValue
@@ -1395,7 +1395,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // child.decimal = BigDecimal(Long.MaxValue, 2) // FIXME handle json io decimal   
     child.boolean = true
     dtoDbRoundtrip(obj).toMap shouldBe obj.toMap
-    // toCompatibleMapFromDb(obj) shouldBe obj.toMap   
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     // zeroes
     child.long   = 0L
@@ -1408,7 +1408,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
 
     // bytes
     // child.bytes = bytesR // TODO handle json io bytes   
-    // comparable(toCompatibleMapFromDb(obj)) shouldBe obj.toMap
+    toCompatibleMapFromDb(obj) shouldBe obj.toMap
 
     for (value <- jsons) yield {
       child.json = value
@@ -1481,12 +1481,12 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     val m2 =            getAsMap("json_test_types",  id)("child").asInstanceOf[Map[String @unchecked, _]]
     m2("long_arr")      shouldBe child.long_arr
     m2("string_arr")    shouldBe child.string_arr
-    m2("date_arr")      shouldBe child.date_arr.map(_.toString)
-    m2("time_arr")      shouldBe child.time_arr.map(_.toString)
-    m2("date_time_arr") shouldBe child.date_time_arr.map(Timestamp.valueOf).map(_.toString)
+    m2("date_arr")      shouldBe child.date_arr
+    m2("time_arr")      shouldBe child.time_arr
+    m2("date_time_arr") shouldBe child.date_time_arr
     m2("int_arr")       shouldBe child.int_arr
-    // m2("bigint_arr")    shouldBe child.bigint_arr   
-    // m2("double_arr")    shouldBe child.double_arr   
+    m2("bigint_arr")    shouldBe child.bigint_arr
+    m2("double_arr")    shouldBe child.double_arr
     m2("decimal_arr")   shouldBe child.decimal_arr
     m2("boolean_arr")   shouldBe child.boolean_arr
 
