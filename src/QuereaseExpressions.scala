@@ -40,7 +40,7 @@ object QuereaseExpressions {
     def placeholderAndVariableExtractor: Traverser[List[Variable]] = {
       var bindIdx = 0
       vars => {
-        case v @ Variable("?", _, _) =>
+        case v @ Variable("?", _, _, _) =>
           bindIdx += 1
           (v copy bindIdx.toString) :: vars
         case v: Variable => v :: vars
