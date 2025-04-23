@@ -337,7 +337,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     convertToType(value, typeNameToClass(type_.name))
   }
 
-  private def parseColumnValue(value: Any, label: String): Any = {
+  protected def parseColumnValue(value: Any, label: String): Any = {
     def toScala(v: Any): Any = v match {
       case m: java.util.Map[_, _]    => m.asScala.map { case (k, v) => (k, toScala(v)) }.toMap
       case a: java.util.ArrayList[_] => a.asScala.map(toScala).toList
@@ -345,6 +345,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     }
     val loaderSettings = LoadSettings.builder()
       .setLabel(label)
+      .setCodePointLimit(5 * 1024 * 1024) // 5 M
       .build()
     toScala((new Load(loaderSettings)).loadFromString(s"$value"))
   }
