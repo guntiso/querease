@@ -62,6 +62,7 @@ object ValueConverter {
   val ClassOfJavaTimeOffsetDateTime = classOf[OffsetDateTime]
   val ClassOfJavaTimeZonedDateTime  = classOf[ZonedDateTime]
   val ClassOfJavaUtilDate           = classOf[java.util.Date]
+  val ClassOfJavaUtilUuid           = classOf[java.util.UUID]
   val ClassOfScalaMathBigDecimal    = classOf[scala.math.BigDecimal]
   val ClassOfScalaMathBigInt        = classOf[scala.math.BigInt]
   val ClassOfString                 = classOf[java.lang.String]
@@ -93,6 +94,7 @@ object ValueConverter {
       ClassOfJavaTimeOffsetDateTime  .getName -> ClassOfJavaTimeOffsetDateTime,
       ClassOfJavaTimeZonedDateTime   .getName -> ClassOfJavaTimeZonedDateTime,
       ClassOfJavaUtilDate            .getName -> ClassOfJavaUtilDate,
+      ClassOfJavaUtilUuid            .getName -> ClassOfJavaUtilUuid,
       ClassOfScalaMathBigDecimal     .getName -> ClassOfScalaMathBigDecimal,
       ClassOfScalaMathBigInt         .getName -> ClassOfScalaMathBigInt,
       ClassOfString                  .getName -> ClassOfString,
@@ -198,6 +200,7 @@ trait ValueConverter {
       case ClassOfJavaTimeOffsetDateTime  => convertToType(parseDateTimeString(s), targetClass)
       case ClassOfJavaTimeZonedDateTime   => convertToType(parseDateTimeString(s), targetClass)
       case ClassOfJavaUtilDate            => convertToType(parseDateTimeString(s), targetClass)
+      case ClassOfJavaUtilUuid            => java.util.UUID.fromString(s)
       case ClassOfLong                    => if (s == "") null else s.toLong
       case ClassOfScalaMathBigDecimal     => if (s == "") null else scala.math.BigDecimal(s)
       case ClassOfScalaMathBigInt         => if (s == "") null else scala.math.BigInt(s)
@@ -320,6 +323,11 @@ trait ValueConverter {
                                               case s if s endsWith ".0" => s.substring(0, 19)
                                               case s => s
                                             }
+      case _                              => throwUnsupportedConversion(value, targetClass)
+    }
+    case x: java.util.UUID            => targetClass match {
+      // TODO support timestamps from uuid type 1?
+      case ClassOfString                  => x.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
     case _ => throwUnsupportedConversion(value, targetClass)
