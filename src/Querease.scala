@@ -1017,33 +1017,39 @@ class Querease extends QueryStringBuilder with ValueTransformer
           Query(query, obj).map(_.s("msg")).toList
         case _ => Nil
       }
-    def validateViewAndSubviews(path: List[Any], viewDef: ViewDef, obj: Map[String, Any],
-                                res: List[ValidationResult]): List[ValidationResult] = {
-      val viewRes =
-        validateView(viewDef, obj ++ params) match {
+    // non recursive validation function to avoid stack overflow
+    def validateViewAndSubviewsFlat(): List[ValidationResult] = {
+      import scala.collection.mutable
+      val stack: mutable.Queue[(List[Any], ViewDef, Map[String, Any])] =
+        mutable.Queue((Nil, view, data))
+      val res = mutable.ArrayBuffer[ValidationResult]()
+      while (stack.nonEmpty) {
+        val (path, viewDef, obj) = stack.dequeue()
+        res ++= (validateView(viewDef, obj ++ params) match {
           case messages if messages.nonEmpty => List(ValidationResult(path.reverse, messages))
           case _ => Nil
-        }
-      viewDef.fields
-        .collect { case f if f.type_.isComplexType => (f.name, nameToViewDef(f.type_.name)) }
-        .foldLeft(viewRes ::: res) { (r, nv) =>
-          val (n, vd) = nv
-          def maybeAddParent(m: Map[String, Any]) =
-            if(!m.contains("__parent")) m + ("__parent" -> obj) else m
-          obj.get(n).map {
-            case m: Map[String @unchecked, _] =>
-              validateViewAndSubviews(n :: path, vd, maybeAddParent(m), r)
-            case l: List[Map[String, _]@unchecked] =>
-              val p = n :: path
-              l.zipWithIndex.foldLeft(r){ (r1, owi) =>
-                val (o, i) = owi
-                validateViewAndSubviews(i :: p, vd, maybeAddParent(o), r1)
-              }
-            case _ => r
-          }.getOrElse(r)
-        }
+        })
+
+        viewDef.fields
+          .collect { case f if f.type_.isComplexType => (f.name, nameToViewDef(f.type_.name)) }
+          .foreach { case (n, vd) =>
+            def maybeAddParent(m: Map[String, Any]) =
+              if(!m.contains("__parent")) m + ("__parent" -> obj) else m
+            obj.get(n).foreach {
+              case m: Map[String @unchecked, _] =>
+                stack.enqueue((n :: path, vd, maybeAddParent(m)))
+              case l: List[Map[String, _]@unchecked] =>
+                val p = n :: path
+                l.zipWithIndex.foreach { case (o, i) =>
+                  stack.enqueue((i :: p, vd, maybeAddParent(o)))
+                }
+              case _ =>
+            }
+          }
+      }
+      res.toList
     }
-    validateViewAndSubviews(Nil, view, data, Nil).reverse
+    validateViewAndSubviewsFlat()
   }
   def validate[B <: AnyRef](pojo: B, params: Map[String, Any])(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
     val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
