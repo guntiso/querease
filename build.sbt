@@ -56,7 +56,7 @@ Compile / doc / scalacOptions ++= (
  }.value
 
 resolvers ++= Seq(
-  "snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
+  "snapshots" at "https://central.sonatype.com/repository/maven-snapshots/"
 )
 
 Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
@@ -149,8 +149,9 @@ Test / console / initialCommands := Seq(
 
 publishTo := version { v: String =>
   val nexus = "https://oss.sonatype.org/"
+  val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
   if (v.trim.endsWith("SNAPSHOT"))
-    Some("snapshots" at nexus + "content/repositories/snapshots")
+    Some("central-snapshots" at centralSnapshots)
   else
     Some("releases" at nexus + "service/local/staging/deploy/maven2")
 }.value
