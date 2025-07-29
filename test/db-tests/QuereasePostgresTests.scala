@@ -71,8 +71,10 @@ object QuereasePostgresTests {
     Seq(
       "drop schema if exists querease cascade",
       "drop schema if exists car_schema cascade",
+      "drop schema if exists guideline cascade",
       "create schema querease authorization querease",
       "create schema car_schema",
+      "create schema guideline",
     ) ++
     postgres_custom_functions_statements ++
     DdlGenerator.postgresql().schema(qe.tableMetadata.tableDefs.filter(_.db == db)).split(";").toList.map(_.trim).filter(_ != "") ++

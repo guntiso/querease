@@ -1,0 +1,12 @@
+table:  guideline.guideline
+columns:
+- id
+- description       !
+- category          !
+
+
+table: guideline.criteria
+columns:
+- id
+- guideline_id      ! guideline.guideline.id
+- decimal_value       decimal

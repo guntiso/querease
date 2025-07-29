@@ -60,6 +60,7 @@ object QuereaseHsqldbTests {
     Seq(
       "create sequence seq start with 10000",
       "create schema car_schema",
+      "create schema guideline",
       "set database collation \"Latvian\"",
     ) ++
     hsqldb_custom_functions_statements ++

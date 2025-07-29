@@ -395,6 +395,16 @@ class generated_scala_traits_test_bank_1 extends Dto {
   var id: java.lang.Integer = null
   var code: String = null
 }
+class guideline extends DtoWithId {
+  var id: java.lang.Long = null
+  var description: String = null
+  var category: String = null
+  var criteria: List[guideline_criteria] = Nil
+}
+class guideline_criteria extends DtoWithId {
+  var id: java.lang.Long = null
+  var decimal_value: scala.math.BigDecimal = null
+}
 class json_test_any extends DtoWithId {
   var id: java.lang.Long = null
   var value: String = null

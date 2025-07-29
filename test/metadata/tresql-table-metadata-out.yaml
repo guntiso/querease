@@ -80,6 +80,22 @@ columns:
 - name_rus ! string
 pk: code
 
+table: guideline.criteria
+columns:
+- id ! long
+- guideline_id ! long
+- decimal_value decimal
+pk: id
+refs:
+- guideline_id -> guideline.guideline(id)
+
+table: guideline.guideline
+columns:
+- id ! long
+- description ! string
+- category ! string
+pk: id
+
 table: json_io_test
 columns:
 - id ! long

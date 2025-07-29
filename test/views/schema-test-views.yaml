@@ -1,0 +1,15 @@
+name:   guideline
+table:  guideline.guideline
+fields:
+- id
+- description
+- category
+- criteria * :
+    table:  guideline.criteria
+    fields:
+    - id
+    - decimal_value
+    order:
+    - id
+order:
+- id

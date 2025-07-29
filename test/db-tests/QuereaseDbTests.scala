@@ -778,6 +778,38 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
   }
+  /* TODO enable when fixed   
+  if (isDbAvailable) it should s"support child auto-join to column in table with schema in $dbName" in {
+    val viewDef   = qe.viewDef("guideline")
+    val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
+    // println(qe.tresqlMetadata.tableOption("guideline.guideline"))
+    // println(qe.tresqlMetadata.tableOption("guideline.criteria"))
+    try {
+      Query(q, p).toListOfMaps shouldBe List(
+        Map(
+          "id" -> 1,
+          "description" -> "d1",
+          "category" -> "diagnosis",
+          "criteria" -> List(
+            Map("id" -> 11, "decimal_value" -> 111),
+            Map("id" -> 12, "decimal_value" -> 121),
+          ),
+        ),
+        Map(
+          "id" -> 2,
+          "description" -> "d2",
+          "category" -> "treatment",
+          "criteria" -> List(
+            Map("id" -> 21, "decimal_value" -> 212),
+          ),
+        ),
+      )
+    } catch {
+      case util.control.NonFatal(ex) =>
+        throw new RuntimeException(s"Schema support test failed for guideline. Query string: $q", ex)
+    }
+  }
+  */
   if (isDbAvailable) it should s"support multi-db views in $dbName" in {
     val personCount = Query("person[id < 2000]{count(*)}").unique[Int]
     def isNameSurnameEqFullName(p1: Map[String, Any], p2: Map[String, Any]) =
@@ -1900,6 +1932,7 @@ object QuereaseDbTests {
     loadPersonData
     loadCarData
     loadCurrencyData
+    loadGuidelineData
   }
 
   implicit val resources: org.tresql.Resources = Env
@@ -1939,6 +1972,15 @@ object QuereaseDbTests {
     // sample data
     Query("+car_schema.person_car {id, person_id, car_name} [1, 1127, 'Prius']")
     Query("+car_schema.person_car {id, person_id, car_name} [2, 1127, 'Tesla']")
+  }
+
+  def loadGuidelineData: Unit = {
+    // sample data
+    Query("+guideline.guideline {id, description, category} [1, 'd1', 'diagnosis']")
+    Query("+guideline.guideline {id, description, category} [2, 'd2', 'treatment']")
+    Query("+guideline.criteria {id, guideline_id, decimal_value} [11, 1, 111]")
+    Query("+guideline.criteria {id, guideline_id, decimal_value} [12, 1, 121]")
+    Query("+guideline.criteria {id, guideline_id, decimal_value} [21, 2, 212]")
   }
 
   def loadCurrencyData: Unit = {
