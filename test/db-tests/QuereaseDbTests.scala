@@ -778,12 +778,9 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       }
     }
   }
-  /* TODO enable when fixed   
   if (isDbAvailable) it should s"support child auto-join to column in table with schema in $dbName" in {
     val viewDef   = qe.viewDef("guideline")
     val (q, p)    = qe.queryStringAndParams(viewDef, Map.empty)
-    // println(qe.tresqlMetadata.tableOption("guideline.guideline"))
-    // println(qe.tresqlMetadata.tableOption("guideline.criteria"))
     try {
       Query(q, p).toListOfMaps shouldBe List(
         Map(
@@ -809,7 +806,6 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
         throw new RuntimeException(s"Schema support test failed for guideline. Query string: $q", ex)
     }
   }
-  */
   if (isDbAvailable) it should s"support multi-db views in $dbName" in {
     val personCount = Query("person[id < 2000]{count(*)}").unique[Int]
     def isNameSurnameEqFullName(p1: Map[String, Any], p2: Map[String, Any]) =
