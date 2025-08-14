@@ -776,11 +776,24 @@ object QuereaseMetadata {
   }
 
   def aliasToDb(resourceLoader: String => InputStream): Map[String, String] = {
-    val confOpt =
+    val dedicatedConfOpt =
      Option(resourceLoader("/tresql-resources.conf"))
       .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
       .map(ConfigFactory parseReader _)
       .filter(_ hasPath "tresql")
+
+    val referenceConfOpt =
+     Option(resourceLoader("/reference.conf"))
+      .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
+      .map(ConfigFactory parseReader _)
+      .filter(_ hasPath "tresql")
+
+    val confOpt = (dedicatedConfOpt, referenceConfOpt) match {
+      case (Some(dedicatedConf), Some(referenceConf)) =>
+        Some(dedicatedConf.withFallback(referenceConf))
+      case _ =>
+        dedicatedConfOpt.orElse(referenceConfOpt)
+    }
 
     val defaultCpName =
      confOpt
