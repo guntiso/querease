@@ -29,6 +29,8 @@ class FilterResolverTests extends FlatSpec with Matchers {
       db = null,
       table = null,
       tableAlias = null,
+      column = null,
+      distinct = null,
       joins = Nil, // from clause
       filter = Nil, // where clause
       groupBy = Nil,

@@ -713,7 +713,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
             if (f.type_.isComplexType) {
               val tableName = if (f.table  != null) f.table  else view.table
               val colName   = if (f.saveTo != null) f.saveTo else f.name
-              tableMetadata.col(tableName, colName, view.db).map(_.type_).getOrElse(f.type_)
+              tableMetadata.columnDefOption(tableName, colName, view.db).map(_.type_).getOrElse(f.type_)
             } else
               tableMetadata.columnDefOption(view, f).map(_.type_).getOrElse(f.type_)
           lazy val isArr     = valueType.isArray
@@ -1536,7 +1536,7 @@ trait QueryStringBuilder {
       case q: QueryParser_Query => q
       case ident @ Ident(i) if !i.startsWith("^") =>
         if (i.lengthCompare(1) == 0)
-          if (tableMetadata.col(view.table, i.head, view.db).isDefined)
+          if (tableMetadata.columnDefOption(view.table, i.head, view.db).isDefined)
             Ident((baseFieldsQualifier(view) :: i).filter(_ != null))
           else ident // no-arg function or unknown pseudo-col
         else if (ignoreUnknownPaths)
