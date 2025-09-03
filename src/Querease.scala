@@ -4,6 +4,7 @@ import com.typesafe.config.{Config, ConfigFactory}
 import org.mojoz.metadata.Type
 import org.mojoz.metadata.{FieldDef, ViewDef}
 import org.mojoz.metadata.in.{Join, JoinsParser}
+import org.mojoz.querease.QuereaseExpressions.Validation
 import org.mojoz.querease.QuereaseMetadata.{BindVarCursorsCmd, BindVarCursorsForViewCmd, BindVarCursorsForViewCmdRegex}
 import org.snakeyaml.engine.v2.api.{Dump, DumpSettings}
 import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
@@ -13,7 +14,7 @@ import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resourc
 
 import java.lang.StringBuilder
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZonedDateTime, ZoneId}
+import java.time.{Instant, LocalDate, LocalDateTime, LocalTime, OffsetDateTime, ZoneId, ZonedDateTime}
 import java.util.Base64
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
@@ -1362,8 +1363,10 @@ trait QueryStringBuilder {
             "messages(# idx, msg) {" +
               vs.zipWithIndex.map {
                 case (v, i) =>
+                  // replace view refs with tresql
+                  val tv = transformExpression(v, viewDef, null, Validation)
                   val valExp =
-                    parser.parseExp(v) match {
+                    parser.parseExp(tv) match {
                       case Arr(valExps) if valExps.size == 3 =>
                         valExps.head match {
                           case With(cursors, _) =>
@@ -1371,7 +1374,7 @@ trait QueryStringBuilder {
                           case x => error(x)
                         }
                         valExps.tail.map(_.tresql).mkString(", ")
-                      case Arr(valExps) if valExps.size == 2 => v
+                      case Arr(valExps) if valExps.size == 2 => valExps.map(_.tresql).mkString(", ")
                       case x => error(x)
                     }
                   s"{ $i idx, if_not($valExp) msg }"

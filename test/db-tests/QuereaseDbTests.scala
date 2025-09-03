@@ -683,23 +683,29 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   }
 
   if (isDbAvailable) it should s"validate in $dbName properly" in {
+    Query("+validation_names {code = 'A2', name = 'X'}")
     val dto = new ValidationsTest
 
     dto.integer_column = 3
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("integer_column should be greater than 5 but is 3", "integer_column should be greater than 10 but is 3")
+      List("integer_column should be greater than 5 but is 3",
+        "integer_column should be greater than 10 but is 3",
+        "name_col value must be in view validation_names. Instead - ''")
     )))
 
     dto.integer_column = 7
+    dto.name_col = "A2 - Y"
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("integer_column should be greater than 10 but is 7")
+      List("integer_column should be greater than 10 but is 7",
+        "name_col value must be in view validation_names. Instead - 'A2 - Y'")
     )))
 
     dto.integer_column = 11
+    dto.name_col = "A2 - X"
     qe.save(dto)
 
     dto.integer_column = 13

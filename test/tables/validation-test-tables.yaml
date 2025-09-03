@@ -2,6 +2,7 @@ table:    validations_test_table
 columns:
   - id
   - int_col                int
+  - name_col
 
 
 table:    validations_test_child_table
@@ -9,3 +10,8 @@ columns:
   - id
   - validations_test_table.id
   - int_col                int
+
+table: validation_names
+columns:
+  - code ! string 10
+  - name ! string 40

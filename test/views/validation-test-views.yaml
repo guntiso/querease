@@ -4,6 +4,7 @@ api:      save
 fields:
   - id
   - integer_column = int_col -> int_col = :integer_column
+  - name_col
   - children1 * validations_test_child_1
   - children2 * validations_test_child_2
 validations:
@@ -16,6 +17,8 @@ validations:
     }, (ch_sum{ch_sum}) <= :integer_column,
     "Children integer_column field sum must be less than parent's integer_column value. Instead - " ||
     :integer_column || ' < ' || (ch_sum{ch_sum})
+  - exists(^validation_names[^name = :name_col::text]{1}), concat_ws('', "name_col value must be in view validation_names. Instead - '",
+      :name_col::text, "'")
 
 
 name:     validations_test_child
@@ -36,3 +39,9 @@ name:     validations_test_child_2
 extends:  validations_test_child
 validations:
   - :integer_column > 2 & :__parent.integer_column > 3, 'child2 integer_column should be greater than 2 and parent must be greater than 3 but is ' || :integer_column || ',' || :__parent.integer_column
+
+
+name:     validation_names
+table:    validation_names vn
+fields:
+  - name = vn.code || ' - ' || vn.name

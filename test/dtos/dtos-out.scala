@@ -1768,9 +1768,13 @@ class types_test_small_fake extends DtoWithId {
   var id: java.lang.Long = null
   var fake: String = null
 }
+class validation_names extends Dto {
+  var name: String = null
+}
 class validations_test extends DtoWithId {
   var id: java.lang.Long = null
   var integer_column: java.lang.Integer = null
+  var name_col: String = null
   var children1: List[validations_test_child_1] = Nil
   var children2: List[validations_test_child_2] = Nil
   def resolve_int_col(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {

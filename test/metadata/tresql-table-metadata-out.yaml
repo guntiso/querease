@@ -202,6 +202,12 @@ pk: id
 refs:
 - types_test_id -> types_test(id)
 
+table: validation_names
+columns:
+- code ! string
+- name ! string
+pk: code
+
 table: validations_test_child_table
 columns:
 - id ! long
@@ -215,6 +221,7 @@ table: validations_test_table
 columns:
 - id ! long
 - int_col int
+- name_col string
 pk: id
 
 db: querease2

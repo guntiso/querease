@@ -17,6 +17,7 @@ object QuereaseExpressions {
   case object Field extends MdContext { override val name: String = "field" }
   case object Filter extends MdContext { override val name: String = "filter" }
   case object Resolver extends MdContext { override val name: String = "resolver" }
+  case object Validation extends MdContext { override val name: String = "validation" }
   sealed trait TransformerContext
   case object RootCtx extends TransformerContext
   case object EqOpCtx extends TransformerContext
