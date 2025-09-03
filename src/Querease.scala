@@ -1360,7 +1360,7 @@ trait QueryStringBuilder {
 
           var cursorList = List[String]()
           val valTresql =
-            "messages(# idx, msg) {" +
+            "__messages(# idx, msg) {" +
               vs.zipWithIndex.map {
                 case (v, i) =>
                   // replace view refs with tresql
@@ -1380,7 +1380,7 @@ trait QueryStringBuilder {
                   s"{ $i idx, if_not($valExp) msg }"
               }.mkString(" + ") +
               s"} ${if (cursorsView == null) "" else s"[build_cursors($cursorsView)]"}" +
-              s"messages[msg != null] { msg } #(idx)"
+              s"__messages[msg != null] { msg } #(idx)"
           if (cursorList.isEmpty) valTresql
           else cursorList.reverse.mkString(", ") + ", " + valTresql
         }
