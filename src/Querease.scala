@@ -10,7 +10,7 @@ import org.snakeyaml.engine.v2.api.{Dump, DumpSettings}
 import org.snakeyaml.engine.v2.api.{Load, LoadSettings}
 import org.snakeyaml.engine.v2.common.{FlowStyle, ScalarStyle}
 import org.tresql.ast.{Arr, Exp, Ident, Null, With, Query => QueryParser_Query}
-import org.tresql.{Cache, Column, InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
+import org.tresql.{InsertResult, ORT, OrtMetadata, Query, Resources, Result, RowLike, UpdateResult}
 
 import java.lang.StringBuilder
 import java.time.format.DateTimeFormatter
