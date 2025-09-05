@@ -15,5 +15,5 @@ fields:
 
 
 name: fake_key_test
-table:
 key: id, sha_256
+fields:
