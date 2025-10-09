@@ -2,7 +2,7 @@ name := "querease"
 
 organization := "org.mojoz"
 
-val scalaV = "2.13.16"
+val scalaV = "2.13.17"
 
 scalaVersion := scalaV
 
@@ -26,8 +26,8 @@ initialize := {
     sys.error("Java 11 is required for this project. Found " + javaVersion + " instead")
 }
 
-val mojozV  = "6.0.0-RC2-SNAPSHOT"
-val tresqlV = "13.0.0-RC1-SNAPSHOT"
+val mojozV  = "6.0.0-RC3-SNAPSHOT"
+val tresqlV = "13.0.0-RC2-SNAPSHOT"
 libraryDependencies ++= Seq(
   "org.mojoz"     %% "mojoz"      % mojozV,
   "org.tresql"    %% "tresql"     % tresqlV,
