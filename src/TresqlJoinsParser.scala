@@ -53,10 +53,10 @@ class TresqlJoinsParser(
       else if (starts_ident_regex.findFirstIn(joinsStr).isDefined)
         // if starts with other ident:
         // prefix joins with [] so that compiler knows that it is a join not division operation
-        "[]" + joinsStr
+        "[]" + joinsStr + " {1}"
       else
-        // otherwise (subquery) suffix with {*} to avoid BinSelectDef and get proper metadata
-        joinsStr + " {*}"
+        // otherwise (subquery) suffix with {1} to avoid BinSelectDef and get proper metadata
+        joinsStr + " {1}"
     val compiledExpr =
       cache.flatMap(_.get(compileStr)).getOrElse {
         val e = try joinsParserCompiler.compile(compileStr) catch {
