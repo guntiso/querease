@@ -147,14 +147,13 @@ Test / console / initialCommands := Seq(
   "import QuereaseHsqldbTests._",
 ).mkString("; ")
 
-publishTo := version { v: String =>
-  val nexus = "https://oss.sonatype.org/"
+publishTo := {
   val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
-  if (v.trim.endsWith("SNAPSHOT"))
+  if (isSnapshot.value)
     Some("central-snapshots" at centralSnapshots)
   else
-    Some("releases" at nexus + "service/local/staging/deploy/maven2")
-}.value
+    localStaging.value
+}
 
 publishMavenStyle := true
 
