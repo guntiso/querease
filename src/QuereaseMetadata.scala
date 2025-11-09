@@ -94,6 +94,14 @@ trait QuereaseMetadata {
         case util.control.NonFatal(ex) => None
       }).toSeq.map(name -> _)
     }
+  lazy val viewNameToHasAutoKey: Map[String, Boolean] =
+    nameToPersistenceMetadata.map { case (name, md) =>
+      name ->
+        md.properties.exists {
+          case Property(_, KeyValue(_, AutoValue(_), _), _, _, _) => true
+          case _ => false
+        }
+    }
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
       (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
