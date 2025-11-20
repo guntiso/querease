@@ -14,11 +14,12 @@ validations:
   - :integer_column < 12, 'integer_column should be less than 12 but is ' || :integer_column
   - ch_sum(# ch_sum) {
       (children1 { integer_column s } ++ children2 { integer_column }) sums { sum (s) }
-    }, (ch_sum{ch_sum}) <= :integer_column,
+    }, coalesce((ch_sum{ch_sum}), 0) <= :integer_column,
     "Children integer_column field sum must be less than parent's integer_column value. Instead - " ||
     :integer_column || ' < ' || (ch_sum{ch_sum})
   - exists(^validation_names[^name = :name_col::text]{1}), concat_ws('', "name_col value must be in view validation_names. Instead - '",
       :name_col::text, "'")
+  - :name_col::text != null, 'name_col is ' || :name_col::text
 
 
 name:     validations_test_child

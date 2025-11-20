@@ -1365,16 +1365,21 @@ trait QueryStringBuilder {
                 case (v, i) =>
                   // replace view refs with tresql
                   val tv = transformExpression(v, viewDef, null, Validation)
+                  def requireExp(valExp: Exp, msgExp: Exp) = {
+                    val (exp, msg) = (valExp.tresql, msgExp.tresql)
+                    exp + ", " + s"""coalesce(trim($msg), '"${
+                      exp.replace("'", "")}"' || ' requirement failed, but validation error message produced null value')"""
+                  }
                   val valExp =
                     parser.parseExp(tv) match {
-                      case Arr(valExps) if valExps.size == 3 =>
-                        valExps.head match {
+                      case Arr(List(cursors, exp, msg)) =>
+                        cursors match {
                           case With(cursors, _) =>
                             cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
                           case x => error(x)
                         }
-                        valExps.tail.map(_.tresql).mkString(", ")
-                      case Arr(valExps) if valExps.size == 2 => valExps.map(_.tresql).mkString(", ")
+                        requireExp(exp, msg)
+                      case Arr(List(exp, msg)) => requireExp(exp, msg)
                       case x => error(x)
                     }
                   s"{ $i idx, if_not($valExp) msg }"
