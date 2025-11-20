@@ -693,7 +693,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       List("integer_column should be greater than 5 but is 3",
         "integer_column should be greater than 10 but is 3",
         "name_col value must be in view validation_names. Instead - ''",
-        """":name_col::text != null" requirement failed, but validation error message produced null value""",
+        """Requirement failed: ":name_col::text != null & 'a' != 'b'"""",
       )
     )))
 

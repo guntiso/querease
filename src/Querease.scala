@@ -1367,8 +1367,8 @@ trait QueryStringBuilder {
                   val tv = transformExpression(v, viewDef, null, Validation)
                   def requireExp(valExp: Exp, msgExp: Exp) = {
                     val (exp, msg) = (valExp.tresql, msgExp.tresql)
-                    exp + ", " + s"""coalesce(trim($msg), '"${
-                      exp.replace("'", "")}"' || ' requirement failed, but validation error message produced null value')"""
+                    exp + ", " +
+                      s"""coalesce(nullif(trim($msg), ''), 'Requirement failed: ' || '"${exp.replace("'", "''")}"')"""
                   }
                   val valExp =
                     parser.parseExp(tv) match {
