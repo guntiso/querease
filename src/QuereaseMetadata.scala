@@ -52,7 +52,7 @@ trait QuereaseMetadata {
   lazy val uninheritableExtras: Seq[String] = Seq()
   lazy val viewDefLoader: YamlViewDefLoader =
     YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, uninheritableExtras, typeDefs)
-  private def toQuereaseViewDef_(mojozViewDef: ViewDef): ViewDef = {
+  def toQuereaseViewDef(mojozViewDef: ViewDef): ViewDef = {
     import QuereaseMetadata.isSimpleOrTypedIdent
     val Key     = "key"
     val viewDef = QuereaseMetadata.toQuereaseViewDef(mojozViewDef)
@@ -95,9 +95,9 @@ trait QuereaseMetadata {
     }
     else viewDef
   }
-  private def toQuereaseViewDefs_(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
-    mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef_(kv._2)).toMap
-  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs_ {
+  def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
+    mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
+  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
     viewDefLoader
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
@@ -889,14 +889,10 @@ object QuereaseMetadata {
       .toMap
   }
 
-  /** This method does not handle field syntax for key */
-  def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
-    mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
-
   private val orderByParser: QuereaseExpressions.DefaultParser = new QuereaseExpressions.DefaultParser(None)
 
   /** This method does not handle field syntax for key */
-  def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
+  private def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
     import scala.jdk.CollectionConverters._
     val Initial = "initial"
     val Key     = "key"
