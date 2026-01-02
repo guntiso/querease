@@ -343,6 +343,8 @@ object female {
       .unique[String]
   }
 }
+class field_like_key_test extends Dto {
+}
 class field_order_by_test extends DtoWithId {
   var id: java.lang.Long = null
   var nm: String = null
@@ -1738,6 +1740,8 @@ object table_alias_test_bank_2 {
     tresql"""{'M'}"""(env.withParams(Map.empty))
       .unique[String]
   }
+}
+class typed_fake_key_test extends Dto {
 }
 class types_test extends DtoWithId {
   var id: java.lang.Long = null

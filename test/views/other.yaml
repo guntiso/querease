@@ -17,3 +17,15 @@ fields:
 name: fake_key_test
 key: id, sha_256
 fields:
+
+
+name: typed_fake_key_test
+key: id::string, sha_256
+fields:
+
+
+name: field_like_key_test
+key:
+- id                   : Identifier
+- choice 2  (a, bb, cc): Enum in key
+fields:

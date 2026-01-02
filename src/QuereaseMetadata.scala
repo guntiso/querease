@@ -19,7 +19,7 @@ case class FieldOrderingNotFoundException(message: String) extends Exception(mes
 
 trait QuereaseMetadata {
   this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder
-  with QuereaseResolvers with FilterTransformer =>
+  with QuereaseResolvers with FilterTransformer with ValueTransformer =>
 
   class FieldOrdering(val nameToIndex: Map[String, Int]) extends Ordering[String] {
     override def compare(x: String, y: String) =
@@ -52,8 +52,53 @@ trait QuereaseMetadata {
   lazy val uninheritableExtras: Seq[String] = Seq()
   lazy val viewDefLoader: YamlViewDefLoader =
     YamlViewDefLoader(tableMetadata, yamlMetadata, joinsParser, metadataConventions, uninheritableExtras, typeDefs)
-  import QuereaseMetadata.toQuereaseViewDefs
-  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs {
+  private def toQuereaseViewDef_(mojozViewDef: ViewDef): ViewDef = {
+    import QuereaseMetadata.isSimpleOrTypedIdent
+    val Key     = "key"
+    val viewDef = QuereaseMetadata.toQuereaseViewDef(mojozViewDef)
+    import QuereaseMetadata.AugmentedQuereaseViewDef
+    val isSimpleKey = {
+      val keyFieldNames = Option(viewDef.keyFieldNames).filter(_.nonEmpty).orNull
+      keyFieldNames == null || (
+        (Option(viewDef.extras).flatMap(_ get Key) match {
+          case Some(s: java.lang.String) => true
+          case Some(a: java.util.ArrayList[_]) =>
+            a.asScala.toList.forall {
+              case s: String => true
+              case _ => false
+            }
+          case None => true
+          case Some(null) => true
+          case Some(x) => false
+        }) &&
+        keyFieldNames.forall(isSimpleOrTypedIdent)
+      )
+    }
+
+    val keyFields =
+      if (!isSimpleKey) {
+        val md = Map(
+          "name"   -> viewDef.name,
+          "db"     -> viewDef.db,
+          "fields" -> Option(viewDef.extras).flatMap(_ get Key).orNull,
+        )
+        val yamlMd = YamlMd.fromNamedString(s"key for view '${viewDef.name}'", toJson(md))
+        // TODO improve mojoz, performance, clean up!
+        (new YamlViewDefLoader(tableMetadata, yamlMd, joinsParser, metadataConventions, uninheritableExtras, typeDefs))
+          .nameToViewDef(viewDef.name)
+            .fields
+            // .map(toQuereaseFieldDef)
+      } else null
+    if (keyFields != null)
+      viewDef.updateExtras(qv => qv.copy(
+        keyFieldNames = keyFields.map(_.fieldName),
+        keyFields     = keyFields,
+      ))
+    else viewDef
+  }
+  private def toQuereaseViewDefs_(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
+    mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef_(kv._2)).toMap
+  lazy val nameToViewDef: Map[String, ViewDef] = toQuereaseViewDefs_ {
     viewDefLoader
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
@@ -142,7 +187,8 @@ trait QuereaseMetadata {
 
   protected def keyFields(view: ViewDef): Seq[FieldDef] = {
     import QuereaseMetadata.AugmentedQuereaseViewDef
-    Option(view.keyFieldNames)
+    Option(view.keyFields).getOrElse(
+     Option(view.keyFieldNames)
       .filter(_.nonEmpty)
       .map(_.map { fieldNameAndType =>
         val (fieldName, fieldTypeOpt) =
@@ -166,7 +212,7 @@ trait QuereaseMetadata {
           }}
           .getOrElse(sys.error(s"Custom key field or column $fieldName not found, view ${view.name}"))
       }) getOrElse
-    Option(view.table)
+     Option(view.table)
       .map(tableMetadata.tableDef(_, view.db))
       .flatMap { t =>
         ((if (t.pk != null) t.pk.toSeq else Nil) ++
@@ -175,6 +221,7 @@ trait QuereaseMetadata {
          .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
       } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
         .getOrElse(Nil)
+    )
   }
 
   protected def keyColNameForGetById(view: ViewDef): String =
@@ -720,6 +767,13 @@ trait QuereaseMetadata {
 }
 
 object QuereaseMetadata {
+  private val ident       = "[_\\p{IsLatin}][_\\p{IsLatin}0-9]*"
+  private val typeName    = ident // TODO backticked type name?
+  private val s           = "\\s*"
+  private val typedIdent  = s"$ident(?:$s::$s$typeName)?"
+  private val typedIdentR = ("^" + typedIdent + "$").r
+
+  private def isSimpleOrTypedIdent(s: String) = typedIdentR.pattern.matcher(s).matches
 
   trait QuereaseViewDefExtras {
     val keyFieldNames: Seq[String]
@@ -729,11 +783,12 @@ object QuereaseMetadata {
 
   private [querease] case class QuereaseViewDef(
     keyFieldNames: Seq[String] = Nil,
+    keyFields: Seq[FieldDef] = Nil,
     minSearchKeyFieldCount: Int = 0,
     validations: Seq[String] = Nil
   ) extends QuereaseViewDefExtras
 
-  trait QuereaseFieldDefExtras {
+  sealed trait QuereaseFieldDefExtras {
     val initial: String
   }
 
@@ -761,6 +816,7 @@ object QuereaseMetadata {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
     override val keyFieldNames = quereaseExtras.keyFieldNames
+    val          keyFields     = quereaseExtras.keyFields
     override val minSearchKeyFieldCount = quereaseExtras.minSearchKeyFieldCount
     override val validations = quereaseExtras.validations
     def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): ViewDef =
@@ -834,11 +890,13 @@ object QuereaseMetadata {
       .toMap
   }
 
+  /** This method does not handle field syntax for key */
   def toQuereaseViewDefs(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
     mojozViewDefs.map(kv => kv._1 -> toQuereaseViewDef(kv._2)).toMap
 
   private val orderByParser: QuereaseExpressions.DefaultParser = new QuereaseExpressions.DefaultParser(None)
 
+  /** This method does not handle field syntax for key */
   def toQuereaseViewDef(viewDef: ViewDef): ViewDef = {
     import scala.jdk.CollectionConverters._
     val Initial = "initial"
@@ -873,10 +931,9 @@ object QuereaseMetadata {
         case Some(null) => Seq("")
         case Some(x) => Seq(x)
       }
-    val qeFields = viewDef.fields.map { f =>
-      val initial = getExtraOpt(f, Initial).orNull
-      f.updateExtras(_ => QuereaseFieldDef(initial))
-    }.map { f =>
+    def toQuereaseFieldDef(fieldDef: FieldDef): FieldDef = {
+      val initial = getExtraOpt(fieldDef, Initial).orNull
+      val f = fieldDef.updateExtras(_ => QuereaseFieldDef(initial))
       if (f.expression != null && f.expression.indexOf("#") > 0) {
         val (exp, ord) = orderByParser.parseWithParser(orderByParser.colAndOrd)(f.expression)
         if (ord != null)
@@ -887,6 +944,8 @@ object QuereaseMetadata {
         else f
       } else f
     }
+    val qeFields = viewDef.fields.map(toQuereaseFieldDef)
+
     val rawKey = getStringSeq(Key, viewDef.extras).flatMap(Option(_).toList).mkString(",")
     val keyFieldNames =
       rawKey.split("[,()]+").map(_.trim).filter(_ != "").toList
@@ -897,6 +956,6 @@ object QuereaseMetadata {
       }
     val validations = getStringSeq(Validations, viewDef.extras)
     viewDef.copy(fields = qeFields).updateExtras(_ =>
-      QuereaseViewDef(keyFieldNames, minSearchKeyFieldCount, validations))
+      QuereaseViewDef(keyFieldNames, null, minSearchKeyFieldCount, validations))
   }
 }

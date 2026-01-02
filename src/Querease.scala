@@ -601,15 +601,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     case _ => value
   }
 
-  /** Converts value to be compatible with your jdbc driver, according to type.
-    * Default implementation converts Map and Seq to yaml string or json string */
-  def toSaveableValue(value: Any, type_ : Type): Any = {
-    def javaValue = value match {
-      case seq: Seq[_]                    => seqToJavaList(seq)
-      case map: Map[String @unchecked, _] => mapToJavaMap(map)
-    }
-    def dump(dumpSettings: DumpSettings) =
-      new Dump(dumpSettings).dumpToString(javaValue)
+  protected def toJson(value: Any): String = {
     def dumpJson(value: Any, sb: StringBuilder): Unit = value match {
       case m: Map[String @unchecked, _] =>
         sb.append('{')
@@ -619,11 +611,16 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           dumpJson(m._2, sb)
         }
         sb.append('}')
-      case seq: Seq[_] =>
+      case m: collection.mutable.Map[_, _] => dumpJson(m.toMap, sb)
+      case seq: Iterable[Any @unchecked] =>
         sb.append('[')
         printSeq(seq, sb.append(','))(dumpJson(_, sb))
         sb.append(']')
       case s: String => printString(s, sb)
+      case jList: java.util.ArrayList[_] =>
+        dumpJson(jList.asScala, sb)
+      case jMap: java.util.Map[_, _] =>
+        dumpJson(jMap.asScala.toMap, sb)
       case x => jsonStringValue(x) match {
         case s: String => sb.append(s""""$s"""")
         case x => sb.append(s"$x")
@@ -674,13 +671,26 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
         case c    => c < 0x20
       }
 
+    val sb = new StringBuilder
+    dumpJson(value, sb)
+    sb.toString
+  }
+
+  /** Converts value to be compatible with your jdbc driver, according to type.
+    * Default implementation converts Map and Seq to yaml string or json string */
+  def toSaveableValue(value: Any, type_ : Type): Any = {
+    def javaValue = value match {
+      case seq: Seq[_]                    => seqToJavaList(seq)
+      case map: Map[String @unchecked, _] => mapToJavaMap(map)
+    }
+    def dump(dumpSettings: DumpSettings) =
+      new Dump(dumpSettings).dumpToString(javaValue)
+
     def dumpToString =
       type_.name match {
         case "yaml" => dump(yamlDumpSettings)
         case  json  =>
-          val sb = new StringBuilder
-          dumpJson(value, sb)
-          sb.toString
+          toJson(value)
       }
     value match {
       case _: Map[String @unchecked, _] =>

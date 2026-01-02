@@ -565,6 +565,24 @@ class QuereaseTests extends FlatSpec with Matchers {
     //      for single (implied lookup) and multiple children
   }
 
+  "querease" should "load key" in {
+    import org.mojoz.querease.QuereaseMetadata.AugmentedQuereaseViewDef
+    qe.viewNameToKeyFieldNames("fake_key_test"      ) shouldBe Seq("id", "sha_256")
+    qe.viewNameToKeyFields("fake_key_test").find(_.fieldName == "id"     ).get.type_.name           shouldBe "long"
+    qe.viewNameToKeyFields("fake_key_test").find(_.fieldName == "sha_256").get.type_.name           shouldBe "string"
+
+    qe.viewNameToKeyFieldNames("typed_fake_key_test") shouldBe Seq("id", "sha_256")
+    qe.viewNameToKeyFields("typed_fake_key_test").find(_.fieldName == "id"     ).get.type_.name     shouldBe "string"
+    qe.viewNameToKeyFields("typed_fake_key_test").find(_.fieldName == "sha_256").get.type_.name     shouldBe "string"
+
+    qe.viewNameToKeyFieldNames("field_like_key_test") shouldBe Seq("id", "choice")
+    qe.viewNameToKeyFields("field_like_key_test").find(_.fieldName == "id"     ).get.type_.name     shouldBe "long"
+    qe.viewNameToKeyFields("field_like_key_test").find(_.fieldName == "id"     ).get.comments       shouldBe "Identifier"
+    qe.viewNameToKeyFields("field_like_key_test").find(_.fieldName == "choice" ).get.enum_          shouldBe Seq("a", "bb", "cc")
+    qe.viewNameToKeyFields("field_like_key_test").find(_.fieldName == "choice" ).get.type_.length   shouldBe  Some(2)
+    qe.viewNameToKeyFields("field_like_key_test").find(_.fieldName == "choice" ).get.comments       shouldBe "Enum in key"
+  }
+
   "querease" should "parse field order-by" in {
     qe.viewDef("field_order_by_test").field("nm").orderBy shouldBe "name, noid_id"
   }
