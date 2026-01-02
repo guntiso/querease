@@ -75,25 +75,24 @@ trait QuereaseMetadata {
       )
     }
 
-    val keyFields =
-      if (!isSimpleKey) {
-        val md = Map(
+    if (!isSimpleKey) {
+      val parsedMd = Map(
           "name"   -> viewDef.name,
           "db"     -> viewDef.db,
           "fields" -> Option(viewDef.extras).flatMap(_ get Key).orNull,
         )
-        val yamlMd = YamlMd.fromNamedString(s"key for view '${viewDef.name}'", toJson(md))
-        // TODO improve mojoz, performance, clean up!
-        (new YamlViewDefLoader(tableMetadata, yamlMd, joinsParser, metadataConventions, uninheritableExtras, typeDefs))
+      val fakeMd = YamlMd.fromNamedString(s"key for view '${viewDef.name}'", "{}")
+      val keyFields =
+        (new YamlViewDefLoader(tableMetadata, fakeMd, joinsParser, metadataConventions, uninheritableExtras, typeDefs) {
+          override protected def loadRawViewDefs(md: YamlMd): List[ViewDef] = loadRawViewDefs(parsedMd)
+        })
           .nameToViewDef(viewDef.name)
             .fields
-            // .map(toQuereaseFieldDef)
-      } else null
-    if (keyFields != null)
       viewDef.updateExtras(qv => qv.copy(
         keyFieldNames = keyFields.map(_.fieldName),
         keyFields     = keyFields,
       ))
+    }
     else viewDef
   }
   private def toQuereaseViewDefs_(mojozViewDefs: Map[String, ViewDef]): Map[String, ViewDef] =
