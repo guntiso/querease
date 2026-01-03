@@ -776,13 +776,14 @@ object QuereaseMetadata {
 
   trait QuereaseViewDefExtras {
     val keyFieldNames: Seq[String]
+    val keyFields:     Seq[FieldDef]
     val minSearchKeyFieldCount: Int
     val validations: Seq[String]
   }
 
   private [querease] case class QuereaseViewDef(
     keyFieldNames: Seq[String] = Nil,
-    keyFields: Seq[FieldDef] = Nil,
+    keyFields:     Seq[FieldDef] = null,
     minSearchKeyFieldCount: Int = 0,
     validations: Seq[String] = Nil
   ) extends QuereaseViewDefExtras
@@ -815,7 +816,7 @@ object QuereaseMetadata {
     private val defaultExtras = QuereaseViewDef()
     private val quereaseExtras = extras(QuereaseViewExtrasKey, defaultExtras)
     override val keyFieldNames = quereaseExtras.keyFieldNames
-    val          keyFields     = quereaseExtras.keyFields
+    override val keyFields     = quereaseExtras.keyFields
     override val minSearchKeyFieldCount = quereaseExtras.minSearchKeyFieldCount
     override val validations = quereaseExtras.validations
     def updateExtras(updater: QuereaseViewDef => QuereaseViewDef): ViewDef =
