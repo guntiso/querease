@@ -826,6 +826,7 @@ class Querease extends QueryStringBuilder with ValueTransformer
     save(view, pojoPropMap, extraPropsToSave, method, filter, params)
   }
 
+  /** Legacy save, returns id as long or 0 */
   def save[B <: AnyRef](
     view:   ViewDef,
     data:   Map[String, Any],
@@ -855,6 +856,46 @@ class Querease extends QueryStringBuilder with ValueTransformer
             insertedId
           case (Update, _)          =>
             Try(id.get.toString.toLong) getOrElse 0L
+        }
+    }
+  }
+
+  /** Validate, save and return actual method used and id */
+  def validateAndSave[B <: AnyRef](
+    view:   ViewDef,
+    data:   Map[String, Any],
+    method: SaveMethod,
+    filter: String,
+    params: Map[String, Any],
+  )(implicit resources: Resources, qio: QuereaseIo[B]): (SaveMethod, Any) = {
+    val pars: Map[String, Any] = if (params != null) params else Map.empty
+    validate(view, data, pars)
+    save(view, data ++ pars, method, filter)
+  }
+
+  /** Save and return actual method used and id */
+  def save[B <: AnyRef](
+    view:   ViewDef,
+    data:   Map[String, Any],
+    method: SaveMethod,
+    filter: String,
+  )(implicit resources: Resources, qio: QuereaseIo[B]): (SaveMethod, Any) = {
+    val keyFields = viewNameToKeyFields(view.name)
+    lazy val id = viewNameToIdFieldName.get(view.name).flatMap(data.get).orNull
+    val resolvedMethod =
+      if  (method == Save)
+        if (keyFields.forall(f => data.get(f.fieldName).orNull == null)) Insert else Update
+      else method
+    resolvedMethod match {
+      case Insert =>
+        (Insert, insert(view, data, filter))
+      case Update =>
+        update(view, data, filter)
+        (Update, id)
+      case Upsert =>
+        upsert(view, data, filter) match {
+          case (Insert, insertedId) => (Insert, insertedId)
+          case (Update, _)          => (Update, id)
         }
     }
   }
@@ -906,7 +947,23 @@ class Querease extends QueryStringBuilder with ValueTransformer
           },
         )
       }
-    insert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
+    idToLong(insert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data))
+  }
+
+  protected def insert(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+  )(implicit resources: Resources): Any = {
+    val metadata = persistenceMetadata(view, data) match {
+        case md if filter == null => md
+        case md => md.copy(
+          filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
+            f.copy(insert = mergeFilters(f.insert, filter))
+          },
+        )
+      }
+    insert(view, metadata, data)
   }
 
   def insert(
@@ -914,14 +971,14 @@ class Querease extends QueryStringBuilder with ValueTransformer
     data: Map[String, Any],
   )(implicit resources: Resources): Long = {
     val metadata = persistenceMetadata(view, data)
-    insert(view, metadata, data)
+    idToLong(insert(view, metadata, data))
   }
 
   protected def insert(
     view: ViewDef,
     metadata: OrtMetadata.View,
     data: Map[String, Any],
-  )(implicit resources: Resources): Long = {
+  )(implicit resources: Resources): Any = {
     val result = ORT.insert(metadata, toSaveableMap(data, view))
     val (insertedRowCount, id) =
       (result.count.get, result.id.orNull)
@@ -930,7 +987,7 @@ class Querease extends QueryStringBuilder with ValueTransformer
       throw new NotFoundException(
         s"Record not inserted into table(s): ${tables.mkString(",")}")
     }
-    else idToLong(id)
+    id
   }
 
   protected def update[B <: AnyRef](
@@ -948,6 +1005,14 @@ class Querease extends QueryStringBuilder with ValueTransformer
         )
       }
     update(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
+  }
+
+  protected def update[B <: AnyRef](
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+  )(implicit resources: Resources, qio: QuereaseIo[B]): Unit = {
+    update(view, data, filter, null)
   }
 
   def update[B <: AnyRef](
@@ -988,7 +1053,28 @@ class Querease extends QueryStringBuilder with ValueTransformer
           },
         )
       }
-    upsert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data)
+    upsert(view, addExtraPropsToMetadata(metadata, extraPropsToSave), data) match {
+      case (saveMethod, id) => (saveMethod, idToLong(id))
+    }
+  }
+
+  protected def upsert(
+    view:   ViewDef,
+    data:   Map[String, Any],
+    filter: String,
+  )(implicit resources: Resources): (SaveMethod, Any) = {
+    val metadata = persistenceMetadata(view, data) match {
+        case md if filter == null => md
+        case md => md.copy(
+          filters = md.filters.orElse(Some(OrtMetadata.Filters())).map { f =>
+            f.copy(
+              insert = mergeFilters(f.insert, filter),
+              update = mergeFilters(f.update, filter),
+            )
+          },
+        )
+      }
+    upsert(view, metadata, data)
   }
 
   def upsert(
@@ -996,24 +1082,26 @@ class Querease extends QueryStringBuilder with ValueTransformer
     data: Map[String, Any],
   )(implicit resources: Resources): (SaveMethod, Long) = {
     val metadata = persistenceMetadata(view, data)
-    upsert(view, metadata, data)
+    upsert(view, metadata, data) match {
+      case (saveMethod, id) => (saveMethod, idToLong(id))
+    }
   }
 
   protected def upsert(
     view: ViewDef,
     metadata: OrtMetadata.View,
     data: Map[String, Any],
-  )(implicit resources: Resources): (SaveMethod, Long) = {
+  )(implicit resources: Resources): (SaveMethod, Any) = {
     val result = ORT.save(metadata, toSaveableMap(data, view))
     val (method, affectedRowCount, id) = result match {
       case ir: InsertResult => (Insert, result.count.get, result.id.orNull)
-      case ur: UpdateResult => (Update, result.count.get, 0L)
+      case ur: UpdateResult => (Update, result.count.get, null)
     }
     if (affectedRowCount == 0) {
       val tables = metadata.saveTo.map(_.table)
       throw new NotFoundException(
         s"Record not upserted in table(s): ${tables.mkString(",")}")
-    } else (method, idToLong(id))
+    } else (method, id)
   }
   def validationResults[B <: AnyRef](pojo: B, params: Map[String, Any]
     )(implicit resources: Resources, qio: QuereaseIo[B]): List[ValidationResult] = {
