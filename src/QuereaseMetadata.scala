@@ -32,7 +32,7 @@ trait QuereaseMetadata {
   }
   object FieldOrdering {
     def apply(view: ViewDef) =
-      new FieldOrdering(view.fields.map(_.fieldName).zipWithIndex.toMap)
+      new FieldOrdering((viewNameToKeyFieldNames(view.name) ++ view.fields.map(_.fieldName)).zipWithIndex.toMap)
   }
 
   protected lazy val parserCacheSize: Int = 32 * 1024
