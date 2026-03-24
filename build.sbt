@@ -31,7 +31,7 @@ val tresqlV = "13.1.0"
 libraryDependencies ++= Seq(
   "org.mojoz"     %% "mojoz"      % mojozV,
   "org.tresql"    %% "tresql"     % tresqlV,
-  "com.typesafe"   % "config"     % "1.4.3",
+  "com.typesafe"   % "config"     % "1.4.6",
   // test
   "org.hsqldb"     % "hsqldb"     % "2.7.4"  % "test",
   "org.scalatest" %% "scalatest"  % "3.2.19" % "test",
