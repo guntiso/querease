@@ -1183,6 +1183,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       a2.time_arr       shouldBe a1.time_arr
       a2.date_time_arr  shouldBe a1.date_time_arr
       a2.int_arr        shouldBe a1.int_arr
+      a2.short_arr      shouldBe a1.short_arr
       a2.bigint_arr     shouldBe a1.bigint_arr
       a2.double_arr     shouldBe a1.double_arr
       a2.decimal_arr    shouldBe a1.decimal_arr
@@ -1197,6 +1198,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       m2("time_arr")      shouldBe a1.time_arr
       m2("date_time_arr") shouldBe a1.date_time_arr
       m2("int_arr")       shouldBe a1.int_arr
+      m2("short_arr")     shouldBe a1.short_arr
       m2("bigint_arr")    shouldBe a1.bigint_arr
       m2("double_arr")    shouldBe a1.double_arr
       m2("decimal_arr")   shouldBe a1.decimal_arr
@@ -1212,6 +1214,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     a1.time_arr       = null
     a1.date_time_arr  = null
     a1.int_arr        = null
+    a1.short_arr      = null
     a1.bigint_arr     = null
     a1.double_arr     = null
     a1.decimal_arr    = null
@@ -1226,6 +1229,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     a1.time_arr       = Nil
     a1.date_time_arr  = Nil
     a1.int_arr        = Nil
+    a1.short_arr      = Nil
     a1.bigint_arr     = Nil
     a1.double_arr     = Nil
     a1.decimal_arr    = Nil
@@ -1240,6 +1244,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     a1.time_arr       = List(null)
     a1.date_time_arr  = List(null)
     a1.int_arr        = List(null)
+    a1.short_arr      = List(null)
     a1.bigint_arr     = List(null)
     a1.double_arr     = List(null)
     a1.decimal_arr    = List(null)
@@ -1263,6 +1268,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       LocalDateTime.parse("2024-01-16 13:09:10.2".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
     )
     a1.int_arr      = List(Int.MinValue, 0, 42, Int.MaxValue)
+    a1.short_arr    = List(Short.MinValue, 0.toShort, 42.toShort, Short.MaxValue)
     a1.bigint_arr   = List(BigInt(0), BigInt(Long.MaxValue) + 1)
     a1.double_arr   = List(0, Double.MaxValue)
     a1.decimal_arr  = List(0, BigDecimal(Long.MaxValue, 2))
@@ -1416,6 +1422,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // negatives
     child.long = Long.MinValue
     child.int = Integer.MIN_VALUE
+    child.short = Short.MinValue
     child.bigint = BigInt(Long.MinValue) - 1
     child.double = Double.MinValue
     // child.decimal = BigDecimal(Long.MinValue, 2) // FIXME handle json io decimal   
@@ -1426,6 +1433,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // positives
     child.long = Long.MaxValue
     child.int = Integer.MAX_VALUE
+    child.short = Short.MaxValue
     child.bigint = BigInt(Long.MaxValue) + 1
     child.double = Double.MaxValue
     // child.decimal = BigDecimal(Long.MaxValue, 2) // FIXME handle json io decimal   
@@ -1436,6 +1444,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // zeroes
     child.long   = 0L
     child.int    = 0
+    child.short  = 0.toShort
     child.bigint = BigInt(0)
     child.double = 0
     child.decimal = BigDecimal(0, 2)
@@ -1484,6 +1493,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
       LocalDateTime.parse("2024-01-16 13:09:10.2".replace(' ', 'T'), DateTimeFormatter.ISO_LOCAL_DATE_TIME),
     )
     child.int_arr      = List(Int.MinValue, 0, 42, Int.MaxValue)
+    child.short_arr    = List(Short.MinValue, 0.toShort, 42.toShort, Short.MaxValue)
     child.bigint_arr   = List(BigInt(0), BigInt(Long.MaxValue) + 1)
     child.double_arr   = List(0, Double.MaxValue)
     // child.decimal_arr  = List(0, BigDecimal(Long.MaxValue, 2)) // FIXME handle json io decimal   
@@ -1497,6 +1507,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     c2.time           shouldBe child.time
     c2.date_time      shouldBe child.date_time
     c2.int            shouldBe child.int
+    c2.short          shouldBe child.short
     c2.bigint         shouldBe child.bigint
     c2.double         shouldBe child.double
     c2.decimal        shouldBe child.decimal
@@ -1521,6 +1532,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     m2("time_arr")      shouldBe child.time_arr
     m2("date_time_arr") shouldBe child.date_time_arr
     m2("int_arr")       shouldBe child.int_arr
+    m2("short_arr")     shouldBe child.short_arr
     m2("bigint_arr")    shouldBe child.bigint_arr
     m2("double_arr")    shouldBe child.double_arr
     m2("decimal_arr")   shouldBe child.decimal_arr
@@ -1625,6 +1637,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // negatives
     obj.long = Long.MinValue
     obj.int = Integer.MIN_VALUE
+    obj.short = Short.MinValue
     obj.bigint = BigInt(Long.MinValue) - 1
     obj.double = Double.MinValue
     obj.decimal = BigDecimal(Long.MinValue, 2)
@@ -1634,6 +1647,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     // positives
     obj.long = Long.MaxValue
     obj.int = Integer.MAX_VALUE
+    obj.short = Short.MaxValue
     obj.bigint = BigInt(Long.MaxValue) + 1
     obj.double = Double.MaxValue
     obj.decimal = BigDecimal(Long.MaxValue, 2)

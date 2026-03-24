@@ -8,6 +8,7 @@ fields:
 - time_arr
 - date_time_arr
 - int_arr
+- short_arr
 - bigint_arr
 - double_arr
 - decimal_arr
@@ -24,6 +25,7 @@ fields:
 - time
 - date_time
 - int
+- short
 - bigint
 - double
 - decimal

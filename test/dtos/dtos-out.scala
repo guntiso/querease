@@ -91,6 +91,7 @@ class array_types_test extends DtoWithId {
   var time_arr: List[java.time.LocalTime] = Nil
   var date_time_arr: List[java.time.LocalDateTime] = Nil
   var int_arr: List[java.lang.Integer] = Nil
+  var short_arr: List[java.lang.Short] = Nil
   var bigint_arr: List[scala.math.BigInt] = Nil
   var double_arr: List[java.lang.Double] = Nil
   var decimal_arr: List[scala.math.BigDecimal] = Nil
@@ -455,6 +456,7 @@ class json_test_types_child extends DtoWithId {
   var offset_date_time: java.time.OffsetDateTime = null
   var zoned_date_time: java.time.ZonedDateTime = null
   var int: java.lang.Integer = null
+  var short: java.lang.Short = null
   var bigint: scala.math.BigInt = null
   var double: java.lang.Double = null
   var decimal: scala.math.BigDecimal = null
@@ -467,6 +469,7 @@ class json_test_types_child extends DtoWithId {
   var time_arr: List[java.time.LocalTime] = Nil
   var date_time_arr: List[java.time.LocalDateTime] = Nil
   var int_arr: List[java.lang.Integer] = Nil
+  var short_arr: List[java.lang.Short] = Nil
   var bigint_arr: List[scala.math.BigInt] = Nil
   var double_arr: List[java.lang.Double] = Nil
   var decimal_arr: List[scala.math.BigDecimal] = Nil
@@ -1751,6 +1754,7 @@ class types_test extends DtoWithId {
   var time: java.time.LocalTime = null
   var date_time: java.time.LocalDateTime = null
   var int: java.lang.Integer = null
+  var short: java.lang.Short = null
   var bigint: scala.math.BigInt = null
   var double: java.lang.Double = null
   var decimal: scala.math.BigDecimal = null

@@ -31,6 +31,7 @@ columns:
 - time_arr * time
 - date_time_arr * dateTime
 - int_arr * int
+- short_arr * short
 - bigint_arr * integer
 - double_arr * double
 - decimal_arr * decimal
@@ -181,6 +182,7 @@ columns:
 - time time
 - date_time dateTime
 - int int
+- short short
 - bigint integer
 - double double
 - decimal decimal

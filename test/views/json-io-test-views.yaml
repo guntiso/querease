@@ -45,6 +45,7 @@ fields:
     - offset_date_time  offset_date_time
     - zoned_date_time   zoned_date_time
     - int               int
+    - short             short
     - bigint            integer
     - double            double
     - decimal           decimal  20 2
@@ -57,6 +58,7 @@ fields:
     - time_arr        * time
     - date_time_arr   * dateTime
     - int_arr         * int
+    - short_arr       * short
     - bigint_arr      * integer
     - double_arr      * double
     - decimal_arr     * decimal  20 2

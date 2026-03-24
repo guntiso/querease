@@ -49,6 +49,7 @@ object ValueConverter {
   val ClassOfJavaLangBoolean        = classOf[java.lang.Boolean]
   val ClassOfJavaLangDouble         = classOf[java.lang.Double]
   val ClassOfJavaLangInteger        = classOf[java.lang.Integer]
+  val ClassOfJavaLangShort          = classOf[java.lang.Short]
   val ClassOfJavaLangLong           = classOf[java.lang.Long]
   val ClassOfJavaLangObject         = classOf[java.lang.Object]
   val ClassOfJavaMathBigDecimal     = classOf[java.math.BigDecimal]
@@ -81,6 +82,7 @@ object ValueConverter {
       ClassOfJavaLangBoolean         .getName -> ClassOfJavaLangBoolean,
       ClassOfJavaLangDouble          .getName -> ClassOfJavaLangDouble,
       ClassOfJavaLangInteger         .getName -> ClassOfJavaLangInteger,
+      ClassOfJavaLangShort           .getName -> ClassOfJavaLangShort,
       ClassOfJavaLangLong            .getName -> ClassOfJavaLangLong,
       ClassOfJavaLangObject          .getName -> ClassOfJavaLangObject,
       ClassOfJavaMathBigDecimal      .getName -> ClassOfJavaMathBigDecimal,
@@ -172,6 +174,7 @@ trait ValueConverter {
       case ClassOfJavaLangDouble          => n.doubleValue
       case ClassOfJavaLangInteger         => n.intValue
       case ClassOfJavaLangLong            => n.longValue
+      case ClassOfJavaLangShort           => n.shortValue
       case ClassOfJavaMathBigDecimal      => new java.math.BigDecimal(n.toString) // TODO optimize?
       case ClassOfJavaMathBigInteger      => new java.math.BigInteger(n.toString) // TODO optimize?
       case ClassOfLong                    => n.longValue
@@ -189,6 +192,7 @@ trait ValueConverter {
       case ClassOfJavaLangBoolean         => s.toBoolean
       case ClassOfJavaLangDouble          => if (s == "") null else s.toDouble
       case ClassOfJavaLangInteger         => if (s == "") null else s.toInt
+      case ClassOfJavaLangShort           => if (s == "") null else s.toShort
       case ClassOfJavaLangLong            => if (s == "") null else s.toLong
       case ClassOfJavaMathBigDecimal      => new java.math.BigDecimal(s)
       case ClassOfJavaSqlDate             => convertToType(parseDateTimeString(s), targetClass)
