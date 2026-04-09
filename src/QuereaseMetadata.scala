@@ -696,7 +696,10 @@ trait QuereaseMetadata {
     log(s"Compiling $category - ${compilationUnits.size} total")
     val startTime = System.currentTimeMillis
     val dbToCompiler = compilationUnits.map(_.db).toSet.map { (db: String) => db -> new org.tresql.compiling.Compiler {
-      override val metadata = if (db == null) tresqlMetadata else tresqlMetadata.extraDbToMetadata(db)
+      override val metadata =
+        if (db == null) tresqlMetadata
+        else tresqlMetadata.extraDbToMetadata.getOrElse(db,
+          sys.error(s"Cannot compile query for database '$db'. No tables defined."))
       override val extraMetadata = tresqlMetadata.extraDbToMetadata
       override protected val macros =
         new MacroResourcesImpl(Option(macrosClass).map(_.getDeclaredConstructor().newInstance()).orNull, tresqlMetadata)
