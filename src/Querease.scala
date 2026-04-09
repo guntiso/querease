@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
-case class ValidationResult(path: List[Any], messages: List[String])
+case class ValidationResult(location: List[Any], messages: List[String])
 
 object SaveMethod extends Enumeration {
   type SaveMethod = Value
