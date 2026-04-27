@@ -11,6 +11,7 @@ import org.tresql.metadata.{Col, Key, Table, TypeMapper, Ref => TresqlRef}
 
 import java.io.InputStream
 import scala.collection.immutable.{Map, Seq, Set}
+import scala.util.control.NonFatal
 
 class TresqlMetadata(
   val tableDefs: Seq[TableDef],
@@ -166,7 +167,7 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
   override def create(conf: Map[String, String]): CompilerMetadata = {
     val tableMetadataResourceName =
       conf.getOrElse("table_metadata_resource", "/tresql-table-metadata.yaml")
-    val macrosClassOpt = conf.get("macros_class").map(Class.forName)
+    val macrosInst = conf.get("macros_class").map(instantiateMacros)
     val rawTableMetadata = YamlMd.fromResource(tableMetadataResourceName)
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
@@ -175,13 +176,33 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
       .map(_.split(",").filter(_ contains "->").map(_.split("->", 2)).map { case Array(k, v) => (k.trim, v.trim) }.toMap)
       .getOrElse(Map[String, String]())
     val tresqlMetadata = TresqlMetadata(tableDefs,
-      typeDefs = Nil, macrosClass = macrosClassOpt.orNull, aliasToDb = aliasToDb)
+      typeDefs = Nil, macrosClass = macrosInst.map(_.getClass).orNull, aliasToDb = aliasToDb)
     new CompilerMetadata {
       override def metadata: Metadata = tresqlMetadata
       override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
-      override def macros: Any =
-        macrosClassOpt.map(_.getDeclaredConstructor().newInstance()).orNull
+      override def macros: Any = macrosInst
     }
+  }
+
+  protected def instantiateMacros(macrosClassName: String): AnyRef = {
+    def objOrNewRec(cns: List[String]): AnyRef = {
+      def objOrNew(clazz: Class[_]) = try clazz.getField("MODULE$").get(null) catch {
+        case NonFatal(_) => clazz.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
+      }
+      val cn = cns.head
+      if (cn endsWith "$") objOrNew(Class.forName(cn))
+      else try objOrNew(Class.forName(cn)) catch {
+        case NonFatal(_) => try Class.forName(cn + "$").getField("MODULE$").get(null) catch {
+          case NonFatal(ex) =>
+            val idx = cn lastIndexOf "."
+            if (idx == -1) throw new RuntimeException(s"Unable to instantiate macro object. Tried classes: ${
+              cns.reverse.mkString("[", ", ", "]")
+            }", ex)
+            else objOrNewRec((cn.substring(0, idx) + "$" + cn.substring(idx + 1, cn.length)) :: cns)
+        }
+      }
+    }
+    objOrNewRec(macrosClassName :: Nil)
   }
 }
 
