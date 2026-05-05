@@ -167,7 +167,7 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
   override def create(conf: Map[String, String]): CompilerMetadata = {
     val tableMetadataResourceName =
       conf.getOrElse("table_metadata_resource", "/tresql-table-metadata.yaml")
-    val macrosInst = conf.get("macros_class").map(instantiateMacros)
+    val macrosInst = conf.get("macros_class").map(TresqlMetadata.instantiateMacros)
     val rawTableMetadata = YamlMd.fromResource(tableMetadataResourceName)
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
@@ -182,27 +182,6 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
       override def extraMetadata: Map[String, Metadata] = tresqlMetadata.extraDbToMetadata
       override def macros: Any = macrosInst
     }
-  }
-
-  protected def instantiateMacros(macrosClassName: String): AnyRef = {
-    def objOrNewRec(cns: List[String]): AnyRef = {
-      def objOrNew(clazz: Class[_]) = try clazz.getField("MODULE$").get(null) catch {
-        case NonFatal(_) => clazz.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
-      }
-      val cn = cns.head
-      if (cn endsWith "$") objOrNew(Class.forName(cn))
-      else try objOrNew(Class.forName(cn)) catch {
-        case NonFatal(_) => try Class.forName(cn + "$").getField("MODULE$").get(null) catch {
-          case NonFatal(ex) =>
-            val idx = cn lastIndexOf "."
-            if (idx == -1) throw new RuntimeException(s"Unable to instantiate macro object. Tried classes: ${
-              cns.reverse.mkString("[", ", ", "]")
-            }", ex)
-            else objOrNewRec((cn.substring(0, idx) + "$" + cn.substring(idx + 1, cn.length)) :: cns)
-        }
-      }
-    }
-    objOrNewRec(macrosClassName :: Nil)
   }
 }
 
@@ -229,5 +208,28 @@ object TresqlMetadata {
       cursorDefs: Map[String, Table] = Map(),
   ): TresqlMetadata = {
     new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursorDefs)
+  }
+
+  def instantiateMacros(macrosClassName: String): AnyRef = {
+    def objOrNewRec(cns: List[String]): AnyRef = {
+      def loadCl(n: String) = Class.forName(n)
+      val cn = cns.head
+      if (cn endsWith "$") instantiateMacros(loadCl(cn))
+      else try instantiateMacros(loadCl(cn)) catch {
+        case NonFatal(_) => try loadCl(cn + "$").getField("MODULE$").get(null) catch {
+          case NonFatal(ex) =>
+            val idx = cn lastIndexOf "."
+            if (idx == -1) throw new RuntimeException(s"Unable to instantiate macro object. Tried classes: ${
+              cns.reverse.mkString("[", ", ", "]")
+            }", ex)
+            else objOrNewRec((cn.substring(0, idx) + "$" + cn.substring(idx + 1, cn.length)) :: cns)
+        }
+      }
+    }
+    objOrNewRec(macrosClassName :: Nil)
+  }
+
+  def instantiateMacros(macrosClass: Class[_]): AnyRef = try macrosClass.getField("MODULE$").get(null) catch {
+    case NonFatal(_) => macrosClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
   }
 }

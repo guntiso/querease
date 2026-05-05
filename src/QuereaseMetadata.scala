@@ -43,6 +43,8 @@ trait QuereaseMetadata {
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
+  /** This can be overriden to ensure macro class and configuration loading during sbt build process. */
+  protected def resourcesClassLoader: ClassLoader = null
   protected lazy val resourceLoader: String => InputStream = getClass.getResourceAsStream _
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
     TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb),

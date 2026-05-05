@@ -56,7 +56,7 @@ trait ViewCompiler extends QuereaseMetadata {
           sys.error(s"Cannot compile query for database '$db'. No tables defined."))
       override val extraMetadata = tresqlMetadata.extraDbToMetadata
       override protected val macros =
-        new MacroResourcesImpl(Option(macrosClass).map(_.getDeclaredConstructor().newInstance()).orNull, tresqlMetadata)
+        new MacroResourcesImpl(Option(macrosClass).map(TresqlMetadata.instantiateMacros).orNull, tresqlMetadata)
     }}.toMap
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
