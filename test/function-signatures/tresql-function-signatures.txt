@@ -1,4 +1,4 @@
-include /tresql-default-function-signatures.txt
+include tresql-default-function-signatures.txt
 
 // custom
 checked_resolve(resolvable::string, resolved::any, error_message::string)::any

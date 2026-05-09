@@ -9,7 +9,6 @@ import org.tresql.Metadata
 import org.tresql.compiling.{CompilerMetadata, CompilerMetadataFactory}
 import org.tresql.metadata.{Col, Key, Table, TypeMapper, Ref => TresqlRef}
 
-import java.io.InputStream
 import scala.collection.immutable.{Map, Seq, Set}
 import scala.util.control.NonFatal
 
@@ -17,7 +16,7 @@ class TresqlMetadata(
   val tableDefs: Seq[TableDef],
   val typeDefs: Seq[TypeDef] = TypeMetadata.customizedTypeDefs,
   override val macrosClass: Class[_]  = null,
-  val resourceLoader: String => InputStream = null,
+  override val classLoader: ClassLoader = null,
   val aliasToDb: Map[String, String] = Map(),
   val viewDefs: Map[String, ViewDef] = Map(), // for cursor tables
   cursorDefs: Map[String, Table] = Map(),
@@ -52,7 +51,7 @@ class TresqlMetadata(
       .transform { case (extraDb, tableDefs) =>
         if  (extraDb == db)
              this
-        else TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursors)
+        else TresqlMetadata(tableDefs, typeDefs, macrosClass, classLoader, aliasToDb, viewDefs, cursors)
       }
       .flatMap { case (extraDb, metadata) =>
         dbToAlias(extraDb).filter(_ != null).map(_ -> metadata)
@@ -103,11 +102,9 @@ class TresqlMetadata(
 
   private val dbAsSuffix = Option(db).filter(_ != "") getOrElse "main-db"
   override val functionSignaturesResource: String =
-    s"/tresql-function-signatures-$dbAsSuffix.txt"
+    s"tresql-function-signatures-$dbAsSuffix.txt"
   override val macroSignaturesResource: String =
-    s"/tresql-macros-$dbAsSuffix.txt"
-  override def getResourceAsStream(r: String): InputStream =
-    if (resourceLoader == null) getClass.getResourceAsStream(r) else resourceLoader(r)
+    s"tresql-macros-$dbAsSuffix.txt"
 
   override def table(name: String): Table =
     tables.getOrElse(name, tablesNormalized(name.toLowerCase))
@@ -202,12 +199,12 @@ object TresqlMetadata {
       tableDefs: Seq[TableDef],
       typeDefs: collection.immutable.Seq[TypeDef],
       macrosClass: Class[_]  = null,
-      resourceLoader: String => InputStream = null,
+      classLoader: ClassLoader = null,
       aliasToDb: Map[String, String] = Map(),
       viewDefs: Map[String, ViewDef] = Map(),
       cursorDefs: Map[String, Table] = Map(),
   ): TresqlMetadata = {
-    new TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, viewDefs, cursorDefs)
+    new TresqlMetadata(tableDefs, typeDefs, macrosClass, classLoader, aliasToDb, viewDefs, cursorDefs)
   }
 
   def instantiateMacros(macrosClassName: String): AnyRef = {

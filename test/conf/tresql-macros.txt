@@ -1,2 +1,2 @@
-include /querease-macros.txt
+include querease-macros.txt
 

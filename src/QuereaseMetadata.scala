@@ -43,11 +43,14 @@ trait QuereaseMetadata {
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
-  /** This can be overriden to ensure macro class and configuration loading during sbt build process. */
-  protected def resourcesClassLoader: ClassLoader = null
-  protected lazy val resourceLoader: String => InputStream = getClass.getResourceAsStream _
+  /** Custom class loader to ensure macro class, configuration and resources loading during sbt build process. */
+  protected def resourceClassLoader: ClassLoader = null
+  // TODO remove when mojoz gets rid of resource loader
+  protected lazy val resourceLoader: String => InputStream = name =>
+    Option(resourceClassLoader).getOrElse(getClass.getClassLoader)
+      .getResourceAsStream(name.stripPrefix("/"))
   lazy val joinsParser: JoinsParser = new TresqlJoinsParser(
-    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb),
+    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceClassLoader, aliasToDb),
     _ => Some(new SimpleCache(parserCacheSize, "TresqlJoinsParser cache")),
   )
   lazy val uninheritableExtras: Seq[String] = Seq()
@@ -103,7 +106,7 @@ trait QuereaseMetadata {
       .nameToViewDef.asInstanceOf[Map[String, ViewDef]]
   }
   lazy val tresqlMetadata =
-    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb, nameToViewDef)
+    TresqlMetadata(tableMetadata.tableDefs, typeDefs, macrosClass, resourceClassLoader, aliasToDb, nameToViewDef)
 
   protected lazy val viewNameToChildViewNames: Map[String, Set[String]] =
     nameToViewDef.collect {

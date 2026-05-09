@@ -148,8 +148,8 @@ object TresqlJoinsParser {
     aliasToDb: Map[String, String] = Map(),
     macrosClass: Class[_] = null,
     createCache: String => Option[Cache],
-    resourceLoader: String => InputStream = null,
+    classLoader: ClassLoader = null,
   ): TresqlJoinsParser = {
-    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, resourceLoader, aliasToDb), createCache)
+    new TresqlJoinsParser(TresqlMetadata(tableDefs, typeDefs, macrosClass, classLoader, aliasToDb), createCache)
   }
 }
