@@ -5,7 +5,7 @@ import org.mojoz.metadata._
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
 import org.tresql.ast.{Ident, Variable}
-import org.tresql.{OrtMetadata, SimpleCache}
+import org.tresql.{MacroResourcesImpl, OrtMetadata, SimpleCache, ast}
 import org.tresql.OrtMetadata._
 
 import java.io.{BufferedReader, InputStream, InputStreamReader}
@@ -43,6 +43,9 @@ trait QuereaseMetadata {
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
   lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
+  protected lazy val macrosInstance = Option(macrosClass).map(TresqlMetadata.instantiateMacros).orNull
+  lazy val macroResources = new MacroResourcesImpl(macrosInstance, tresqlMetadata)
+
   /** Custom class loader to ensure macro class, configuration and resources loading during sbt build process. */
   protected def resourceClassLoader: ClassLoader = null
   // TODO remove when mojoz gets rid of resource loader
@@ -171,6 +174,8 @@ trait QuereaseMetadata {
     nameToViewDef.map { case (name, viewDef) => (name, keyColNameForGetByCode(viewDef)) }
   lazy val viewNameToIdFieldName: Map[String, String] =
     nameToViewDef.map { case (name, viewDef) => (name, idFieldName(viewDef)) }.filter(_._2 != null).toMap
+
+  def viewNameToQueryVariablesCache: Map[String, Seq[ast.Variable]] = Map()
 
   def fieldOrderingOption(viewName: String): Option[Ordering[String]] = viewNameToFieldOrdering.get(viewName)
   def fieldOrdering(viewName: String): Ordering[String] = fieldOrderingOption(viewName)

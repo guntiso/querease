@@ -2,9 +2,11 @@ package org.mojoz.querease.compiling
 
 import org.mojoz.metadata.ViewDef
 import org.mojoz.querease._
-import org.tresql.MacroResourcesImpl
+import org.tresql.{MacroResourcesImpl, QueryCompiler, SimpleCache, ast}
 
+import java.util.concurrent.ConcurrentHashMap
 import scala.collection.immutable.{Map, Seq}
+import scala.jdk.CollectionConverters._
 
 trait ViewCompiler extends QuereaseMetadata {
   this: QuereaseExpressions with QuereaseResolvers with QueryStringBuilder
@@ -12,15 +14,27 @@ trait ViewCompiler extends QuereaseMetadata {
 
   import QueryStringBuilder.CompilationUnit
 
+  private val QueriesCatergory = "queries"
+  private val ValidationsCategory = "validations"
+
+  protected lazy val viewNameToQueryVariablesCompilerCache = {
+    val cache = new ConcurrentHashMap[String, Seq[ast.Variable]]
+    cache.putAll(viewNameToQueryVariablesCache.asJava)
+    cache
+  }
+
+  override lazy val macroResources: MacroResourcesImpl =
+    new MacroResourcesImpl(macrosInstance, tresqlMetadata, resourceClassLoader)
+
   /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
   def allQueryStrings(viewDef: ViewDef): Seq[CompilationUnit] = {
     if (viewDef.fields != null && viewDef.fields.nonEmpty &&
       (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
       List(
-        CompilationUnit("queries", viewDef.name, viewDef.db, queryStringAndParams(viewDef, Map.empty)._1)
+        CompilationUnit(QueriesCatergory, viewDef.name, viewDef.db, queryStringAndParams(viewDef, Map.empty)._1)
       )
     else Nil
-  } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit("validations", viewDef.name, viewDef.db, vq))
+  } ++ validationsQueryStrings(viewDef).map(vq => CompilationUnit(ValidationsCategory, viewDef.name, viewDef.db, vq))
 
   protected def generateQueriesForCompilation(log: => String => Unit): Seq[CompilationUnit] = {
     val viewsToCompile =
@@ -49,25 +63,24 @@ trait ViewCompiler extends QuereaseMetadata {
   ): Int = {
     log(s"Compiling $category - ${compilationUnits.size} total")
     val startTime = System.currentTimeMillis
-    val dbToCompiler = compilationUnits.map(_.db).toSet.map { (db: String) => db -> new org.tresql.compiling.Compiler {
-      override val metadata =
-        if (db == null) tresqlMetadata
-        else tresqlMetadata.extraDbToMetadata.getOrElse(db,
-          sys.error(s"Cannot compile query for database '$db'. No tables defined."))
-      override val extraMetadata = tresqlMetadata.extraDbToMetadata
-      override protected val macros =
-        new MacroResourcesImpl(Option(macrosClass).map(TresqlMetadata.instantiateMacros).orNull, tresqlMetadata)
-    }}.toMap
+    val dbToCompiler = compilationUnits.map(_.db).toSet.map { (db: String) => db -> new QueryCompiler(
+      if (db == null) tresqlMetadata else tresqlMetadata.extraDbToMetadata(db),
+      tresqlMetadata.extraDbToMetadata,
+      macroResources,
+      new SimpleCache(parserCacheSize)
+    )}.toMap
     val compiledQueries = collection.mutable.Set[String](previouslyCompiledQueries.toSeq: _*)
     var compiledCount = 0
     compilationUnits.foreach { case cu @ CompilationUnit(_, viewName, db, q) =>
       if (!compiledQueries.contains(cu.queryStringWithContext)) {
         val compiler = dbToCompiler(db)
-        try compiler.compile(compiler.parseExp(q)) catch { case util.control.NonFatal(ex) =>
+        try compiler.compile(q) catch { case util.control.NonFatal(ex) =>
           val msg = s"\nFailed to compile $viewName query: ${ex.getMessage}" +
             (if (showFailedViewQuery) s"\n$q" else "")
           throw new RuntimeException(msg, ex)
         }
+        if (category == QueriesCatergory)
+          viewNameToQueryVariablesCompilerCache.put(viewName, compiler.extractVariables(q))
         compiledCount += 1
         compiledQueries += cu.queryStringWithContext
       }
