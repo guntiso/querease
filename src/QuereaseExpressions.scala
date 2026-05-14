@@ -6,7 +6,7 @@ import org.mojoz.metadata.TableMetadata
 import org.mojoz.metadata.Type
 import org.tresql.{Cache, SimpleCache}
 import org.tresql.parsing.{ExpTransformer, QueryParsers}
-import org.tresql.ast.{Exp, Ident, Ord, Variable}
+import org.tresql.ast.{Exp, Ident, Obj, Ord, Variable, With}
 
 import scala.util.parsing.input.CharSequenceReader
 import scala.util.Try
@@ -75,6 +75,10 @@ object QuereaseExpressions {
         e
       }
     }
+    /** Override tresql 'with' query to support validation expressions - CTE without final query */
+    override def withQuery: MemParser[With] = super.withQuery | (rep1sep(withTable, ",") ^^ { wts =>
+      With(wts, Obj(Ident(List(wts.last.name)), null, null, null)) // select * from <last cursor>
+    }) named "querease-with-query"
   }
 }
 
