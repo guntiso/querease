@@ -159,12 +159,8 @@ trait ValueConverter {
     case x if targetClass == ClassOfJavaLangObject ||
               targetClass == x.getClass   => value
     case b: Boolean                   => targetClass match {
-      case ClassOfJavaLangBoolean         => b
-      case ClassOfString                  => b.toString
-      case _                              => throwUnsupportedConversion(value, targetClass)
-    }
-    case b: java.lang.Boolean         => targetClass match {
       case ClassOfBoolean                 => b
+      case ClassOfJavaLangBoolean         => b
       case ClassOfString                  => b.toString
       case _                              => throwUnsupportedConversion(value, targetClass)
     }
