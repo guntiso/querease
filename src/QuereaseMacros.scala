@@ -112,11 +112,13 @@ class QuereaseMacros extends Macros {
               traverseMap(ch_name, cursTable(table_name), col_name :: path, lookup)
             case children: Iterable[_] =>
               val new_path = col_name :: path
-              val succ = children.zipWithIndex.foldLeft(false) {
-                case (_, (m: Map[String@unchecked, _], i)) =>
+              var succ = false
+              children.zipWithIndex.foreach { case (d, i) =>
+                if (d.isInstanceOf[Map[_, _]]) {
+                  val m = d.asInstanceOf[Map[String, _]]
                   traverseMap(ch_name, cursTable(table_name), i.toString :: new_path, m)
-                  true
-                case (r, _) => r
+                  succ = true
+                }
               }
               if (!succ) empty_curs
             case _ => empty_curs
@@ -129,10 +131,11 @@ class QuereaseMacros extends Macros {
         case m: Map[String@unchecked, _] =>
           traverseMap("", table, path, m)
         case i: Iterable[_] =>
-          i.zipWithIndex.foreach {
-            case (m: Map[String@unchecked, _], i) =>
+          i.zipWithIndex.foreach { case (d, i) =>
+            if (d.isInstanceOf[Map[_, _]]) {
+              val m = d.asInstanceOf[Map[String, _]]
               traverseMap(path.lastOption.getOrElse(tableName), table, i.toString :: path, m)
-            case _ =>
+            }
           }
         case _ => traverseMap("", table, Nil, Map())
       }

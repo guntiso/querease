@@ -19,6 +19,7 @@ import java.util.Base64
 import scala.annotation.tailrec
 import scala.collection.immutable.{Map, Seq, Set}
 import scala.jdk.CollectionConverters._
+import scala.language.implicitConversions
 import scala.language.postfixOps
 import scala.reflect.ManifestFactory
 import scala.util.Try
