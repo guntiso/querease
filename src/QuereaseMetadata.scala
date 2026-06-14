@@ -48,7 +48,6 @@ trait QuereaseMetadata {
 
   /** Custom class loader to ensure macro class, configuration and resources loading during sbt build process. */
   protected def resourceClassLoader: ClassLoader = null
-  // TODO remove when mojoz gets rid of resource loader
   protected lazy val resourceLoader: String => InputStream = name =>
     Option(resourceClassLoader).getOrElse(getClass.getClassLoader)
       .getResourceAsStream(name.stripPrefix("/"))
