@@ -207,13 +207,18 @@ object TresqlMetadata {
     new TresqlMetadata(tableDefs, typeDefs, macrosClass, classLoader, aliasToDb, viewDefs, cursorDefs)
   }
 
-  def instantiateMacros(macrosClassName: String): AnyRef = {
+  def instantiateMacros(macrosClassName: String): AnyRef =
+    instantiateMacros(macrosClassName, null)
+
+  def instantiateMacros(macrosClassName: String, classLoader: ClassLoader): AnyRef = {
+    def loadClass(name: String): Class[_] =
+      if (classLoader == null) Class.forName(name) else classLoader.loadClass(name)
+
     def objOrNewRec(cns: List[String]): AnyRef = {
-      def loadCl(n: String) = Class.forName(n)
       val cn = cns.head
-      if (cn endsWith "$") instantiateMacros(loadCl(cn))
-      else try instantiateMacros(loadCl(cn)) catch {
-        case NonFatal(_) => try loadCl(cn + "$").getField("MODULE$").get(null) catch {
+      if (cn endsWith "$") instantiateMacros(loadClass(cn), classLoader)
+      else try instantiateMacros(loadClass(cn), classLoader) catch {
+        case NonFatal(_) => try loadClass(cn + "$").getField("MODULE$").get(null) catch {
           case NonFatal(ex) =>
             val idx = cn lastIndexOf "."
             if (idx == -1) throw new RuntimeException(s"Unable to instantiate macro object. Tried classes: ${
@@ -226,7 +231,15 @@ object TresqlMetadata {
     objOrNewRec(macrosClassName :: Nil)
   }
 
-  def instantiateMacros(macrosClass: Class[_]): AnyRef = try macrosClass.getField("MODULE$").get(null) catch {
-    case NonFatal(_) => macrosClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
-  }
+  def instantiateMacros(macrosClass: Class[_]): AnyRef =
+    instantiateMacros(macrosClass, null)
+
+  def instantiateMacros(macrosClass: Class[_], classLoader: ClassLoader): AnyRef =
+    if (classLoader == null) instantiateMacrosInstance(macrosClass)
+    else instantiateMacrosInstance(classLoader.loadClass(macrosClass.getName))
+
+  private def instantiateMacrosInstance(macrosClass: Class[_]): AnyRef =
+    try macrosClass.getField("MODULE$").get(null) catch {
+      case NonFatal(_) => macrosClass.getDeclaredConstructor().newInstance().asInstanceOf[AnyRef]
+    }
 }

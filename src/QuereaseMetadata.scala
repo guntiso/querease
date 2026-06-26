@@ -1,6 +1,6 @@
 package org.mojoz.querease
 
-import com.typesafe.config.{ConfigFactory, ConfigObject, ConfigValueType}
+import com.typesafe.config.{Config, ConfigFactory, ConfigObject, ConfigValueType}
 import org.mojoz.metadata._
 import org.mojoz.metadata.in.{JoinsParser, YamlMd, YamlTableDefLoader, YamlViewDefLoader}
 import org.mojoz.metadata.io.{MdConventions, SimplePatternMdConventions}
@@ -42,8 +42,9 @@ trait QuereaseMetadata {
   lazy val aliasToDb: Map[String, String] = QuereaseMetadata.aliasToDb(resourceLoader)
   lazy val tableMetadata: TableMetadata =
     new TableMetadata(new YamlTableDefLoader(yamlMetadata, metadataConventions, typeDefs).tableDefs, identity, aliasToDb)
-  lazy val macrosClass: Class[_] = classOf[QuereaseMacros]
-  protected lazy val macrosInstance = Option(macrosClass).map(TresqlMetadata.instantiateMacros).orNull
+  lazy val macrosClass: Class[_] = QuereaseMetadata.resolveMacrosClass(resourceLoader, resourceClassLoader)
+  protected lazy val macrosInstance =
+    Option(macrosClass).map(TresqlMetadata.instantiateMacros(_, resourceClassLoader)).orNull
   lazy val macroResources = new MacroResourcesImpl(macrosInstance, tresqlMetadata)
 
   /** Custom class loader to ensure macro class, configuration and resources loading during sbt build process. */
@@ -739,7 +740,7 @@ object QuereaseMetadata {
     override protected def extrasMap = fieldDef.extras
   }
 
-  def aliasToDb(resourceLoader: String => InputStream): Map[String, String] = {
+  protected def rawTresqlConfOpt(resourceLoader: String => InputStream): Option[Config] = {
     val dedicatedConfOpt =
      Option(resourceLoader("/tresql-resources.conf"))
       .map(inputStream => new BufferedReader(new InputStreamReader(inputStream)))
@@ -758,6 +759,12 @@ object QuereaseMetadata {
       case _ =>
         dedicatedConfOpt.orElse(referenceConfOpt)
     }
+
+    confOpt
+  }
+
+  def aliasToDb(resourceLoader: String => InputStream): Map[String, String] = {
+    val confOpt = rawTresqlConfOpt(resourceLoader)
 
     val defaultCpName =
      confOpt
@@ -791,6 +798,21 @@ object QuereaseMetadata {
       )
       .filter { case (alias, dbName) => alias != dbName }
       .toMap
+  }
+
+  private def resolveMacrosClass(resourceLoader: String => InputStream, classLoader: ClassLoader): Class[_] = {
+    def loadClass(name: String): Class[_] =
+      if (classLoader == null) Class.forName(name) else classLoader.loadClass(name)
+
+    val confOpt = rawTresqlConfOpt(resourceLoader)
+    confOpt
+      .map(_ -> "tresql.macros-class")
+      .filter { case (c, n) => c hasPathOrNull n }
+      .map { case (c, n) =>
+        if (c getIsNull n) null
+        else loadClass(c.getString(n))
+      }
+      .getOrElse(classOf[QuereaseMacros])
   }
 
   private val orderByParser: QuereaseExpressions.DefaultParser = new QuereaseExpressions.DefaultParser(None)
