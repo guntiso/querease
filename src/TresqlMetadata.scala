@@ -150,7 +150,9 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
    *  function signatures and macros.
    *
    *  Inspects "table_metadata_resource" and "macros_class" keys in conf parameter.
-   *  Defaults to /tresql-table-metadata.yaml and no macros class.
+   *  Defaults to /tresql-table-metadata.yaml and macros class according to tresql.macros-class setting
+   *    in tresql-resources.conf or reference.conf with org.mojoz.querease.QuereaseMacros as fallback.
+   *  No Scala macros when macros_class is set to null, empty string, or "null".
    *  Loads function signatures from first resource found in order:
    *    /tresql-function-signatures-<db-name>.txt,
    *    /tresql-function-signatures.txt,
@@ -164,7 +166,15 @@ class TresqlMetadataFactory extends CompilerMetadataFactory {
   override def create(conf: Map[String, String]): CompilerMetadata = {
     val tableMetadataResourceName =
       conf.getOrElse("table_metadata_resource", "/tresql-table-metadata.yaml")
-    val macrosInst = conf.get("macros_class").map(TresqlMetadata.instantiateMacros)
+    val macrosInst =
+      conf.get("macros_class") match {
+        case Some(null)   |
+             Some("null") |
+             Some("")   => None
+        case Some(name) => Some(TresqlMetadata.instantiateMacros(name))
+        case None       => Option(QuereaseMetadata.resolveMacrosClass(null))
+                             .map(TresqlMetadata.instantiateMacros)
+      }
     val rawTableMetadata = YamlMd.fromResource(tableMetadataResourceName)
     val mdConventions = new SimplePatternMdConventions(Nil, Nil, Nil)
     val typeDefs = TypeMetadata.defaultTypeDefs // XXX
