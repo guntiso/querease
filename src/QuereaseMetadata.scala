@@ -155,7 +155,8 @@ trait QuereaseMetadata {
     }
   lazy val viewNameToMapZero: Map[String, Map[String, Any]] =
     nameToViewDef.map { case (name, viewDef) =>
-      (name, TreeMap[String, Any]()(viewNameToFieldOrdering(name)) ++
+      implicit val ord: Ordering[String] = viewNameToFieldOrdering(name)
+      (name, new TreeMap[String, Any]() ++
         viewDef.fields
           .filterNot(isOptionalField)
           .map(f => (f.fieldName, if (f.isCollection) Nil else null)))

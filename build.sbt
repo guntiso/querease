@@ -13,7 +13,13 @@ crossScalaVersions := Seq(
 )
 
 ThisBuild / sbt.Keys.versionScheme := Some("semver-spec")
+
+/* (issue #269 (https://github.com/scalacenter/sbt-version-policy/issues/269))
 ThisBuild / versionPolicyIntention := Compatibility.BinaryCompatible
+*/
+ThisBuild / mimaPreviousArtifacts := Set(
+  (organization.value %% name.value % "10.0.0").cross(CrossVersion.binary)
+)
 
 scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 // scalacOptions ++= (if (scalaVersion.value startsWith "3") Seq("-explain") else Nil)
@@ -22,8 +28,8 @@ javacOptions ++= Seq("-source", "11", "-target", "11", "-Xlint")
 initialize := {
   val _ = initialize.value
   val javaVersion = sys.props("java.specification.version")
-  if (javaVersion != "11")
-    sys.error("Java 11 is required for this project. Found " + javaVersion + " instead")
+  if (javaVersion != "17")
+    sys.error(s"Java 17 is required for this project. Found Java $javaVersion instead")
 }
 
 val mojozV  = "7.1.1"
@@ -56,7 +62,7 @@ Compile / doc / scalacOptions ++= (
  }.value
 
 resolvers ++= Seq(
-  "snapshots" at "https://central.sonatype.com/repository/maven-snapshots/"
+  "sonatype-snapshots".at("https://central.sonatype.com/repository/maven-snapshots/")
 )
 
 Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
@@ -71,9 +77,12 @@ Test / unmanagedResourceDirectories := baseDirectory(b => Seq(
 Test / scalaSource := baseDirectory(_ / "test").value
 Test / unmanagedSources / excludeFilter := "*-out*.*"
 
-Test / unmanagedClasspath +=
+Test / unmanagedClasspath ++= {
   // Needs [pre-compiled] function signatures to compile tresql in generated sources
-  baseDirectory.value / "project" / "target" / "scala-2.12" / "sbt-1.0" / "classes"
+  val converter = fileConverter.value
+  val dir = baseDirectory.value / "target" / "out" / "jvm" / "scala-3.8.4" / "querease-build" / "classes"
+  Seq(Attributed.blank(converter.toVirtualFile(dir.toPath)))
+}
 
 Test / scalacOptions := Seq("-unchecked", "-deprecation", "-feature", "-encoding", "utf8")
 
@@ -150,7 +159,7 @@ Test / console / initialCommands := Seq(
 publishTo := {
   val centralSnapshots = "https://central.sonatype.com/repository/maven-snapshots/"
   if (isSnapshot.value)
-    Some("central-snapshots" at centralSnapshots)
+    Some("central-snapshots".at(centralSnapshots))
   else
     localStaging.value
 }
@@ -160,6 +169,9 @@ publishMavenStyle := true
 Test / publishArtifact := false
 
 Test / testOptions += Tests.Argument("-oF")
+
+// SBT 2 `test` is incremental (testQuick); run the full suite like SBT 1
+Test / test := (Test / testFull).value
 
 pomIncludeRepository := { _ => false }
 

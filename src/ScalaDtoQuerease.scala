@@ -151,11 +151,14 @@ trait Dto { self =>
       val value =
         (s.mfSeq, s.mfDto) match {
           case (null, null) =>
-            r.typed(dbName)(s.mfOth).asInstanceOf[Object]
+            implicit val mf: Manifest[_] = s.mfOth
+            r.typed(dbName).asInstanceOf[Object]
           case (null, mDto) =>
             if (isResult) {
               val childResult = r.result(dbName)
-              childResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).headOption.orNull.asInstanceOf[Object]
+              implicit val m: Manifest[QDto] = mDto.asInstanceOf[Manifest[QDto]]
+              implicit val c: CoreTypes.Converter[QDto] = conv[QDto]
+              childResult.list[QDto].headOption.orNull.asInstanceOf[Object]
             } else {
               val view = qe.viewDefFromMf(mDto)
               qe.toCompatibleMap(r(dbName), view, dbName) match {
@@ -176,7 +179,8 @@ trait Dto { self =>
                   arr.free()
                   value
                 case x =>
-                  r.typed(dbName)(s.mfOth) match {
+                  implicit val mf: Manifest[_] = s.mfOth
+                  r.typed(dbName) match {
                     case null => null
                     case x    => List(x).asInstanceOf[Object]
                   }
@@ -184,7 +188,9 @@ trait Dto { self =>
           case (mSeq, mDto) =>
             if (isResult) {
               val childrenResult = r.result(dbName)
-              childrenResult.list[QDto](mDto.asInstanceOf[Manifest[QDto]], conv).asInstanceOf[Object]
+              implicit val m: Manifest[QDto] = mDto.asInstanceOf[Manifest[QDto]]
+              implicit val c: CoreTypes.Converter[QDto] = conv[QDto]
+              childrenResult.list[QDto].asInstanceOf[Object]
             } else {
               val view = qe.viewDefFromMf(mDto)
               qe.toCompatibleSeqOfMaps(r(dbName), view, dbName) match {
@@ -236,11 +242,15 @@ trait Dto { self =>
     }
     propName -> propValue
   }.filter(_._2 != None)
-  def toMap(implicit qe: QuereaseMetadata): Map[String, Any] =
-    qe.fieldOrderingOptionFromMf(ManifestFactory.classType(getClass))
+  def toMap(implicit qe: QuereaseMetadata): Map[String, Any] = {
+    implicit val mf: Manifest[AnyRef] = ManifestFactory.classType(getClass)
+    qe.fieldOrderingOptionFromMf[AnyRef]
       .map(toMapWithOrdering).getOrElse(toUnorderedMap)
-  def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QuereaseMetadata): Map[String, Any] =
-    TreeMap[String, Any]()(fieldOrdering) ++ toUnorderedMap
+  }
+  def toMapWithOrdering(fieldOrdering: Ordering[String])(implicit qe: QuereaseMetadata): Map[String, Any] = {
+    implicit val ord: Ordering[String] = fieldOrdering
+    new TreeMap[String, Any]() ++ toUnorderedMap
+  }
 
   def containsField(fieldName: String) = setters.contains(fieldName)
 

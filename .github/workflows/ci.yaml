@@ -6,7 +6,7 @@ jobs:
     strategy:
       matrix:
         os:   [ubuntu-22.04]   # TODO macos-latest, windows-latest
-        java: [11] #, 17, 21]
+        java: [17]
     steps:
     - name: Checkout
       uses: actions/checkout@v2
@@ -31,4 +31,4 @@ jobs:
     - name: Configure tests
       run:  cp test/conf/application.conf.ci test/conf/application.conf
     - name: Compile and test and check version policy
-      run:  sbt -Dhsqldb.method_class_names="test.HsqldbCustomFunctions.*" clean update +compile +test +versionPolicyCheck
+      run:  sbt -Dhsqldb.method_class_names="test.HsqldbCustomFunctions.*" "clean; update; +compile; +testFull; +mimaReportBinaryIssues"
