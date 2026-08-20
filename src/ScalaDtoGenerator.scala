@@ -256,6 +256,7 @@ class ScalaDtoGenerator(qe: Querease) extends ScalaGenerator(qe.typeDefs) {
     val methodName = scalaNameString("resolve_" + resolverTargetColName(fieldDef))
     ResolverScala(
       parameterTypes,
+      s"""  @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")""" + nl +
       s"  ${override_}def $methodName$paramsString = $resolverDefBodyPrefix{" + nl +
             resolverBody(resolverExpression, argsString, resolverTargetTypeName(fieldDef, viewDef.db)) +
       s"  }"
