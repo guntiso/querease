@@ -15,8 +15,10 @@ import org.mojoz.querease.{FieldFilter, TresqlMetadata, ValidationException, Val
 import org.mojoz.querease.SaveMethod._
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
+import scala.annotation.nowarn
 
 
+@nowarn("msg=Compiler synthesis of Manifest")
 trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   import QuereaseDbTests.{dataPath, clearEnv, commit, loadSampleData, MainDb, ExtraDb, Env, Env2}
   implicit var resources: org.tresql.Resources = null
