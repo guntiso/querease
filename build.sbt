@@ -26,10 +26,9 @@ initialize := {
     sys.error(s"Java 11 is required for this project. Found Java $javaVersion instead")
 }
 
-val mojozV  = "7.1.1"
 val tresqlV = "13.5.1"
 libraryDependencies ++= Seq(
-  "org.mojoz"     %% "mojoz"      % mojozV,
+  "org.mojoz"     %% "mojoz"      % "7.2.0",
   "org.tresql"    %% "tresql"     % tresqlV,
   "com.typesafe"   % "config"     % "1.4.9",
   // test
