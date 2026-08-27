@@ -28,7 +28,7 @@ initialize := {
 
 val tresqlV = "13.5.1"
 libraryDependencies ++= Seq(
-  "org.mojoz"     %% "mojoz"      % "7.2.0",
+  "org.mojoz"     %% "mojoz"      % "7.2.1",
   "org.tresql"    %% "tresql"     % tresqlV,
   "com.typesafe"   % "config"     % "1.4.9",
   // test
