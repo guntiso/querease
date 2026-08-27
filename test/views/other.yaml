@@ -1,3 +1,44 @@
+name:  column_test
+table: json_col_test
+column: payload
+fields:
+- id
+- whatever
+- nested_thing
+
+
+name:  nested_column_parent
+table: json_col_test
+fields:
+- id
+- payload nested_column_payload
+- extra   nested_column_extra
+
+
+name:  column_and_nested
+table: json_col_test
+column: payload
+fields:
+- id
+- whatever
+- extra nested_column_extra
+
+
+name:  nested_column_payload
+table:
+column: payload
+fields:
+- a  10
+- b  10
+
+
+name:  nested_column_extra
+table:
+column: extra
+fields:
+- c  10
+
+
 name:  noid_test
 table: noid_test
 fields:

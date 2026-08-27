@@ -224,11 +224,14 @@ trait QuereaseMetadata {
      Option(view.table)
       .map(tableMetadata.tableDef(_, view.db))
       .flatMap { t =>
+       val keys =
         ((if (t.pk != null) t.pk.toSeq else Nil) ++
          (if (t.uk != null) t.uk       else Nil)
         ).filter(_ != null)
+       keys
          .find { k => k.cols forall(col => view.fields.exists(f => f.table == view.table && f.name == col))     }
-      } .map   { k => k.cols.map   (col => view.fields.find  (f => f.table == view.table && f.name == col).get) }
+         .orElse(if (isColumnStoredView(view)) keys.find { k => k.cols forall(col => view.fields.exists(_.name == col)) } else None)
+      } .map   { k => k.cols.map   (col => view.fields.find  (f => (f.table == view.table || isColumnStoredView(view)) && f.name == col).get) }
         .getOrElse(Nil)
     )
   }
@@ -275,6 +278,38 @@ trait QuereaseMetadata {
     case QuereaseExpressions.IdentifierExtractor(ident, _) => ident
     case _ => ""
   }
+  protected def hasQueryableFrom(view: ViewDef): Boolean =
+    (view.table != null && view.table.nonEmpty) ||
+    (view.joins != null && view.joins.nonEmpty)
+  /** View stored as a single JSON/YAML column plus optional table columns. */
+  protected def isColumnStoredView(view: ViewDef): Boolean =
+    view.column != null && view.table != null && view.table.nonEmpty
+  protected def fieldPersistenceColName(field: FieldDef): String =
+    Option(field.saveTo).getOrElse(field.name)
+  /** Field persisted as a real table column of a column-stored view (not the JSON column). */
+  protected def isTableStoredField(view: ViewDef, field: FieldDef): Boolean = {
+    if (!isColumnStoredView(view) || field.isExpression) false
+    else {
+      val colName = jsonColumnChildColName(view, field).getOrElse(fieldPersistenceColName(field))
+      colName != view.column &&
+        tableMetadata.columnDefOption(view.table, colName, view.db).isDefined
+    }
+  }
+  /** Child view describes a JSON column of the parent table. */
+  protected def isJsonColumnChildView(childView: ViewDef): Boolean =
+    childView != null && childView.column != null && !hasQueryableFrom(childView)
+  protected def isJsonColumnChildField(view: ViewDef, field: FieldDef): Boolean =
+    field.type_ != null && field.type_.isComplexType &&
+      viewDefOption(field.type_.name).exists(isJsonColumnChildView)
+  protected def jsonColumnChildColName(view: ViewDef, field: FieldDef): Option[String] =
+    if (!isJsonColumnChildField(view, field)) None
+    else Some(Option(field.saveTo).getOrElse(viewDef(field.type_.name).column))
+  /** Field packed into `view.column`. Nested column children are stored in their own columns. */
+  protected def isPackedIntoViewColumn(view: ViewDef, field: FieldDef): Boolean =
+    isColumnStoredView(view) &&
+      !field.isExpression &&
+      !isJsonColumnChildField(view, field) &&
+      fieldPersistenceColName(field) != view.column
   protected def isSaveableSimpleField(
     field: FieldDef,
     view: ViewDef,
@@ -282,6 +317,8 @@ trait QuereaseMetadata {
     saveToTableNames: Seq[String],
   ) = {
     (
+      isTableStoredField(view, field)
+      ||
       field.saveTo != null        &&
       field.saveTo.indexOf(':') < 0
       ||
@@ -291,7 +328,7 @@ trait QuereaseMetadata {
       field.table != null         &&
       (!field.type_.isComplexType ||
         viewDefOption(field.type_.name).exists { childView =>
-          childView.table == null && (childView.joins == null || childView.joins == Nil)
+          !hasQueryableFrom(childView) || isJsonColumnChildView(childView)
         }
       ) &&
       (
@@ -629,12 +666,28 @@ trait QuereaseMetadata {
           throw new RuntimeException(s"Failed to build persistenceMetadata for field ${f.fieldName}", ex)
       }}
       .filter(_ != null)
+    val columnProperty =
+      if (!isColumnStoredView(view)) null
+      else {
+        val colType = tableMetadata.columnDefOption(view.table, view.column, view.db).map(_.type_)
+        val typeCast =
+          if (colType.exists(t => t.name == "json")) "::json"
+          else if (colType.exists(t => t.name == "yaml")) "::yaml"
+          else ""
+        Property(
+          col       = view.column,
+          value     = TresqlValue(s":${view.column}$typeCast"),
+          optional  = false,
+          forInsert = true,
+          forUpdate = true,
+        )
+      }
     val persistenceMetadata =
       OrtMetadata.View(
         saveTo      = saveTo,
         filters     = filtersOpt,
         alias       = view.tableAlias,
-        properties  = properties,
+        properties  = properties ++ Option(columnProperty).toList,
         db          = view.db,
       )
     return Option(persistenceMetadata)

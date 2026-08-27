@@ -97,6 +97,13 @@ columns:
 - category ! string
 pk: id
 
+table: json_col_test
+columns:
+- id ! long
+- payload json
+- extra json
+pk: id
+
 table: json_io_test
 columns:
 - id ! long

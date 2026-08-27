@@ -1544,6 +1544,56 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.delete(j1)
   }
 
+  if (isDbAvailable) it should s"get list and save view stored in a json column in $dbName" in {
+    val c1 = new ColumnTest
+    c1.whatever = "w1"
+    c1.nested_thing = "n1"
+    val id = qe.save(c1)
+    c1.id = id
+
+    val g1 = qe.get[ColumnTest](id).get
+    g1.id shouldBe id
+    g1.whatever shouldBe "w1"
+    g1.nested_thing shouldBe "n1"
+
+    g1.whatever = "w2"
+    g1.nested_thing = "n2"
+    qe.save(g1)
+    val g2 = qe.get[ColumnTest](id).get
+    g2.whatever shouldBe "w2"
+    g2.nested_thing shouldBe "n2"
+
+    val listed = qe.list[ColumnTest](Map.empty[String, Any])
+    listed.exists(r => r.id == id && r.whatever == "w2" && r.nested_thing == "n2") shouldBe true
+
+    val p1 = new NestedColumnParent
+    p1.payload = new NestedColumnPayload
+    p1.payload.a = "aa"
+    p1.payload.b = "bb"
+    p1.extra = new NestedColumnExtra
+    p1.extra.c = "cc"
+    val pid = qe.save(p1)
+    val p2 = qe.get[NestedColumnParent](pid).get
+    p2.id shouldBe pid
+    p2.payload.a shouldBe "aa"
+    p2.payload.b shouldBe "bb"
+    p2.extra.c shouldBe "cc"
+
+    val m1 = new ColumnAndNested
+    m1.whatever = "wx"
+    m1.extra = new NestedColumnExtra
+    m1.extra.c = "cy"
+    val mid = qe.save(m1)
+    val m2 = qe.get[ColumnAndNested](mid).get
+    m2.id shouldBe mid
+    m2.whatever shouldBe "wx"
+    m2.extra.c shouldBe "cy"
+
+    qe.delete(g2)
+    qe.delete(p2)
+    qe.delete(m2)
+  }
+
   if (isDbAvailable) it should s"support references to parent fields $dbName" in {
     qe.get[PersonParentRefTest1](1103).get.children(0).mother_full_name shouldBe("Marija Ozola")
   }

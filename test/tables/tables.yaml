@@ -124,6 +124,13 @@ columns:
 - actual_address.id     address.id
 
 
+table:   json_col_test
+columns:
+- id
+- payload              json
+- extra                json
+pk: id
+
 table:   sys_user
 columns:
 - id

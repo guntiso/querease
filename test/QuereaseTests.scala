@@ -593,6 +593,47 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
   }
 
+  "view compiler" should "compile query according to view column" in {
+    qe.allQueryStrings(qe.viewDef("column_test")).map(_.query) shouldBe Seq(
+      "json_col_test {json_col_test.id, json_col_test.payload}"
+    )
+  }
+
+  "view compiler" should "compile query according to child view column" in {
+    qe.allQueryStrings(qe.viewDef("nested_column_parent")).map(_.query) shouldBe Seq(
+      "json_col_test {json_col_test.id, json_col_test.payload payload, json_col_test.extra extra}"
+    )
+  }
+
+  "querease" should "build persistence metadata for column-stored view" in {
+    import org.tresql.OrtMetadata._
+    qe.persistenceMetadata("column_test") shouldBe View(
+      List(SaveTo("json_col_test", Set(), List())),
+      Some(Filters(None, None, None)),
+      null,
+      List(
+        Property("id", KeyValue("if_defined_or_else(:'old key'.id?, :'old key'.id?, :id)", AutoValue(":id"), Some(AutoValue(":id"))), false, true, false),
+        Property("payload", TresqlValue(":payload::json"), false, true, true),
+      ),
+      null
+    )
+  }
+
+  "querease" should "pack column-stored fields into json for save" in {
+    qe.toSaveableMap(
+      Map("id" -> 1L, "whatever" -> "w", "nested_thing" -> "n"),
+      qe.viewDef("column_test"),
+    ) shouldBe Map("id" -> 1L, "payload" -> """{"id":1,"whatever":"w","nested_thing":"n"}""")
+    qe.toSaveableMap(
+      Map("id" -> 2L, "whatever" -> "w", "extra" -> Map("c" -> "cc")),
+      qe.viewDef("column_and_nested"),
+    ) shouldBe Map(
+      "id" -> 2L,
+      "extra" -> """{"c":"cc"}""",
+      "payload" -> """{"id":2,"whatever":"w"}""",
+    )
+  }
+
   "querease" should "support custom key fields" in {
     qe.viewNameToKeyFields("account_details").size shouldBe 2
     qe.viewNameToKeyFields("account_details")

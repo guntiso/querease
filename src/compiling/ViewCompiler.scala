@@ -28,8 +28,7 @@ trait ViewCompiler extends QuereaseMetadata {
 
   /** All queries and dml-s from viewDef for compilation, together with group name - to test viewDef */
   def allQueryStrings(viewDef: ViewDef): Seq[CompilationUnit] = {
-    if (viewDef.fields != null && viewDef.fields.nonEmpty &&
-      (viewDef.table != null || viewDef.joins != null && viewDef.joins.nonEmpty))
+    if (viewDef.fields != null && viewDef.fields.nonEmpty && hasQueryableFrom(viewDef))
       List(
         CompilationUnit(QueriesCatergory, viewDef.name, viewDef.db, queryStringAndParams(viewDef, Map.empty)._1)
       )

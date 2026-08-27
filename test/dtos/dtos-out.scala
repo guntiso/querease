@@ -219,6 +219,16 @@ class car_and_person_10 extends DtoWithId {
   var name: String = null
   var car_name: String = null
 }
+class column_and_nested extends DtoWithId {
+  var id: java.lang.Long = null
+  var whatever: String = null
+  var extra: nested_column_extra = null
+}
+class column_test extends DtoWithId {
+  var id: java.lang.Long = null
+  var whatever: String = null
+  var nested_thing: String = null
+}
 class country extends Dto {
   var code: String = null
   var name: String = null
@@ -549,6 +559,18 @@ object mother_daughters {
     tresql"""{'F'}"""(env.withParams(Map.empty))
       .unique[String]
   }
+}
+class nested_column_extra extends Dto {
+  var c: String = null
+}
+class nested_column_parent extends DtoWithId {
+  var id: java.lang.Long = null
+  var payload: nested_column_payload = null
+  var extra: nested_column_extra = null
+}
+class nested_column_payload extends Dto {
+  var a: String = null
+  var b: String = null
 }
 class nested_resolver_test_1 extends Dto {
   var other_field: String = null

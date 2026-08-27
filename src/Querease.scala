@@ -456,6 +456,31 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
     result.map(toCompatibleMap(_, view)).toList
 
   def toCompatibleMap(row: RowLike, view: ViewDef): Map[String, Any] = {
+    if (isColumnStoredView(view)) {
+      var fromJson: Map[String, Any] = viewNameToMapZero(view.name)
+      var fromCols = Map.empty[String, Any]
+      for (i <- 0 until row.columnCount) row.column(i) match {
+        case c if c.name != null && c.name == view.column =>
+          val parsed = toCompatibleMap(row(i), view, c.name)
+          if (parsed != null) fromJson = parsed
+        case c if c.name != null =>
+          view.fieldOpt(c.name)
+            .orElse(view.fields.find(f => jsonColumnChildColName(view, f).contains(c.name)))
+            .foreach { field =>
+            fromCols += (field.fieldName -> (if (field.type_.isComplexType) {
+              val childView = viewDef(field.type_.name)
+              if (field.isCollection) toCompatibleSeqOfMaps(row, i, childView)
+              else toCompatibleMap(row, i, childView)
+            } else if (field.isCollection) typedSeqOfValues(row, i, field.type_)
+            else typedValue(row, i, field.type_)))
+          }
+        case _ =>
+      }
+      fromJson ++ fromCols
+    } else toCompatibleMapFromRow(row, view)
+  }
+
+  private def toCompatibleMapFromRow(row: RowLike, view: ViewDef): Map[String, Any] = {
     var compatibleMap = viewNameToMapZero(view.name)
     def typed(name: String, index: Int) = view.fieldOpt(name).map { field =>
       try {
@@ -714,6 +739,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
 
   /** Provides missing fields, uses [[toSaveableValue]] to convert values */
   def toSaveableMap(map: Map[String, scala.Any], view: ViewDef): Map[String, Any] = {
+    val fieldMap =
     (if  (view.fields.forall(f => map.contains(f.fieldName) || isOptionalField(f)))
           map
      else viewNameToMapZero(view.name) ++ map
@@ -731,7 +757,7 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           lazy val isArr     = valueType.isArray
           lazy val childView = viewDef(f.type_.name)
           lazy val shouldSaveAsValue = !f.type_.isComplexType || isArr ||
-            childView.table == null && (childView.joins == null || childView.joins == Nil)
+            !hasQueryableFrom(childView) || isJsonColumnChildView(childView)
           def toSaveableMapOrValue(value: Any) = value match {
             case null => null
             case m: Map[String @unchecked, _] =>
@@ -792,6 +818,38 @@ trait ValueTransformer extends ValueConverter { this: QuereaseMetadata =>
           case util.control.NonFatal(ex) =>
             throw new RuntimeException(s"Failed to convert field ${view.name}.${f.fieldName} to saveable map or value", ex)
         }))
+    if (!isColumnStoredView(view)) fieldMap
+    else {
+      val packed = view.fields.filter(f => isPackedIntoViewColumn(view, f))
+      def packedValue(f: FieldDef): Any = {
+        val raw = map.getOrElse(f.fieldName, null)
+        if (raw == null)
+          fieldMap.getOrElse(f.fieldName, null)
+        else if (f.type_ != null && f.type_.isComplexType && !isJsonColumnChildField(view, f)) {
+          val childView = viewDef(f.type_.name)
+          raw match {
+            case m: Map[String @unchecked, _] => toCompatibleMap(m, childView)
+            case q: Seq[_] if f.isCollection =>
+              q.map {
+                case m: Map[String @unchecked, _] => toCompatibleMap(m, childView)
+                case x => x
+              }
+            case x => toCompatibleMap(x, childView, f.fieldName)
+          }
+        } else fieldMap.getOrElse(f.fieldName, raw)
+      }
+      val jsonMap = packed
+        .map(f => f.fieldName -> packedValue(f))
+        .foldLeft(new scala.collection.immutable.ListMap[String, Any]())(_ + _)
+      val colType = tableMetadata.columnDefOption(view.table, view.column, view.db)
+        .map(_.type_).getOrElse(new Type("json"))
+      val keepNames = view.fields
+        .filter(f => isTableStoredField(view, f) || isJsonColumnChildField(view, f))
+        .map(_.fieldName).toSet
+      val dropNames = packed.map(_.fieldName).filterNot(keepNames.contains)
+      (fieldMap -- dropNames) +
+        (view.column -> toSaveableValue(jsonMap, colType))
+    }
   }
 }
 
@@ -1674,6 +1732,13 @@ trait QueryStringBuilder {
       )
     else if (f.type_ != null && f.type_.isComplexType) {
       val childViewDef = getChildViewDef(view, f)
+      if (isJsonColumnChildView(childViewDef)) {
+        val colField = (new FieldDef(childViewDef.column)).copy(
+          table = view.table,
+          tableAlias = Option(f.tableAlias).getOrElse(view.tableAlias),
+        )
+        return queryColExpression(view, colField, pathToAlias, fieldFilter)
+      }
       val childFieldFilter = if (fieldFilter == null) null else fieldFilter.childFilter(f.fieldName)
       def joinToParent = Option(f.joinToParent).orElse {
         if (view.table != null && childViewDef.table != null) {
@@ -1723,7 +1788,7 @@ trait QueryStringBuilder {
             Seq(fd.copy(type_ = columnDef(childViewDef, fd).type_)))
         }
       */
-      if (childViewDef.table == null && (childViewDef.joins == null || childViewDef.joins == Nil))
+      if (!hasQueryableFrom(childViewDef))
        if (view.table == null || f.table != null)
         qName
        else
@@ -1757,6 +1822,19 @@ trait QueryStringBuilder {
     fieldFilter: FieldFilter,
   ): String =
     if (countAll) " {count(*)}"
+    else if (isColumnStoredView(view)) {
+      val tableCols = view.fields
+        .filter(f => isTableStoredField(view, f) || isJsonColumnChildField(view, f))
+        .filter(f => fieldFilter == null || !isOptionalField(f) || fieldFilter.shouldInclude(f.fieldName))
+        .map { f =>
+          val tf = if (f.table != null) f else f.copy(table = view.table, tableAlias = view.tableAlias)
+          queryColExpression(view, tf, pathToAlias, fieldFilter) +
+            Option(queryColAlias(f)).map(" " + _).getOrElse("")
+        }
+      val colField = (new FieldDef(view.column)).copy(table = view.table, tableAlias = view.tableAlias)
+      val jsonCol = queryColExpression(view, colField, pathToAlias, fieldFilter)
+      (tableCols :+ jsonCol).mkString(" {", ", ", "}")
+    }
     else view.fields
       .filter(f => !f.isExpression || f.expression != null)
       .filter(f => !f.isCollection ||

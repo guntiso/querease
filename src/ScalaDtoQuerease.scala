@@ -133,11 +133,17 @@ trait Dto { self =>
 
   // populate from RowLike
   def fill(r: RowLike)(implicit qe: QuereaseMetadata with ValueTransformer): this.type = {
-    for (i <- 0 until r.columnCount) r.column(i) match {
-      case c if c.name != null => set(c.name, c.isResult, r)
-      case _ =>
+    implicit val mf: Manifest[AnyRef] = ManifestFactory.classType(getClass)
+    qe.viewDefOptionFromMf[AnyRef].filter(_.column != null) match {
+      case Some(view) =>
+        fill(qe.toCompatibleMap(r, view))
+      case None =>
+        for (i <- 0 until r.columnCount) r.column(i) match {
+          case c if c.name != null => set(c.name, c.isResult, r)
+          case _ =>
+        }
+        this
     }
-    this
   }
 
   protected def setters = DtoReflection.setters(this)
