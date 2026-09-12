@@ -27,7 +27,8 @@ import scala.util.control.NonFatal
 
 class NotFoundException(msg: String) extends Exception(msg)
 class ValidationException(msg: String, val details: List[ValidationResult]) extends Exception(msg)
-case class ValidationResult(location: List[Any], messages: List[String])
+case class ValidationResult(location: List[Any], messages: List[ValidationMessage])
+case class ValidationMessage(msg: String, params: List[Any])
 
 object SaveMethod extends Enumeration {
   type SaveMethod = Value
@@ -1167,12 +1168,21 @@ class Querease extends QueryStringBuilder with ValueTransformer
     val view = viewDefFromMf(ManifestFactory.classType(pojo.getClass))
     validationResults(view, qio.toMap(pojo), params)
   }
+  def validationMessage(row: RowLike): Option[ValidationMessage] = {
+    // first column should be idx, second column msg, the rest parameters
+    val msg = row.string(1)
+    if (msg == null || msg == "") None
+    else {
+      val params = 2 until row.columnCount map row.apply
+      Some(ValidationMessage(msg, params.toList))
+    }
+  }
   def validationResults(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(
     implicit resources: Resources): List[ValidationResult] = {
-    def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[String] =
+    def validateView(viewDef: ViewDef, obj: Map[String, Any]): List[ValidationMessage] =
       validationsQueryString(viewDef) match {
         case Some(query) =>
-          Query(query, obj).map(_.s("msg")).toList
+          Query(query, obj).flatMap(validationMessage).toList
         case _ => Nil
       }
     // non recursive validation function to avoid stack overflow
@@ -1215,8 +1225,8 @@ class Querease extends QueryStringBuilder with ValueTransformer
   }
   def validate(view: ViewDef, data: Map[String, Any], params: Map[String, Any])(implicit resources: Resources): Unit = {
     val results = validationResults(view, data, params)
-    results.flatMap(_.messages).filterNot(_ == null).filterNot(_ == "") match {
-      case messages if messages.nonEmpty => throw new ValidationException(messages.mkString("\n"), results)
+    results.flatMap(_.messages) match {
+      case messages if messages.nonEmpty => throw new ValidationException(messages.map(_.msg).mkString("\n"), results)
       case _ => ()
     }
   }
@@ -1507,44 +1517,52 @@ trait QueryStringBuilder {
           def error(exp: Exp) = {
             val msg =
               s"Validation expression must consist of" +
-                s" two or three comma separated expressions. One before last is boolean expression" +
-                s" which evaluated to false returns last string expression as error message." +
-                s" In the case of three expressions first of them should be cursor definitions which can" +
-                s" be used later in boolean and error message expressions." +
+                s" two or more comma separated expressions - optional cursor definitions," +
+                s" boolean expression, error message expression and optional error message" +
+                s" parameter expressions. Boolean expression evaluated to false returns" +
+                s" error message expression value as error message and parameter expression" +
+                s" values as error message parameters. Cursor definitions, if present," +
+                s" can be used in all subsequent expressions." +
                 s" Instead got: ${exp.tresql}"
             sys.error(msg)
           }
 
-          var cursorList = List[String]()
+          val (cursors, rows, max_par_count) =
+            vs.foldLeft((List[String](), List[(String, String, List[String])](), 0)) {
+            case ((cursors, rows, max_par_count), exp) =>
+              // replace view refs with tresql
+              val tr_exp = transformExpression(exp, viewDef, null, Validation)
+              def row(req_exp: Exp, msg_exp: Exp, param_exps: List[Exp]) = {
+                def msg_str(req: String, msg_exp: Exp) =
+                  s"""coalesce(nullif(trim(${msg_exp.tresql}), ''), 'Requirement failed: ' || '"${
+                    req.replace("'", "''")}"')"""
+                val require = req_exp.tresql
+                (require, msg_str(require, msg_exp), param_exps.map(_.tresql))
+              }
+              parser.parseExp(tr_exp) match {
+                case Arr(With(cursor_exps, _) :: req_exp :: msg_exp :: param_exps) =>
+                  val new_cursors = cursor_exps.map(_.tresql).mkString(", ") :: cursors
+                  (new_cursors, row(req_exp, msg_exp, param_exps) :: rows,
+                    Math.max(max_par_count, param_exps.size))
+                case Arr(req_exp :: msg_exp :: param_exps) =>
+                  (cursors, row(req_exp, msg_exp, param_exps) :: rows,
+                    Math.max(max_par_count, param_exps.size))
+                case x => error(x)
+              }
+          }
+          val parColumnNames = List.range(0, max_par_count).map(i => s"p${i + 1}")
+          val colNames = "idx" :: "msg" :: parColumnNames
           val valTresql =
-            "__messages(# idx, msg) {" +
-              vs.zipWithIndex.map {
-                case (v, i) =>
-                  // replace view refs with tresql
-                  val tv = transformExpression(v, viewDef, null, Validation)
-                  def requireExp(valExp: Exp, msgExp: Exp) = {
-                    val (exp, msg) = (valExp.tresql, msgExp.tresql)
-                    exp + ", " +
-                      s"""coalesce(nullif(trim($msg), ''), 'Requirement failed: ' || '"${exp.replace("'", "''")}"')"""
-                  }
-                  val valExp =
-                    parser.parseExp(tv) match {
-                      case Arr(List(cursors, exp, msg)) =>
-                        cursors match {
-                          case With(cursors, _) =>
-                            cursorList = cursors.map(_.tresql).mkString(", ") :: cursorList
-                          case x => error(x)
-                        }
-                        requireExp(exp, msg)
-                      case Arr(List(exp, msg)) => requireExp(exp, msg)
-                      case x => error(x)
-                    }
-                  s"{ $i idx, if_not($valExp) msg }"
+            s"__messages(# ${colNames.mkString(", ")}) {" +
+              rows.reverse.zipWithIndex.map {
+                case ((req, msg, params), i) =>
+                  val col_exps = s"$i" :: s"if_not($req, $msg)" :: params.padTo(max_par_count, "null")
+                  col_exps.zip(colNames).map { case (e, n) => s"$e $n"}.mkString("{", ", ", "}")
               }.mkString(" + ") +
               s"} ${if (cursorsView == null) "" else s"[build_cursors($cursorsView)]"}" +
-              s"__messages[msg != null] { msg } #(idx)"
-          if (cursorList.isEmpty) valTresql
-          else cursorList.reverse.mkString(", ") + ", " + valTresql
+              s"__messages[msg != null] { ${colNames.mkString(", ")} } #(idx)"
+          if (cursors.isEmpty) valTresql
+          else cursors.reverse.mkString(", ") + ", " + valTresql
         }
 
         val validations_head = validations.head.trim

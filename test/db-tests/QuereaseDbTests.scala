@@ -11,7 +11,7 @@ import org.scalatest.flatspec.{AnyFlatSpec => FlatSpec}
 import org.scalatest.matchers.should.Matchers
 import org.tresql._
 import dto._
-import org.mojoz.querease.{FieldFilter, TresqlMetadata, ValidationException, ValidationResult}
+import org.mojoz.querease.{FieldFilter, TresqlMetadata, ValidationException, ValidationMessage, ValidationResult}
 import org.mojoz.querease.SaveMethod._
 import QuereaseTests._
 import org.scalatest.BeforeAndAfterAll
@@ -27,6 +27,7 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
   def createDbObjects(db: String): Unit
   def isDbAvailable: Boolean = true
   def dbName: String
+  def vm(msg: String, params: Any*): ValidationMessage = ValidationMessage(msg, params.toList)
   def interceptedSqlExceptionMessage[B](b: => B): String  = try {
     b
     throw new RuntimeException("Expected message not thrown")
@@ -692,10 +693,10 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("integer_column should be greater than 5 but is 3",
-        "integer_column should be greater than 10 but is 3",
-        "name_col value must be in view validation_names. Instead - ''",
-        """Requirement failed: ":name_col::text != null & 'a' != 'b'"""",
+      List(vm("integer_column should be greater than 5 but is 3", "gt", 3),
+        vm("integer_column should be greater than 10 but is 3", null, null),
+        vm("name_col value must be in view validation_names. Instead - ''", null, null),
+        vm("""Requirement failed: ":name_col::text != null & 'a' != 'b'"""", null, null),
       )
     )))
 
@@ -704,8 +705,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(List(ValidationResult(Nil,
-      List("integer_column should be greater than 10 but is 7",
-        "name_col value must be in view validation_names. Instead - 'A2 - Y'")
+      List(vm("integer_column should be greater than 10 but is 7", null, null),
+        vm("name_col value must be in view validation_names. Instead - 'A2 - Y'", null, null))
     )))
 
     dto.integer_column = 11
@@ -713,11 +714,13 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     qe.save(dto)
 
     dto.integer_column = 13
-    intercept[ValidationException] {
+    val ex = intercept[ValidationException] {
       qe.save(dto)
-    }.details should be(List(ValidationResult(Nil,
-      List("integer_column should be less than 12 but is 13")
+    }
+    ex.details should be(List(ValidationResult(Nil,
+      List(vm("integer_column should be less than 12 but is 13", null, null))
     )))
+    ex.getMessage shouldBe "integer_column should be less than 12 but is 13"
 
     dto.integer_column = 11
     val ch11 = new ValidationsTestChild1
@@ -733,23 +736,23 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 0")),
-        ValidationResult(List("children1", 1), List("child1 integer_column should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 0), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,11")),
-        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,11")))
+      List(ValidationResult(List("children1", 0), List(vm("child1 integer_column should be greater than 1 but is 0"))),
+        ValidationResult(List("children1", 1), List(vm("child1 integer_column should be greater than 1 but is 1"))),
+        ValidationResult(List("children2", 0), List(vm("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,11"))),
+        ValidationResult(List("children2", 1), List(vm("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,11"))))
     )
 
     dto.integer_column = 0
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(Nil, List("integer_column should be greater than 5 but is 0",
-        "integer_column should be greater than 10 but is 0",
-        "Children integer_column field sum must be less than parent's integer_column value. Instead - 0 < 2")),
-        ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 0")),
-        ValidationResult(List("children1", 1), List("child1 integer_column should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 0), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,0")),
-        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,0")))
+      List(ValidationResult(Nil, List(vm("integer_column should be greater than 5 but is 0", "gt", 0),
+        vm("integer_column should be greater than 10 but is 0", null, null),
+        vm("Children integer_column field sum must be less than parent's integer_column value. Instead - 0 < 2", null, null))),
+        ValidationResult(List("children1", 0), List(vm("child1 integer_column should be greater than 1 but is 0"))),
+        ValidationResult(List("children1", 1), List(vm("child1 integer_column should be greater than 1 but is 1"))),
+        ValidationResult(List("children2", 0), List(vm("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 0,0"))),
+        ValidationResult(List("children2", 1), List(vm("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 1,0"))))
     )
 
     dto.integer_column = 11
@@ -765,8 +768,8 @@ trait QuereaseDbTests extends FlatSpec with Matchers with BeforeAndAfterAll {
     intercept[ValidationException] {
       qe.save(dto)
     }.details should be(
-      List(ValidationResult(List("children1", 0), List("child1 integer_column should be greater than 1 but is 1")),
-        ValidationResult(List("children2", 1), List("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 2,11")))
+      List(ValidationResult(List("children1", 0), List(vm("child1 integer_column should be greater than 1 but is 1"))),
+        ValidationResult(List("children2", 1), List(vm("child2 integer_column should be greater than 2 and parent must be greater than 3 but is 2,11"))))
     )
   }
   if (isDbAvailable) it should s"support multiple schemas in $dbName" in {

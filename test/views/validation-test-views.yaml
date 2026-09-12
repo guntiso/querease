@@ -9,7 +9,7 @@ fields:
   - children2 * validations_test_child_2
 validations:
   - build cursors for view validations_test
-  - :integer_column >  5, 'integer_column should be greater than 5 but is ' || :integer_column
+  - :integer_column >  5, 'integer_column should be greater than 5 but is ' || :integer_column, 'gt', :integer_column::int
   - :integer_column > 10, 'integer_column should be greater than 10 but is ' || :integer_column
   - :integer_column < 12, 'integer_column should be less than 12 but is ' || :integer_column
   - ch_sum(# ch_sum) {
