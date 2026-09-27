@@ -577,14 +577,14 @@ class nested_resolver_test_1 extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person? father[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother & person.father_id = checked_resolve(:other_field::text, array(person p1;p1[p1.father_id]person? father[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2)), 'Failed to identify value of "other_field" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2)), 'Failed to identify value of "mother" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person father?[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother & person.father_id = checked_resolve(:other_field::text, array(person p1;p1[p1.father_id]person father?[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2)), 'Failed to identify value of "other_field" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2)), 'Failed to identify value of "mother" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object nested_resolver_test_1 {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String, other_field: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person? father[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother & person.father_id = checked_resolve(:other_field::text, array(person p1;p1[p1.father_id]person? father[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2)), 'Failed to identify value of "other_field" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2)), 'Failed to identify value of "mother" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))}"""(env.withParams(Map("mother" -> mother, "other_field" -> other_field)))
+    tresql"""{checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person father?[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother & person.father_id = checked_resolve(:other_field::text, array(person p1;p1[p1.father_id]person father?[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2)), 'Failed to identify value of "other_field" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2)), 'Failed to identify value of "mother" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))}"""(env.withParams(Map("mother" -> mother, "other_field" -> other_field)))
       .unique[java.lang.Long]
   }
 }
@@ -1226,14 +1226,14 @@ class resolver_alias_clash_test_person_7_a extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_7_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person father?[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_7_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object resolver_alias_clash_test_person_7_a {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_7_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
+    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person father?[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_7_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
       .unique[java.lang.Long]
   }
 }
@@ -1241,14 +1241,14 @@ class resolver_alias_clash_test_person_8_a extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object resolver_alias_clash_test_person_8_a {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_a) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
       .unique[java.lang.Long]
   }
 }
@@ -1256,14 +1256,14 @@ class resolver_alias_clash_test_person_8_b extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_b) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_b) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object resolver_alias_clash_test_person_8_b {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_b) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_alias_clash_test_person_8_b) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
       .unique[java.lang.Long]
   }
 }
@@ -1718,14 +1718,14 @@ class resolver_test_person_7 extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person father?[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object resolver_test_person_7 {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
+    tresql"""{checked_resolve(:mother, array(person;person[person.father_id]person father?[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
       .unique[java.lang.Long]
   }
 }
@@ -1733,14 +1733,14 @@ class resolver_test_person_8 extends Dto {
   var mother: String = null
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_8) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_8) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(this.toMap))
       .unique[java.lang.Long]
   }
 }
 object resolver_test_person_8 {
   @scala.annotation.nowarn("msg=Compiler synthesis of Manifest")
   def resolve_mother_id(mother: String)(implicit env: org.tresql.Resources, qe: QuereaseMetadata) = {
-    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_8) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
+    tresql"""{checked_resolve(:mother, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = :mother]{p1.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_8) - ' || coalesce(:mother::text, 'null'))}"""(env.withParams(Map("mother" -> mother)))
       .unique[java.lang.Long]
   }
 }

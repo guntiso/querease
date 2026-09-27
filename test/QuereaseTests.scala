@@ -87,17 +87,17 @@ class QuereaseTests extends FlatSpec with Matchers {
       "mother->mother_id=3"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson7) should be(List(
-      "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person? father[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = _]{person.id}@(2))," +
+      "mother->mother_id=checked_resolve(_, array(person;person[person.father_id]person father?[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = _]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from resolver_test_person_7) - ' || coalesce(_::text, 'null'))"
     ).mkString("; "))
     resolverKeys(new ResolverTestPerson8) should be(List(
-      "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person? father[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2))," +
+      "mother->mother_id=checked_resolve(_, array(person p1;p1[p1.father_id]person father?[p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' = _]{p1.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from resolver_test_person_8) - ' || coalesce(_::text, 'null'))"
     ).mkString("; "))
     resolverKeys(new NestedResolverTest1) should be(List(
-      "mother->mother_id=checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person? father[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother &" +
+      "mother->mother_id=checked_resolve(coalesce(:mother::text, :other_field::text), array(person;person[person.father_id]person father?[[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother &" +
         " person.father_id = checked_resolve(:other_field::text, array(" +
-          "person p1;p1[p1.father_id]person? father[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
+          "person p1;p1[p1.father_id]person father?[[:other_field = p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)']]{p1.id}@(2))," +
           " 'Failed to identify value of \"other_field\" (from person_multitable_choice_resolver_implied_1) - ' || coalesce(:other_field::text, 'null'))]]{person.id}@(2))," +
           " 'Failed to identify value of \"mother\" (from nested_resolver_test_1) - ' || concat_ws(', ', coalesce(:mother::text, 'null'), coalesce(:other_field::text, 'null')))"
     ).mkString("; "))
@@ -202,7 +202,7 @@ class QuereaseTests extends FlatSpec with Matchers {
       "p7",
       List(
         Property("mother_id",TresqlValue(
-          """(checked_resolve(:mother, array(person;person[person.father_id]person? father""" +
+          """(checked_resolve(:mother, array(person;person[person.father_id]person father?""" +
             """[person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' = :mother]""" +
             """{person.id}@(2)), 'Failed to identify value of "mother" (from resolver_test_person_7) - ' ||""" +
             """ coalesce(:mother::text, 'null')))""",
@@ -736,11 +736,11 @@ class QuereaseTests extends FlatSpec with Matchers {
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_7"), Map.empty)._1 should be(
       "person p7 {" +
-      "(person;person[person.father_id]person? father[person.id = p7.mother_id]{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
+      "(person;person[person.father_id]person father?[person.id = p7.mother_id]{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_test_person_8"), Map.empty)._1 should be(
       "person p8 {" +
-      "(person p1;p1[p1.father_id]person? father[p1.id = p8.mother_id]{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "(person p1;p1[p1.father_id]person father?[p1.id = p8.mother_id]{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("ref_test_bank_2"), Map.empty)._1 should be(
       "bank {" +
@@ -757,17 +757,17 @@ class QuereaseTests extends FlatSpec with Matchers {
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_7_a"), Map.empty)._1 should be(
       "person {" +
       "(person_2 (# mother_id) { null{person.mother_id} } person_2[person.id = person_2.mother_id]person;" +
-      "person[person.father_id]person? father{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
+      "person[person.father_id]person father?{person.name || ' ' || person.surname || ' of ' || father.name || ' (#7)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_8_a"), Map.empty)._1 should be(
       "person p1 {" +
       "(p1_2 (# mother_id) { null{p1.mother_id} } p1_2[p1.id = p1_2.mother_id]person p1;" +
-      "p1[p1.father_id]person? father{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "p1[p1.father_id]person father?{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
     qe.queryStringAndParams(qe.viewDef("resolver_alias_clash_test_person_8_b"), Map.empty)._1 should be(
       "person father {" +
       "(father_2 (# mother_id) { null{father.mother_id} } father_2[p1.id = father_2.mother_id]person p1;" +
-      "p1[p1.father_id]person? father{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
+      "p1[p1.father_id]person father?{p1.name || ' ' || p1.surname || ' of ' || father.name || ' (#8)' full_name}) mother}"
     )
 
     // test implied join to self
@@ -793,7 +793,7 @@ class QuereaseTests extends FlatSpec with Matchers {
     qe.queryStringAndParams(qe.viewDef("filter_with_resolver_test_1"), Map("mother" -> "mother"))._1 should be(
       "person" +
       "[mother_id = checked_resolve(if_defined_or_else(:mother?, :mother?::text, null)," +
-      " array(person;person[person.mother_id]person? mother[" +
+      " array(person;person[person.mother_id]person mother?[" +
       "[if_defined_or_else(:mother?, mother.name || mother.surname = :mother & person.id::text ~ '%6', false)]]{person.mother_id}@(2))," +
       " 'Failed to identify value of \"mother\" (from filter_with_resolver_test_1) - ' ||" +
       " if_defined_or_else(:mother?, coalesce(:mother?::text, 'null'), '[missing]'))" +
