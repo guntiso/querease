@@ -437,7 +437,7 @@ trait QuereaseExpressions {
               (viewRef, null)
           }
           val resolvedQueryString = if (refFieldName != null && (filter == null || filter.filters != null && filter.filters.size == 1)) {
-            refViewExpressionString(refViewName, refFieldName, Option(filter).map(_.filters(0).tresql).map(f => f.substring(1, f.length - 1)).orNull)
+            refViewExpressionString(refViewName, refFieldName, Option(filter).map(_.filters(0).tresql).orNull)
           } else {
             val refViewDef = viewDefOption(refViewName)
               .getOrElse{

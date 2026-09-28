@@ -188,7 +188,7 @@ class QuereaseMacros extends Macros {
       }
       ast.Query(
         List(ast.Obj(ast.Null)),
-        ast.Filters(List(ast.Arr(List(ast.BinOp("=", ast.IntConst(1), ast.IntConst(0)))))),
+        ast.Filters(List(ast.BinOp("=", ast.IntConst(1), ast.IntConst(0)))),
         ast.Cols(vals, null)
       )
     }
