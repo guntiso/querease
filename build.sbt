@@ -27,7 +27,7 @@ initialize := {
 }
 
 libraryDependencies ++= Seq(
-  "org.mojoz"     %% "mojoz"      % "7.2.1",
+  "org.mojoz"     %% "mojoz"      % "7.2.2",
   "org.tresql"    %% "tresql"     % "14.0.0-SNAPSHOT",
   "com.typesafe"   % "config"     % "1.4.9",
   // test
