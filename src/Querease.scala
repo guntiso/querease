@@ -2001,8 +2001,9 @@ trait QueryStringBuilder {
           s"$contextTableOrAlias[$contextTableOrAlias.${ref.cols(0)} $alias$joinMod] ${ref.refTable}"
         case None =>
           aliasToTable += alias -> tableOrAlias
-          contextTableOrAlias + "/" + tableOrAlias + joinMod +
+          s"""$contextTableOrAlias/$tableOrAlias${
             (if (tableOrAlias == alias) "" else " " + alias)
+          }$joinMod"""
       }
     }
     val joinsString =
